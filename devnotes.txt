@@ -1,1 +1,8 @@
 All fully capitalized methods are top level priority. Other camel case methods are lower level utility type functions.
+
+
+Need to find a way to add rendering on click with velocity line as well
+
+rewrite line to be an error, maybe build custom svg?
+
+On pause, maybe display all the internally stored velocity arrows? write function to take arbitrary body and draw the arrow rather than storing all the contents of the thing in a nested struct which is nasty
