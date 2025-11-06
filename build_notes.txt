@@ -1,5 +1,7 @@
 CMake command, run any time we update file list
-cmake -S . -B build -DSDL3_DIR="../../SDL3/cmake"
+
+cmake -S . -B build -D SDL3_DIR="C:/Users/marco/Projects/SDL3/cmake"
+
 
 // For macos run without the -DSLD3 portion of the above command
 
