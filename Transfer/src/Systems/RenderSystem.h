@@ -78,7 +78,7 @@ class RenderSystem
 		void renderInputArtifacts(GameState& state);
 
 		// Renders the frame rate counter on screen
-		void renderFrameRateCounter(float fps); 
+		// void renderFrameRateCounter(float fps); 
 
 		// Utility Rendering Helper Functions
 		// void renderCircle(SDL_Renderer* renderer, const GravitationalBody& body, SDL_Color color);

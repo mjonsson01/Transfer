@@ -1,5 +1,7 @@
 #pragma once
 // No SDL here. Will just include data to manage the UI state.
+#include <vector>
+#include "Entities/UIElement.h"
 class UIState
 {
     public:
@@ -18,10 +20,5 @@ class UIState
         float fps = 0.0f;
         bool showFPSCounter = false;
 
-        // Add Gravitational Body button state
-        bool addBody = false; 
-
-        // Add Gravitational body parameters
-        double newBodyMass = 0.0;
-        float newBodyRadius = 0.0;
+        std::vector<UIElement*> elements;
 };

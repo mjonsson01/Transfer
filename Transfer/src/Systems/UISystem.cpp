@@ -14,4 +14,11 @@ UISystem::~UISystem()
 void UISystem::ProcessUIFrame(GameState& state, UIState& UIState)
 {
     
+}
+
+void UISystem::RenderUIElements(SDL_Renderer* renderer, UIState& UIState)
+{
+    for (auto& element : elements) {
+        element->renderElement(renderer);
+    }
 }   

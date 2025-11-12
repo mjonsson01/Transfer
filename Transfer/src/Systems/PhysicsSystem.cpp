@@ -140,8 +140,8 @@ void PhysicsSystem::updateBoundingBox(GravitationalBody& body) {
     double minY = std::min(currentPos.y_val, expectedNextPos.y_val) - radius;
     double maxY = std::max(currentPos.y_val, expectedNextPos.y_val) + radius;
 
-    // Expand by 10% for safety margin
-    const double expansionFactor = 0.1;
+    // Expand by 50% for safety margin
+    const double expansionFactor = 0.5;
     double expandX = (maxX - minX) * expansionFactor * 0.5;
     double expandY = (maxY - minY) * expansionFactor * 0.5;
 

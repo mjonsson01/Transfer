@@ -65,11 +65,13 @@ void RenderSystem::RenderFullFrame(GameState& state, UIState& UIState)
     // RenderSystem::renderInputArtifacts(state);
     // Add new rendering system functions later
 
-    // Render FPS Counter if enabled
-    if (UIState.getShowFPSCounter())
-    {   
-        renderFrameRateCounter(UIState.getFPS());
-    }
+    // // Render FPS Counter if enabled
+    // if (UIState.getShowFPSCounter())
+    // {   
+    //     // renderFrameRateCounter(UIState.getFPS());
+    //     UISystem.
+    // }
+    UISystem::RenderUIElements(renderer);
     // Display the frame
     SDL_RenderPresent(renderer);
 }
@@ -116,27 +118,27 @@ SDL_Color RenderSystem::getColorForMass(double mass)
 }
 
 // Helper to render the Frame Rate Counter if enabled.
-void RenderSystem::renderFrameRateCounter(float fps)
-{
-    // Convert FPS to string
-    std::string fpsText = "FPS: " + std::to_string(static_cast<int>(fps));
-    SDL_Surface* textSurface = TTF_RenderText_Blended(FPSFont, fpsText.c_str(), fpsText.length(), ColorLibrary::White);
-    if (!textSurface) {
-        SDL_Log("Text surface creation failed: %s", SDL_GetError());
-        return;
-    }
+// void RenderSystem::renderFrameRateCounter(float fps)
+// {
+//     // Convert FPS to string
+//     std::string fpsText = "FPS: " + std::to_string(static_cast<int>(fps));
+//     SDL_Surface* textSurface = TTF_RenderText_Blended(FPSFont, fpsText.c_str(), fpsText.length(), ColorLibrary::White);
+//     if (!textSurface) {
+//         SDL_Log("Text surface creation failed: %s", SDL_GetError());
+//         return;
+//     }
 
-    SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
-    if (!textTexture) {
-        SDL_Log("Text texture creation failed: %s", SDL_GetError());
-        return;
-    }
+//     SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+//     if (!textTexture) {
+//         SDL_Log("Text texture creation failed: %s", SDL_GetError());
+//         return;
+//     }
     
-    SDL_FRect dstRect = {10.0f, 10.0f, static_cast<float>(textSurface->w), static_cast<float>(textSurface->h)};
-    SDL_RenderTexture(renderer, textTexture, nullptr, &dstRect);
-    SDL_DestroySurface(textSurface);
-    SDL_DestroyTexture(textTexture);
-}
+//     SDL_FRect dstRect = {10.0f, 10.0f, static_cast<float>(textSurface->w), static_cast<float>(textSurface->h)};
+//     SDL_RenderTexture(renderer, textTexture, nullptr, &dstRect);
+//     SDL_DestroySurface(textSurface);
+//     SDL_DestroyTexture(textTexture);
+// }
 
 // Helper to correctly destroy the circle texture cache.
 void RenderSystem::clearCachedTextures()

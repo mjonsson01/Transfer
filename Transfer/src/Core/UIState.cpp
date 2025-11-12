@@ -1,7 +1,7 @@
 #include "UIState.h"
 
 UIState::UIState()
-    : fps(0.0f), showFPSCounter(true)
+    : fps(0.0f), showFPSCounter(true), elements()
 {
     
 }
