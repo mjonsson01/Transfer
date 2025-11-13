@@ -1,5 +1,6 @@
+// File: Transfer/src/Systems/InputSystem.cpp
+
 #include "Systems/InputSystem.h"
-#include <iostream>
 
 InputSystem::InputSystem()
 {
@@ -10,7 +11,12 @@ InputSystem::~InputSystem()
 {
     // Cleanup if necessary
 }
-void InputSystem::ProcessSystemInputFrame(GameState& state)
+
+void InputSystem::CleanUp()
+{
+    // Any necessary cleanup code for the input system
+}
+void InputSystem::ProcessSystemInputFrame(GameState& state, UIState& UIState)
 {
     // Process input events and update the game state accordingly
     // (Implementation details would go here)

@@ -1,5 +1,8 @@
+// File: Transfer/src/Entities/GravitationalBody.h
+
 #pragma once
 
+// Custom Imports
 #include "Entities/PhysicsStructures.h"
 
 class GravitationalBody

@@ -1,4 +1,8 @@
+// File: Transfer/src/Entities/TwinklingStars.h
+
 #pragma once
+
+// SDL3 Imports
 #include <SDL3/SDL.h>
 
 struct Star {

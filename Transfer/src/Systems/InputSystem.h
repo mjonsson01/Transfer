@@ -1,9 +1,16 @@
+// File: Transfer/src/Systems/InputSystem.h
+
 #pragma once
 
-#include "Core/GameState.h"
+// SDL3 Imports
 #include "SDL3/SDL.h"
+
+// Custom Imports
+#include "Core/UIState.h"
+#include "Core/GameState.h"
 #include "Utilities/GameSystemConstants.h"
 #include "Utilities/EngineConstants.h"
+
 class InputSystem
 {
     public:
@@ -13,7 +20,9 @@ class InputSystem
 
     public:
         // Methods to process input
-        void ProcessSystemInputFrame(GameState& state);
+        void ProcessSystemInputFrame(GameState& state, UIState& UIState);
+
+        void CleanUp();
 
     private:
         // Internal state variables for input handling can be added here

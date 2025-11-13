@@ -1,4 +1,8 @@
+// File: Transfer/src/Utilities/Colors.h
+
 #pragma once
+
+// SDL3 Imports
 #include "SDL3/SDL_pixels.h"
 
 

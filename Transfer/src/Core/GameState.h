@@ -1,10 +1,14 @@
+// File: Transfer/src/Core/GameState.h
+
 #pragma once
+
+
+// Custom Imports
+#include "Entities/GravitationalBody.h"
 
 // Standard Library Imports
 #include <vector>
 
-// Custom Imports
-#include "Entities/GravitationalBody.h"
 struct InputState
 {
 	// Body instantiation control vars

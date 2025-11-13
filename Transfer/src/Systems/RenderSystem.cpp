@@ -1,4 +1,7 @@
+// File: Transfer/src/Systems/RenderSystem.cpp
+
 #include "Systems/RenderSystem.h"
+
 // Constructor: Initializes SDL Window and Renderer
 RenderSystem::RenderSystem()
 {
@@ -22,8 +25,8 @@ RenderSystem::RenderSystem()
     const char* basePath = SDL_GetBasePath(); // returns the folder where the executable lives
     std::string fontPath = std::string(basePath) + "Assets/Fonts/SpaceMono-Bold.ttf";
 
-    FPSFont = TTF_OpenFont(fontPath.c_str(), 18);
-    if (!FPSFont) {
+    UIFont = TTF_OpenFont(fontPath.c_str(), 18);
+    if (!UIFont) {
         SDL_Log("Failed to load font: %s", SDL_GetError());
         return;
     }
@@ -36,8 +39,6 @@ RenderSystem::RenderSystem()
 RenderSystem::~RenderSystem()
 {
 
-    clearCachedTextures();
-
     if (renderer) {
         SDL_DestroyRenderer(renderer);
         renderer = nullptr;
@@ -47,6 +48,11 @@ RenderSystem::~RenderSystem()
         window = nullptr;
     }
     // TTF_Quit(); // Handled at the Game level.
+}
+
+void RenderSystem::CleanUp()
+{
+    clearCachedCircleTextures();
 }
 
 // Top level rendering method, calls all subordinates in order
@@ -65,11 +71,9 @@ void RenderSystem::RenderFullFrame(GameState& state, UIState& UIState)
     // RenderSystem::renderInputArtifacts(state);
     // Add new rendering system functions later
 
-    // Render FPS Counter if enabled
-    if (UIState.getShowFPSCounter())
-    {   
-        renderFrameRateCounter(UIState.getFPS());
-    }
+    // Render UI Elements
+    uiSystem.RenderUIElements(renderer, UIState, UIFont);
+
     // Display the frame
     SDL_RenderPresent(renderer);
 }
@@ -116,30 +120,30 @@ SDL_Color RenderSystem::getColorForMass(double mass)
 }
 
 // Helper to render the Frame Rate Counter if enabled.
-void RenderSystem::renderFrameRateCounter(float fps)
-{
-    // Convert FPS to string
-    std::string fpsText = "FPS: " + std::to_string(static_cast<int>(fps));
-    SDL_Surface* textSurface = TTF_RenderText_Blended(FPSFont, fpsText.c_str(), fpsText.length(), ColorLibrary::White);
-    if (!textSurface) {
-        SDL_Log("Text surface creation failed: %s", SDL_GetError());
-        return;
-    }
+// void RenderSystem::renderFrameRateCounter(float fps)
+// {
+//     // Convert FPS to string
+//     std::string fpsText = "FPS: " + std::to_string(static_cast<int>(fps));
+//     SDL_Surface* textSurface = TTF_RenderText_Blended(FPSFont, fpsText.c_str(), fpsText.length(), ColorLibrary::White);
+//     if (!textSurface) {
+//         SDL_Log("Text surface creation failed: %s", SDL_GetError());
+//         return;
+//     }
 
-    SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
-    if (!textTexture) {
-        SDL_Log("Text texture creation failed: %s", SDL_GetError());
-        return;
-    }
+//     SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+//     if (!textTexture) {
+//         SDL_Log("Text texture creation failed: %s", SDL_GetError());
+//         return;
+//     }
     
-    SDL_FRect dstRect = {10.0f, 10.0f, static_cast<float>(textSurface->w), static_cast<float>(textSurface->h)};
-    SDL_RenderTexture(renderer, textTexture, nullptr, &dstRect);
-    SDL_DestroySurface(textSurface);
-    SDL_DestroyTexture(textTexture);
-}
+//     SDL_FRect dstRect = {10.0f, 10.0f, static_cast<float>(textSurface->w), static_cast<float>(textSurface->h)};
+//     SDL_RenderTexture(renderer, textTexture, nullptr, &dstRect);
+//     SDL_DestroySurface(textSurface);
+//     SDL_DestroyTexture(textTexture);
+// }
 
 // Helper to correctly destroy the circle texture cache.
-void RenderSystem::clearCachedTextures()
+void RenderSystem::clearCachedCircleTextures()
 {
     for (auto& pair : circleTextureCache) {
         SDL_DestroyTexture(pair.second);
@@ -174,7 +178,8 @@ SDL_Texture* RenderSystem::createCircleTexture(int radius, SDL_Color color)
 
     SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
 
-    // Simple naive fill circle -- fast enough since only executed once.
+    // Simple naive n^2 fill circle -- fast enough since only executed once. May further optimize to
+    // Bresenham's circle algorithm just for the memes.
     for (int w = 0; w < diameter; w++)
     {
         for (int h = 0; h < diameter; h++)

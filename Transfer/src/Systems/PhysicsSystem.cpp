@@ -1,5 +1,7 @@
+// File: Transfer/src/Systems/PhysicsSystem.cpp
+
 #include "PhysicsSystem.h"
-#include "iostream"
+
 PhysicsSystem::PhysicsSystem()
 {
     // Initialize physics system variables if needed
@@ -9,7 +11,10 @@ PhysicsSystem::~PhysicsSystem()
 {
     // Cleanup if necessary
 }
-
+void PhysicsSystem::CleanUp()
+{
+    // Any necessary cleanup code for the physics system
+}
 void PhysicsSystem::UpdateSystemFrame(GameState& state)
 {
     // Update physics calculations for all entities in the game state
@@ -140,8 +145,8 @@ void PhysicsSystem::updateBoundingBox(GravitationalBody& body) {
     double minY = std::min(currentPos.y_val, expectedNextPos.y_val) - radius;
     double maxY = std::max(currentPos.y_val, expectedNextPos.y_val) + radius;
 
-    // Expand by 10% for safety margin
-    const double expansionFactor = 0.1;
+    // Expand by 50% for safety margin
+    const double expansionFactor = 0.5;
     double expandX = (maxX - minX) * expansionFactor * 0.5;
     double expandY = (maxY - minY) * expansionFactor * 0.5;
 

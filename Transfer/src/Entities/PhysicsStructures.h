@@ -1,4 +1,8 @@
+// File: Transfer/src/Entities/PhysicsStructures.h
+
 #pragma once
+
+// Standard Library Imports
 #include <cmath>
 
 struct Vector2D

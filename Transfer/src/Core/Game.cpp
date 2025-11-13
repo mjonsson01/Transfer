@@ -1,11 +1,11 @@
-// File: Game.cpp
+// File: Transfer/src/Core/Game.cpp
 
 #include "Core/Game.h"
 
 
 // Likely change the resolution to be scalable in the future? default 1920x1080 for now. Will be inside the Render system eventually.
 Game::Game()
-	:  state(), UIState(), inputSystem(), physicsSystem(), renderSystem(), UISystem()
+	:  state(), UIState(), inputSystem(), physicsSystem(), renderSystem()
 {
 	// fill in imp here
 }
@@ -23,8 +23,20 @@ void Game::StartGame()
 	// Initialize any other useful state variables here.
 	state.SetPlaying(true);
 
+	// Initialize UI elements (like FPS counter) and other vars as we go.
+	renderSystem.getUISystem()->InitializeUIElements(UIState);
+
 	// Start the main game loop
 	Game::Run();
+}
+// Tears down the 'systems' and cleans up allocated resources.
+void Game::EndGame()
+{
+    // renderSystem.getUISystem()->DeleteUIElements(UIState);
+    renderSystem.getUISystem()->DeleteUIElements(UIState);
+    renderSystem.CleanUp();
+    physicsSystem.CleanUp();
+    inputSystem.CleanUp();
 }
 void Game::Run()
 {	
@@ -91,7 +103,8 @@ void Game::ProcessInput()
 	// Dispatch to Input System
 	// inputSystem.ProcessSystemFrame(state);
 //	UISystem.ProcessUIFrame(state, UIState);
-	inputSystem.ProcessSystemInputFrame(state);
+    // Updates the UI state and 
+	inputSystem.ProcessSystemInputFrame(state, UIState);
 }
 
 void Game::UpdatePhysicsFrame()
@@ -102,11 +115,14 @@ void Game::UpdatePhysicsFrame()
 
 void Game::RenderFrame()
 {
-	// Dispatch to Renderer System
+	// Dispatch to Renderer System -- fills in UI as well.
 	renderSystem.RenderFullFrame(state, UIState);
 }
 
 // Helpers to clean up the Run() method
+
+
+// FPS Helpers
 void Game::UpdateFPS(Uint32 renderEnd, Uint32 lastRender, float& fpsAccumulator, float& currentFPS)
 {
     float frameTime = (renderEnd - lastRender) / 1000.0f;

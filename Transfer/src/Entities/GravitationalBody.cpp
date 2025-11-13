@@ -1,3 +1,5 @@
+// File: Transfer/src/Entities/GravitationalBody.cpp
+
 #include "Entities/GravitationalBody.h"
 
 GravitationalBody::GravitationalBody()

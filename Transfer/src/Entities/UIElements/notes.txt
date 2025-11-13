@@ -1,0 +1,5 @@
+All UI Elements derivatives have to import UI State and UI Element. 
+
+Forward declarations to break the loop only occur in UI State which contains a vector of UI Elements.
+
+UI Element must include UI State.
