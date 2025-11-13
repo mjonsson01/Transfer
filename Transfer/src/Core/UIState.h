@@ -5,7 +5,7 @@
 // No SDL here. Will just include data to manage the UI state.
 
 // Custom Imports
-// #include "Entities/UIElement.h"
+#include "Core/InputState.h"
 
 // Standard Library Imports
 #include <vector>
@@ -37,6 +37,9 @@ class UIState
         // FPS counter state
         float fps = 0.0f;
         bool showFPSCounter = false;
+        // Input state for UI interactions
+        InputState inputState;
 
+        // Collection of UI elements
         std::vector<UIElement*> elements;
 };

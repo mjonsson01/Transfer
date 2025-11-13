@@ -23,7 +23,7 @@ void Game::StartGame()
 	// Initialize any other useful state variables here.
 	state.SetPlaying(true);
 
-	// Initialize UI elements (like FPS counter) and other vars as we go.
+	// Initialize UI elements (like FPS counter and Sliders) and other vars as we go.
 	renderSystem.getUISystem()->InitializeUIElements(UIState);
 
 	// Start the main game loop

@@ -26,6 +26,9 @@ void UISystem::InitializeUIElements(UIState& UIState)
     // Create and add the FPS counter
     FPSCounter* fpsCounter = new FPSCounter();
     UIState.addUIElement(fpsCounter);
+    // Create and add the Mass Slider
+    MassSlider* massSlider = new MassSlider();
+    UIState.addUIElement(massSlider);
     // Add other UI elements as needed
 }
 

@@ -31,4 +31,8 @@ class InputSystem
         // subordinate rendering functions.
         void createNewBody(SDL_Event& event, GameState& state);
 
+        // void handleMouseWheelEvent(SDL_Event& event, UIState& UIState); // For window zooming
+        // void handleMouseMotionEvent(SDL_Event& event, UIState& UIState); // For panning -- probably combine with shift + mouse click in order to differentiate from mass instantiation.
+        void handleMassSliderInput(SDL_Event& event, UIState& UIState);
+
 };

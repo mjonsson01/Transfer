@@ -76,3 +76,9 @@ void InputSystem::createNewBody(SDL_Event& event, GameState& state)
 
     state.addBody(newBody);
 };
+
+void InputSystem::handleMassSliderInput(SDL_Event& event, UIState& UIState)
+{
+    // Implementation for handling mass slider input events
+    // (This function can be expanded based on specific requirements)
+}

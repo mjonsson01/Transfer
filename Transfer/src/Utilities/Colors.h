@@ -16,4 +16,5 @@ struct ColorLibrary {
     inline static constexpr SDL_Color Yellow      {255, 255, 0, 255};
     inline static constexpr SDL_Color Cyan        {0, 255, 255, 255};
     inline static constexpr SDL_Color Magenta     {255, 0, 255, 255};
+    inline static constexpr SDL_Color Gray        {128, 128, 128, 255};
 };

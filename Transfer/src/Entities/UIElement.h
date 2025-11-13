@@ -33,12 +33,15 @@ class UIElement{
         float getY() const { return posY; }
         float getWidth() const { return width; }
         float getHeight() const { return height; }
+        float getScaleFactor() const { return scaleFactor; }
+        void setScaleFactor(float scale) { scaleFactor = scale; }
 
     private:
         float posX = 0;
         float posY = 0;
         float width = 0;
         float height = 0;
+        float scaleFactor = 1.0f;
 };
 
 // Derived UI Element Classes
