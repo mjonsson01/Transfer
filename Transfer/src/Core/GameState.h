@@ -36,9 +36,12 @@ class GameState
 
 
 
-        const std::vector<Particle>& getParticles() const {return particles;}
-        std::vector<Particle>& getParticlesMutable() {return particles;}
+        const std::vector<GravitationalBody>& getParticles() const {return particles;}
+        std::vector<GravitationalBody>& getParticlesMutable() {return particles;}
 
+        const std::vector<GravitationalBody>& getMacroBodies() const {return macroBodies;}
+        std::vector<GravitationalBody>& getMacroBodiesMutable() {return macroBodies;}
+        
 
         float getAlpha() const {return alpha;}
         void setAlpha(float alphaIn) {alpha = alphaIn;}
@@ -61,6 +64,7 @@ class GameState
         // float timeScaleFactor = REGULAR_TIME_SCALE_FACTOR; // default to 1.0 for standard scaling
         bool toggleSlow = false; // default to false for regular speed
 
-        std::vector<Particle> particles;
+        std::vector<GravitationalBody> macroBodies;
+        std::vector<GravitationalBody> particles;
 };
 

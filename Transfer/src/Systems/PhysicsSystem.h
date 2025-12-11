@@ -31,8 +31,18 @@ class PhysicsSystem
         void UpdateSystemFrame(GameState& state, UIState& UIState);
 
     private:
-        void handleCollision(GameState& state);
-        void handleDynamicCollision(GameState& state);
-        void createPlanetaryCluster(GameState& state, InputState& inputState);
-
+        void calculateGravity(GravitationalBody& body1, GravitationalBody& body2);
+        void calculateGravityForSmallFragments(GravitationalBody& particle, GravitationalBody& body);
+        // void integrateForwards(GameState& state);
+        void integrateForwards_Phase1(GameState& state);
+        void integrateForwards_Phase2(GameState& state);
+        void handleCollisions(GameState& state);
+        void handleElasticCollisions(GravitationalBody& particle, GravitationalBody& body);
+        // void handleDynamicCollision(GameState& state);
+        void createPlanet(GameState& state, InputState& inputState);
+        // void createPlanetaryCluster(Particle& originalBody, GameState& state);
+        void calculateTotalEnergy(GameState& state);
+        void substituteWithParticles(GravitationalBody& originalBody, GameState& state);
+        void cleanupParticles(GameState& state);
+        void cleanupMacroBodies(GameState& state);
 };

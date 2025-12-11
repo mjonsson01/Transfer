@@ -53,28 +53,22 @@
 // };
 
 
-struct PlanetaryBody 
-{
-    Vector2D position {0.0, 0.0};
-    Vector2D prevPosition {0.0, 0.0};
-    Vector2D velocity {0.0, 0.0};
-    Vector2D netForce {0.0, 0.0};
-    double mass = 0.0;
-    double radius = 0.0f;
-    bool markedForDeletion = false;
-    bool collisionEnabled = true;
-};
 
-struct Particle
+struct GravitationalBody
 {
-    Vector2D position {0.0, 0.0};
-    Vector2D prevPosition {0.0, 0.0};
-    Vector2D velocity {0.0, 0.0};
-    Vector2D netForce {0.0, 0.0};
-    Vector2D prevForce {0.0, 0.0};
+    Vector2D position = {0.0, 0.0};
+    Vector2D prevPosition = {0.0, 0.0};
+    Vector2D velocity = {0.0, 0.0};
+    Vector2D netForce = {0.0, 0.0};
+    Vector2D prevForce = {0.0, 0.0};
     double mass = 0.0;
     double radius = 0.0;
     // int clusterID; // ID of the cluster this particle belongs to. -1 if belongs to none.
     bool collisionEnabled = true;
     bool markedForDeletion = false;
+
+    bool isStatic = false;
+    bool isPlanet = false;
+    bool isFragment = false;
+    bool isDust = false;
 };

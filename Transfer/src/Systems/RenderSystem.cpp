@@ -99,6 +99,23 @@ void RenderSystem::renderBodies(GameState& state)
 
         SDL_RenderTexture(renderer, tex, nullptr, &dstRect);
     }
+    for (auto& body : state.getMacroBodies()) {
+        SDL_Color color = getColorForMass(body.mass);
+        SDL_Texture* tex = getCircleTexture(static_cast<int>(body.radius), color);
+        Vector2D currPosition = body.position;
+        Vector2D prevPosition = body.prevPosition;
+        float renderX = prevPosition.x_val * (1.0f - alpha) + currPosition.x_val * alpha;
+        float renderY = prevPosition.y_val * (1.0f - alpha) + currPosition.y_val * alpha;
+        float r = static_cast<float>(body.radius);
+        SDL_FRect dstRect = {
+            renderX - r,
+            renderY - r,
+            r * 2,
+            r * 2
+        };
+
+        SDL_RenderTexture(renderer, tex, nullptr, &dstRect);
+    }
     
 }
 

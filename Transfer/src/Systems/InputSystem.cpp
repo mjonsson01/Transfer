@@ -31,11 +31,10 @@ void InputSystem::ProcessSystemInputFrame(GameState& state, UIState& UIState)
                 break;
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
             {
-                // createNewBody(event, state);
-                // Will refactor into helpers later
                 auto& newState = UIState.getMutableInputState();
                 newState.dirty = true;
-                newState.isCreatingCluster = true;
+                newState.isCreatingPlanet = true;
+                newState.isCreatingStatic = false;
                 newState.mouseCurrPosition = {event.button.x, event.button.y};
                 newState.selectedMass = MAX_MASS/10.0;
                 newState.selectedRadius = 50.0;
@@ -65,26 +64,20 @@ void InputSystem::ProcessSystemInputFrame(GameState& state, UIState& UIState)
             //         std::cout<<"New Body Created: "<<std::endl;
             //         std::cout<<newBody<<std::endl;
             //     }
-            //     else if (event.key.scancode == SDL_SCANCODE_P){
-            //         GravitationalBody newFrag;
-            //         float radius = 5.0;
-            //         newFrag.setRadius(radius);
-            //         double mass = 5e8;
-            //         newFrag.setMass(mass);
-            //         newFrag.setCollisionEnabled(true);
-                    
-            //         Vector2D bodyPosition = { SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 }; // position measured in pixel xy coordinates measured from top-left corner.
-            //         newFrag.setPosition(bodyPosition);
-
-            //         Vector2D prevPosition = bodyPosition; // previous pixel position
-            //         newFrag.setPrevPosition(prevPosition);
-
-            //         newFrag.setIsFragment(true);
-            //         state.addBody(newFrag);
-            //         std::cout<<"New Frag Created: "<<std::endl;
-            //         std::cout<<newFrag<<std::endl;
-            //     }
-                if (event.key.scancode == SDL_SCANCODE_TAB)
+                if (event.key.scancode == SDL_SCANCODE_P){
+                // createNewBody(event, state);
+                // Will refactor into helpers later
+                        auto& newState = UIState.getMutableInputState();
+                        newState.dirty = true;
+                        newState.isCreatingPlanet = true;
+                        newState.isCreatingStatic = true;
+                        // newState.mouseCurrPosition = {event.button.x, event.button.y};
+                        newState.mouseCurrPosition = { SCREEN_WIDTH / 2, 2 * SCREEN_HEIGHT / 3 };
+                        newState.selectedMass = MAX_MASS/2.0;
+                        newState.selectedRadius = 50.0;
+                        break;
+                }
+                else if (event.key.scancode == SDL_SCANCODE_TAB)
                 {
                     state.invertToggleSlow();
                 }
