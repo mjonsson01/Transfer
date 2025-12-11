@@ -188,27 +188,20 @@ void PhysicsSystem::handleCollisions(GameState& state)
             // }
             // double mass_ratio = largerM_body->getMass() / smallerM_body->getMass();
 
-            // if (dist < min_distance && dist > 0.0) {
-            //     double relativeSpeed = (bodyA.getNetVelocity() - bodyB.getNetVelocity()).magnitude();
+            if (dist < min_distance && dist > 0.0) {
+                double relativeSpeed = (bodyA.getNetVelocity() - bodyB.getNetVelocity()).magnitude();
                 
-            //     handleDynamicCollision(bodyA, bodyB, state);
                 
-            //     // if (relativeSpeed < MAX_ELASTIC_COLLISION_SPEED){
-            //         // handleElasticCollision(bodyA, bodyB);
-            //     // }
-            //     // else{
-            //         // handleDynamicCollision(bodyA, bodyB, state);
-            //         // handleElasticCollision(bodyA, bodyB);
-            //     // }
-            // }
-            // else {
-            //     // No collision
-            //     continue;
-            // }
-
-            // If the mass ratio is small enough just accrete.
-
-            // Figure out the mutual escape velocity to determine the threshold for accretion vs fragmentation.
+                
+                if (relativeSpeed < MAX_ELASTIC_COLLISION_SPEED){
+                    handleElasticCollision(bodyA, bodyB);
+                }
+                else{
+                    handleDynamicCollision(bodyA, bodyB, state);
+                    handleElasticCollision(bodyA, bodyB);
+                }
+            }
+        }
     }
     bodies.erase(
         std::remove_if(bodies.begin(), bodies.end(),
@@ -218,217 +211,210 @@ void PhysicsSystem::handleCollisions(GameState& state)
 
 }
 
+
+
 void PhysicsSystem::handleDynamicCollision(GravitationalBody& bodyA, GravitationalBody& bodyB, GameState& state)
 {
-    // Placeholder for dynamic collision handling logic
-    // Currently, we just mark both bodies for deletion to avoid compilation errors.
-    bodyA.setMarkedForDeletion(true);
-    bodyB.setMarkedForDeletion(true);
-}
-
-
-// void PhysicsSystem::handleDynamicCollision(GravitationalBody& bodyA, GravitationalBody& bodyB, GameState& state)
-// {
-//     // --- 1. Extract Initial State and Define Target Momentum ---    
-//     double mA = bodyA.getMass();
-//     double mB = bodyB.getMass();
-//     Vector2D vA = bodyA.getNetVelocity();
-//     Vector2D vB = bodyB.getNetVelocity();
+    // --- 1. Extract Initial State and Define Target Momentum ---    
+    double mA = bodyA.getMass();
+    double mB = bodyB.getMass();
+    Vector2D vA = bodyA.getNetVelocity();
+    Vector2D vB = bodyB.getNetVelocity();
     
-//     // Calculate total mass
-//     double M = mA + mB;
+    // Calculate total mass
+    double M = mA + mB;
 
-//     // Calculate the total system momentum (MUST BE CONSERVED)
-//     Vector2D P_initial = vA * mA + vB * mB;
+    // Calculate the total system momentum (MUST BE CONSERVED)
+    Vector2D P_initial = vA * mA + vB * mB;
 
-//     // Calculate the velocity of the Center of Mass (CoM). 
-//     // This is the target base velocity for all fragments.
-//     Vector2D V_CoM = P_initial / M;
+    // Calculate the velocity of the Center of Mass (CoM). 
+    // This is the target base velocity for all fragments.
+    Vector2D V_CoM = P_initial / M;
     
-//     // Calculate the initial kinetic energy of the system for reference (used later to size the fragments/scatter)
-//     // The relative velocity determines the intensity of the fragmentation.
-//     Vector2D deltaV = vA - vB;
-//     double relativeSpeed = deltaV.magnitude();
+    // Calculate the initial kinetic energy of the system for reference (used later to size the fragments/scatter)
+    // The relative velocity determines the intensity of the fragmentation.
+    Vector2D deltaV = vA - vB;
+    double relativeSpeed = deltaV.magnitude();
 
 
-//     // --- 2. Determine Fragmentation Outcome and Generate Fragment Masses ---
+    // --- 2. Determine Fragmentation Outcome and Generate Fragment Masses ---
 
-//     // Define tuneable constants for fragmentation
-//     const double FRAGMENTATION_RATIO = 5.0; // If mass ratio exceeds this, only the smaller body fragments.
-//     const int MIN_FRAGMENTS = 8;
-//     const int MAX_FRAGMENTS = 16;
+    // Define tuneable constants for fragmentation
+    const double FRAGMENTATION_RATIO = 5.0; // If mass ratio exceeds this, only the smaller body fragments.
+    const int MIN_FRAGMENTS = 8;
+    const int MAX_FRAGMENTS = 16;
     
-//     // Pointers for clarity
-//     GravitationalBody* smallerM_body = (mA < mB) ? &bodyA : &bodyB;
-//     GravitationalBody* largerM_body = (mA < mB) ? &bodyB : &bodyA;
-//     double mass_ratio = largerM_body->getMass() / smallerM_body->getMass();
+    // Pointers for clarity
+    GravitationalBody* smallerM_body = (mA < mB) ? &bodyA : &bodyB;
+    GravitationalBody* largerM_body = (mA < mB) ? &bodyB : &bodyA;
+    double mass_ratio = largerM_body->getMass() / smallerM_body->getMass();
     
-//     // Vectors to hold fragment mass data
-//     std::vector<double> fragmentsA_masses;
-//     std::vector<double> fragmentsB_masses;
+    // Vectors to hold fragment mass data
+    std::vector<double> fragmentsA_masses;
+    std::vector<double> fragmentsB_masses;
     
-//     // --- Case 1: Both Bodies Break (Masses are similar) ---
-//     if (mass_ratio <= FRAGMENTATION_RATIO) {
-//         // Break both bodies
-//         int numFragsA = MIN_FRAGMENTS + (rand() % (MAX_FRAGMENTS - MIN_FRAGMENTS + 1));
-//         int numFragsB = MIN_FRAGMENTS + (rand() % (MAX_FRAGMENTS - MIN_FRAGMENTS + 1));
+    // --- Case 1: Both Bodies Break (Masses are similar) ---
+    if (mass_ratio <= FRAGMENTATION_RATIO) {
+        // Break both bodies
+        int numFragsA = MIN_FRAGMENTS + (rand() % (MAX_FRAGMENTS - MIN_FRAGMENTS + 1));
+        int numFragsB = MIN_FRAGMENTS + (rand() % (MAX_FRAGMENTS - MIN_FRAGMENTS + 1));
         
-//         fragmentsA_masses = generateRandomFragmentMasses(mA, numFragsA);
-//         fragmentsB_masses = generateRandomFragmentMasses(mB, numFragsB);
+        fragmentsA_masses = generateRandomFragmentMasses(mA, numFragsA);
+        fragmentsB_masses = generateRandomFragmentMasses(mB, numFragsB);
         
-//         // Mark both original bodies for deletion
-//         bodyA.setMarkedForDeletion(true);
-//         bodyB.setMarkedForDeletion(true);
-//     }
-//     // --- Case 2: Only Smaller Body Breaks (Mass ratio is high) ---
-//     else {
-//         // Only the smaller body fragments, the larger body absorbs the impact (and survives)
-//         double smallerMass = smallerM_body->getMass();
-//         int numFrags = MIN_FRAGMENTS + (rand() % (MAX_FRAGMENTS - MIN_FRAGMENTS + 1));
+        // Mark both original bodies for deletion
+        bodyA.setMarkedForDeletion(true);
+        bodyB.setMarkedForDeletion(true);
+    }
+    // --- Case 2: Only Smaller Body Breaks (Mass ratio is high) ---
+    else {
+        // Only the smaller body fragments, the larger body absorbs the impact (and survives)
+        double smallerMass = smallerM_body->getMass();
+        int numFrags = MIN_FRAGMENTS + (rand() % (MAX_FRAGMENTS - MIN_FRAGMENTS + 1));
         
-//         // Determine which vector to populate based on which body is smaller
-//         if (smallerM_body == &bodyA) {
-//              fragmentsA_masses = generateRandomFragmentMasses(smallerMass, numFrags);
-//         } else {
-//              fragmentsB_masses = generateRandomFragmentMasses(smallerMass, numFrags);
-//         }
+        // Determine which vector to populate based on which body is smaller
+        if (smallerM_body == &bodyA) {
+             fragmentsA_masses = generateRandomFragmentMasses(smallerMass, numFrags);
+        } else {
+             fragmentsB_masses = generateRandomFragmentMasses(smallerMass, numFrags);
+        }
         
-//         // Mark only the smaller original body for deletion
-//         smallerM_body->setMarkedForDeletion(true);
+        // Mark only the smaller original body for deletion
+        smallerM_body->setMarkedForDeletion(true);
         
-//         // The larger body (largerM_body) survives, but we must update its velocity 
-//         // to reflect the momentum it absorbed from the smaller body.
-//         // It now inherits the V_CoM of the entire system (the simplest approach).
-//         largerM_body->setNetVelocity(V_CoM); 
-//     }
+        // The larger body (largerM_body) survives, but we must update its velocity 
+        // to reflect the momentum it absorbed from the smaller body.
+        // It now inherits the V_CoM of the entire system (the simplest approach).
+        largerM_body->setNetVelocity(V_CoM); 
+    }
 
-//     // Helper: produce fragments for one body and return them
-//     auto makeFragments = [&](GravitationalBody& sourceBody, GravitationalBody& nonSourceBody, std::vector<double>& masses)
-//         {
-//             std::vector<GravitationalBody> frags;
-//             if (masses.empty()) return frags;
+    // Helper: produce fragments for one body and return them
+    auto makeFragments = [&](GravitationalBody& sourceBody, GravitationalBody& nonSourceBody, std::vector<double>& masses)
+        {
+            std::vector<GravitationalBody> frags;
+            if (masses.empty()) return frags;
 
-//             // Vector2D collisionCenter = (bodyA.getPosition() * mA + bodyB.getPosition() * mB) / M;
-//             Vector2D direction = (sourceBody.getPosition() - nonSourceBody.getPosition()).normalize();
-//             Vector2D scaledDirection = direction * nonSourceBody.getRadius();
-//             Vector2D collisionPoint = nonSourceBody.getPosition() + scaledDirection;
-//             Vector2D sourcePos = sourceBody.getPosition();
-//             double sourceRadius = sourceBody.getRadius();
+            // Vector2D collisionCenter = (bodyA.getPosition() * mA + bodyB.getPosition() * mB) / M;
+            Vector2D direction = (sourceBody.getPosition() - nonSourceBody.getPosition()).normalize();
+            Vector2D scaledDirection = direction * nonSourceBody.getRadius();
+            Vector2D collisionPoint = nonSourceBody.getPosition() + scaledDirection;
+            Vector2D sourcePos = sourceBody.getPosition();
+            double sourceRadius = sourceBody.getRadius();
 
-//             // Tuneable: The distance fragments scatter *from the collision center*
-//             const double INITIAL_SCATTER_DISTANCE = sourceRadius * 0.75; 
+            // Tuneable: The distance fragments scatter *from the collision center*
+            const double INITIAL_SCATTER_DISTANCE = sourceRadius * 0.75; 
             
-//             for (double fMass : masses)
-//             {
-//                 GravitationalBody frag;
-//                 frag.setMass(fMass);
+            for (double fMass : masses)
+            {
+                GravitationalBody frag;
+                frag.setMass(fMass);
 
-//                 // Radius scales with M^(1/3)
-//                 frag.setRadius(sourceRadius * std::pow(fMass / sourceBody.getMass(), 1.0/3.0));
+                // Radius scales with M^(1/3)
+                frag.setRadius(sourceRadius * std::pow(fMass / sourceBody.getMass(), 1.0/3.0));
                 
-//                 // Initial position: Scatter fragments from the collision center in a random direction
-//                 // The position is CRUCIAL for stability; they must not overlap immediately.
-//                 Vector2D scatterDir = randomDirectionVector();
-//                 frag.setPosition(collisionPoint + scatterDir * INITIAL_SCATTER_DISTANCE);
-//                 frag.setPrevPosition(frag.getPosition());
+                // Initial position: Scatter fragments from the collision center in a random direction
+                // The position is CRUCIAL for stability; they must not overlap immediately.
+                Vector2D scatterDir = randomDirectionVector();
+                frag.setPosition(collisionPoint + scatterDir * INITIAL_SCATTER_DISTANCE);
+                frag.setPrevPosition(frag.getPosition());
 
-//                 // Base Velocity: All fragments start with the system's CoM velocity
-//                 frag.setNetVelocity(V_CoM); 
+                // Base Velocity: All fragments start with the system's CoM velocity
+                frag.setNetVelocity(V_CoM); 
 
-//                 // Set flags
-//                 frag.setIsFragment(true);
+                // Set flags
+                frag.setIsFragment(true);
 
-//                 frag.setCollisionEnabled(false);
+                frag.setCollisionEnabled(false);
                 
-//                 // Bounding box update is needed right away
-//                 // We'll update the bounding box and then later apply the final scatter velocity
-//                 // to ensure the BBox is large enough.
-//                 // updateBoundingBox(frag); // Let's skip BBox update until after the final scatter velocity is applied
+                // Bounding box update is needed right away
+                // We'll update the bounding box and then later apply the final scatter velocity
+                // to ensure the BBox is large enough.
+                // updateBoundingBox(frag); // Let's skip BBox update until after the final scatter velocity is applied
 
-//                 frags.push_back(frag);
-//             }
-//             return frags;
-//     };
-//     // Instantiate all fragments
-//     std::vector<GravitationalBody> allFragments;
+                frags.push_back(frag);
+            }
+            return frags;
+    };
+    // Instantiate all fragments
+    std::vector<GravitationalBody> allFragments;
     
-//     if (!fragmentsA_masses.empty()) {
-//         auto fragsA = makeFragments(bodyA, bodyB, fragmentsA_masses);
-//         allFragments.insert(allFragments.end(), fragsA.begin(), fragsA.end());
-//     }
-//     if (!fragmentsB_masses.empty()) {
-//         auto fragsB = makeFragments(bodyB, bodyA, fragmentsB_masses);
-//         allFragments.insert(allFragments.end(), fragsB.begin(), fragsB.end());
-//     }
-//     // --- 4. Apply Impact-Driven Scatter Velocity ---
+    if (!fragmentsA_masses.empty()) {
+        auto fragsA = makeFragments(bodyA, bodyB, fragmentsA_masses);
+        allFragments.insert(allFragments.end(), fragsA.begin(), fragsA.end());
+    }
+    if (!fragmentsB_masses.empty()) {
+        auto fragsB = makeFragments(bodyB, bodyA, fragmentsB_masses);
+        allFragments.insert(allFragments.end(), fragsB.begin(), fragsB.end());
+    }
+    // --- 4. Apply Impact-Driven Scatter Velocity ---
     
-//     // TUNEABLE: Controls the intensity of the scatter (e.g., 0.1 to 0.5)
-//     // Higher K means fragments fly apart faster after impact.
-//     const double FRAGMENTATION_COEFFICIENT = 0.3; 
+    // TUNEABLE: Controls the intensity of the scatter (e.g., 0.1 to 0.5)
+    // Higher K means fragments fly apart faster after impact.
+    const double FRAGMENTATION_COEFFICIENT = 0.3; 
     
-//     // Scatter magnitude is proportional to the relative impact speed
-//     double scatterMagnitude = relativeSpeed * FRAGMENTATION_COEFFICIENT;
+    // Scatter magnitude is proportional to the relative impact speed
+    double scatterMagnitude = relativeSpeed * FRAGMENTATION_COEFFICIENT;
     
-//     Vector2D collisionCenter = (bodyA.getPosition() * mA + bodyB.getPosition() * mB) / M;
+    Vector2D collisionCenter = (bodyA.getPosition() * mA + bodyB.getPosition() * mB) / M;
 
-//     for (auto& frag : allFragments)
-//     {
-//         // 1. Get the direction from the collision center (C) to the fragment's position (P_frag)
-//         Vector2D direction_to_fragment = frag.getPosition() - collisionCenter;
+    for (auto& frag : allFragments)
+    {
+        // 1. Get the direction from the collision center (C) to the fragment's position (P_frag)
+        Vector2D direction_to_fragment = frag.getPosition() - collisionCenter;
         
-//         // 2. Normalize the direction vector
-//         Vector2D scatterDir = direction_to_fragment.normalize();
+        // 2. Normalize the direction vector
+        Vector2D scatterDir = direction_to_fragment.normalize();
         
-//         // 3. Calculate the scatter velocity vector
-//         Vector2D scatterVel = scatterDir * scatterMagnitude;
+        // 3. Calculate the scatter velocity vector
+        Vector2D scatterVel = scatterDir * scatterMagnitude;
         
-//         // 4. Add the scatter velocity to the fragment's base velocity (V_CoM)
-//         frag.setNetVelocity(frag.getNetVelocity() + scatterVel);
+        // 4. Add the scatter velocity to the fragment's base velocity (V_CoM)
+        frag.setNetVelocity(frag.getNetVelocity() + scatterVel);
         
-//         // NOTE: The total system momentum is now slightly incorrect due to randomization 
-//         // in initial fragment positions and the fragmentation process. This is fixed next.
-//     }
-//     // --- 5. Final Momentum Correction and Stability Setup ---
+        // NOTE: The total system momentum is now slightly incorrect due to randomization 
+        // in initial fragment positions and the fragmentation process. This is fixed next.
+    }
+    // --- 5. Final Momentum Correction and Stability Setup ---
     
-//     // 5a. Calculate Raw Momentum of Fragments
-//     Vector2D P_raw(0.0, 0.0);
-//     double M_total_fragments = 0.0;
+    // 5a. Calculate Raw Momentum of Fragments
+    Vector2D P_raw(0.0, 0.0);
+    double M_total_fragments = 0.0;
     
-//     for (const auto& frag : allFragments)
-//     {
-//         P_raw += frag.getNetVelocity() * frag.getMass();
-//         M_total_fragments += frag.getMass();
-//     }
+    for (const auto& frag : allFragments)
+    {
+        P_raw += frag.getNetVelocity() * frag.getMass();
+        M_total_fragments += frag.getMass();
+    }
     
-//     // 5b. Calculate Correction
-//     // P_initial is the target momentum (from Step 1)
-//     Vector2D P_diff = P_initial - P_raw;
+    // 5b. Calculate Correction
+    // P_initial is the target momentum (from Step 1)
+    Vector2D P_diff = P_initial - P_raw;
     
-//     // Apply correction to the entire mass of the fragments
-//     Vector2D V_corr = P_diff / M_total_fragments;
+    // Apply correction to the entire mass of the fragments
+    Vector2D V_corr = P_diff / M_total_fragments;
     
-//     // // 5c. Apply Correction and Final Setup
-//     // const int GHOST_FRAMES = 5; // TUNEABLE: How many frames to disable collisions
+    // // 5c. Apply Correction and Final Setup
+    // const int GHOST_FRAMES = 5; // TUNEABLE: How many frames to disable collisions
     
-//     for (auto& frag : allFragments)
-//     {
-//         // Apply the correction to ensure P_final == P_initial
-//         frag.setNetVelocity(frag.getNetVelocity() + V_corr);
+    for (auto& frag : allFragments)
+    {
+        // Apply the correction to ensure P_final == P_initial
+        frag.setNetVelocity(frag.getNetVelocity() + V_corr);
         
-//     //     // Enable Ghosting/Cooldown to prevent immediate re-collision cascade
-//     //     frag.setGhost(GHOST_FRAMES);
+    //     // Enable Ghosting/Cooldown to prevent immediate re-collision cascade
+    //     frag.setGhost(GHOST_FRAMES);
         
-//     //     // Update the bounding box now that the final velocity is known
-//     //     updateBoundingBox(frag);
-//     }
+    //     // Update the bounding box now that the final velocity is known
+    //     updateBoundingBox(frag);
+    }
 
-//     // 5d. Insert New Fragments into Game State
-//     // Since bodyA/bodyB were marked for deletion in Step 2, these are the replacements.
-//     for (auto& f : allFragments)
-//     {
-//         state.addBody(f);
-//     }
-// } // End of handleDynamicCollision
+    // 5d. Insert New Fragments into Game State
+    // Since bodyA/bodyB were marked for deletion in Step 2, these are the replacements.
+    for (auto& f : allFragments)
+    {
+        state.addBody(f);
+    }
+} // End of handleDynamicCollision
 
 void PhysicsSystem::handleElasticCollision(GravitationalBody& A, GravitationalBody& B)
 {
