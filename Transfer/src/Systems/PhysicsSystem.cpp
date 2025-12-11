@@ -51,9 +51,11 @@ void PhysicsSystem::UpdateSystemFrame(GameState& state, UIState& UIState)
     }
     // applyInterClusterGravity(state); // NEED TO REWRITE
     // 4) Integrate the system forward (Updates r_{n+1} and v_{n+1/2})
+    double totalEnergy = 0.0;
     for (Particle& p : particles) {
         // Use the current F_n to move position to r_{n+1} and velocity to v_{n+1/2}
-        integrateParticleLeapfrog(p); 
+        integrateParticleLeapfrog(p);
+        totalEnergy += 0.5*p.mass*p.velocity.square_magnitude();
     }
     
     // NOTE: In the *next* frame, the final force F_{n+1} will be calculated
@@ -62,6 +64,7 @@ void PhysicsSystem::UpdateSystemFrame(GameState& state, UIState& UIState)
     // ... (Debugging/collision/load management remain the same)
     handleCollisions(state);
     manageLoad(state);
+    std::cout<<"Total system energy"<<totalEnergy<<std::endl;
 }
 void PhysicsSystem::manageLoad(GameState& state)
 {

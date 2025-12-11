@@ -38,7 +38,7 @@ void InputSystem::ProcessSystemInputFrame(GameState& state, UIState& UIState)
                 newState.isCreatingCluster = true;
                 newState.mouseCurrPosition = {event.button.x, event.button.y};
                 newState.selectedMass = MAX_MASS/10.0;
-                newState.selectedRadius = 50.0;
+                newState.selectedRadius = 150.0;
                 break;
 
             }
