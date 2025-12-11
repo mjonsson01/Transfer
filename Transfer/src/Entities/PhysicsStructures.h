@@ -2,6 +2,9 @@
 
 #pragma once
 
+#include "Utilities/GameSystemConstants.h"
+#include "Utilities/EngineConstants.h"
+
 // Standard Library Imports
 #include <cmath>
 #include <iostream>
@@ -97,11 +100,37 @@ struct BoundingBox
 };
 
 
-// struct InitializerVelocities
-// {
-// 	int x_init;
-// 	int y_init;
-// 	int x_end;
-// 	int y_end;
-// 	VelocityVector2D velocity;
-// };
+struct XPBDSoftParticle
+{
+    Vector2D position = {0.0, 0.0};
+    Vector2D prevPosition = {0.0, 0.0};
+    Vector2D velocity = {0.0, 0.0};
+    double radius = PARTICLE_RADIUS;
+    double mass = 0;
+    double inv_mass = 0;
+};
+struct XPBDConstraints
+{
+    int idx1, idx2; // Particle Indexes
+    double restLength;
+    double compliance; //XPBD softness
+    double lambda; // Lagrange multiplier from prev frame.
+    bool isBroken;
+};
+
+struct GridCell
+{
+    std::vector<int> particleIndices;
+};
+
+
+struct PhysicsData {
+    double cellSize = PARTICLE_RADIUS;
+    int gridWidth = int(SCREEN_WIDTH/cellSize) + 1;
+    int gridHeight = int(SCREEN_HEIGHT/cellSize) + 1;
+    
+    std::vector<XPBDSoftParticle> particles;
+    std::vector<XPBDConstraints> constraints;
+    std::vector<GridCell> grid;
+
+};

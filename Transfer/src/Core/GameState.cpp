@@ -5,6 +5,7 @@
 GameState::GameState()
 {
     // Initialize game state variables if needed
+    physicsData.grid.resize(physicsData.gridWidth * physicsData.gridHeight);
 }
 
 GameState::~GameState()

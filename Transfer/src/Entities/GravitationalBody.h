@@ -11,22 +11,6 @@
 #include <vector>
 
 // To be implemented in the future for non-circular gravitational bodies
-
-// enum class ShapeType { Circle, Polygon };
-
-// struct PolygonShape {
-//     std::vector<Vector2D> vertices;
-// };
-
-// class GravitationalBody
-// {
-// public:
-//     ShapeType shape = ShapeType::Circle;
-//     PolygonShape polygon;   // only used when shape == Polygon
-
-//     // everything else stays the same...
-// };
-
 class GravitationalBody
 {
     public:
@@ -76,28 +60,7 @@ class GravitationalBody
     void setIsFragment(bool isFrag) {isFragment = isFrag;}
 
     friend std::ostream& operator<<(std::ostream& os, const GravitationalBody& b);
-    // bool getIsGhost() const {return isGhost;}
-    // int getGhostFramesRemaining() {return ghostFramesRemaining;}
 
-    // void setIsGhost(bool is_ghost) {isGhost = is_ghost;}
-    // void setGhostFramesRemaining(int num) {ghostFramesRemaining = num;}
-    // void decrementGhostFrames() {ghostFramesRemaining -= 1;}
-    // void setGhost(int frames) {
-    //     isGhost = true;
-    //     ghostFramesRemaining = frames;
-    // }
-
-    // bool getIsGhost() const { return isGhost; }
-
-    // void updateGhostState() {
-    //     if (isGhost) {
-    //         if (ghostFramesRemaining > 0) {
-    //             ghostFramesRemaining--;
-    //         } else {
-    //             isGhost = false; // re-enable after cooldown
-    //         }
-    //     }
-    // }
 
     private:
         float radius = 0.0; // in pixels
@@ -144,4 +107,5 @@ struct GravitationalCluster {
     Vector2D bulkVelocity {0.0, 0.0}; // Velocity of bulk
     bool isDebrisField = false;
 };
+
 

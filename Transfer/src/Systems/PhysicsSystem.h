@@ -14,8 +14,10 @@
 #include <cmath>
 #include <numeric>
 #include <algorithm>
+#include <random>
 
 #include <iostream>
+
 
 class PhysicsSystem
 {
@@ -32,29 +34,35 @@ class PhysicsSystem
     private:
         // Internal state variables for physics calculations can be added here
 
-        void calculateGravForceBetweenParticles(Particle& particleA, Particle& particleB);
-        void applyInterClusterGravity(GameState& state);
+        // void calculateGravForceBetweenParticles(Particle& particleA, Particle& particleB);
+        // void applyInterClusterGravity(GameState& state);
 
-        void integrateParticleForwards(Particle& particle);
-        void integrateParticleVelocityVerlet(Particle& p);
-        void integrateParticleLeapfrog(Particle& p);
+        // void integrateParticleForwards(Particle& particle);
+        // void integrateParticleVelocityVerlet(Particle& p);
+        // void integrateParticleLeapfrog(Particle& p);
 
         
-        // Top-level collision handling
-        void handleCollisions(GameState& state);
+        // // Top-level collision handling
+        // void handleCollisions(GameState& state);
         
-        void handleElasticParticleCollision(Particle& particleA, Particle& particleB);
+        // void handleElasticParticleCollision(Particle& particleA, Particle& particleB);
         
 
-        std::vector<double> generateRandomFragmentMasses(double totalMass, int numFragments);
+        // std::vector<double> generateRandomFragmentMasses(double totalMass, int numFragments);
 
-        Vector2D randomDirectionVector();
+        // Vector2D randomDirectionVector();
 
-        // Helper to make sure we don't kill performance with too many bodies.
-        void manageLoad(GameState& state);
+        // // Helper to make sure we don't kill performance with too many bodies.
+        // void manageLoad(GameState& state);
 
 
-        void createNewGravitationalCluster(UIState& UIState, GameState& state);
-        void recomputeClusterProperties(GameState& state, int clusterIndex);
+        // void createNewGravitationalCluster(UIState& UIState, GameState& state);
+        // void recomputeClusterProperties(GameState& state, int clusterIndex);
+
+        void applyGravity(PhysicsData& physicsData);
+        void predictPositions(PhysicsData& physicsData);
+        void buildSpatialGrid(PhysicsData& physicsData);
+        void solveXPBDConstraints(PhysicsData& physicsData);
+        void createParticleCluster(PhysicsData& physicsData, InputState& inputState);
 
 };

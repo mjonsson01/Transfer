@@ -5,8 +5,8 @@
 
 // Custom Imports
 #include "Entities/GravitationalBody.h"
+#include "Entities/PhysicsStructures.h"
 #include "Utilities/GameSystemConstants.h"
-
 // Standard Library Imports
 #include <vector>
 
@@ -25,41 +25,6 @@ class GameState
         bool IsPlaying() const { return isPlaying; }
         void SetPlaying(bool playing) { isPlaying = playing; }
 
-        // void updateSelectedRadius(float radius) { inputState.selectedRadius = radius; }
-        // float getSelectedRadius() const { return inputState.selectedRadius; }
-        
-        // void updateSelectedMass(double mass) { inputState.selectedMass = mass; }
-        // double getSelectedMass() const { return inputState.selectedMass; }
-        
-        // void setBodySelectionValidity(bool isValid) { inputState.bodySelectionValidity = isValid; }
-        // bool isBodySelectionValid() const { return inputState.bodySelectionValidity; }
-
-        const std::vector<GravitationalBody>& getBodies() const { return bodies; }
-        std::vector<GravitationalBody>& getBodiesMutable() {return bodies; }
-        void addBody(const GravitationalBody& body) { bodies.push_back(body); }
-        void clearBodies() { bodies.clear(); }
-
-
-
-        const std::vector<Particle>& getParticles() const {return particles;}
-        std::vector<Particle>& getParticlesMutable() {return particles;}
-        // void addParticle(const Particle& p) {particles.push_back(p);}
-        // void clearParticles() {particles.clear();}
-        // const std::vector<GravitationalCluster>& getClusters() const {return clusters;}
-        std::vector<GravitationalCluster>& getClustersMutable() {return clusters;}
-        // void addCluster(const GravitationalCluster& c) {clusters.push_back(c);}
-        // void clearClusters() {clusters.clear();}
-
-        int addCluster(const GravitationalCluster& c) {
-            clusters.push_back(c);
-            return static_cast<int>(clusters.size()) - 1; // return index of newly added cluster
-        }
-        int addParticle(const Particle& p) {
-            particles.push_back(p);
-            return static_cast<int>(particles.size()) - 1; // return index of newly added particle
-        }
-
-
         float getAlpha() const {return alpha;}
         void setAlpha(float alphaIn) {alpha = alphaIn;}
 
@@ -69,12 +34,11 @@ class GameState
         // bool getToggleSlow() const {return toggleSlow;}
         void invertToggleSlow() {toggleSlow = !toggleSlow;}
 
-
+        PhysicsData physicsData; // physics data for the game
     private:
         // State variables
         bool isPlaying = false;
         
-
         // Frame helper vars
         float alpha = 0.0f;
         
@@ -86,7 +50,9 @@ class GameState
 
 
         // New particle shit
-        std::vector<Particle> particles; // All particles in the sim
-        std::vector<GravitationalCluster> clusters; // All clusters in the sim
+        // std::vector<Particle> particles; // All particles in the sim
+        // std::vector<GravitationalCluster> clusters; // All clusters in the sim
+        // std::vector<XPBDSoftParticle> global_particles;
+        // std::vector<XPBDConstraints> global_constraints;
 };
 

@@ -6,7 +6,7 @@ constexpr int TARGET_FPS = 165;
 
 const double FRAME_DELAY_MS = 1000.0 / TARGET_FPS;
 
-const double SLOW_TIME_SCALE_FACTOR = 0.0625; // 1/16 speed
+const double SLOW_TIME_SCALE_FACTOR = 0.03125; // 1/32 speed
 
 const double REGULAR_TIME_SCALE_FACTOR = 1.0f;
 

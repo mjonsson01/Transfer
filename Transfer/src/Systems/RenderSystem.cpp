@@ -83,7 +83,7 @@ void RenderSystem::RenderFullFrame(GameState& state, UIState& UIState)
 void RenderSystem::renderBodies(GameState& state)
 {
     float alpha = state.getAlpha();
-    for (auto& particle : state.getParticles()) {
+    for (auto& particle : state.physicsData.particles) {
         SDL_Color color = getColorForMass(particle.mass);
         SDL_Texture* tex = getCircleTexture(static_cast<int>(particle.radius), color);
         Vector2D currPosition = particle.position;
@@ -91,11 +91,12 @@ void RenderSystem::renderBodies(GameState& state)
         float renderX = prevPosition.x_val * (1.0f - alpha) + currPosition.x_val * alpha;
         float renderY = prevPosition.y_val * (1.0f - alpha) + currPosition.y_val * alpha;
 
+        float r = static_cast<float>(particle.radius); 
         SDL_FRect dstRect = {
-            renderX - particle.radius,
-            renderY - particle.radius,
-            particle.radius * 2,
-            particle.radius * 2
+            renderX - r,
+            renderY - r,
+            r * 2,
+            r * 2
         };
 
         SDL_RenderTexture(renderer, tex, nullptr, &dstRect);
