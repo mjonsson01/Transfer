@@ -5,6 +5,7 @@
 
 // Custom Imports
 #include "Entities/GravitationalBody.h"
+#include "Utilities/GameSystemConstants.h"
 
 // Standard Library Imports
 #include <vector>
@@ -41,6 +42,11 @@ class GameState
         float getAlpha() const {return alpha;}
         void setAlpha(float alphaIn) {alpha = alphaIn;}
 
+        float getTimeScaleFactor() const {if (toggleSlow) return SLOW_TIME_SCALE_FACTOR; else return REGULAR_TIME_SCALE_FACTOR;}
+        // void setTimeScaleFactor(float scale) {timeScaleFactor = scale;}
+
+        // bool getToggleSlow() const {return toggleSlow;}
+        void invertToggleSlow() {toggleSlow = !toggleSlow;}
     private:
         // State variables
         bool isPlaying = false;
@@ -49,7 +55,9 @@ class GameState
         // Frame helper vars
         float alpha = 0.0f;
         
+        // float timeScaleFactor = REGULAR_TIME_SCALE_FACTOR; // default to 1.0 for standard scaling
+        bool toggleSlow = false; // default to false for regular speed
         // Collection of bodies in the game 
-        std::vector<GravitationalBody> bodies;
+        std::vector<GravitationalBody> bodies; 
 };
 

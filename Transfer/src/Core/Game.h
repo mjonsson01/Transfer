@@ -29,6 +29,7 @@ class Game
 		void EndGame();
 		// Game Loop Entry Point
 		void Run();
+	public:
 
 	private:
 		// Core Game Loop Methods
@@ -37,8 +38,8 @@ class Game
 		void RenderFrame();  // Renders the Current Frame to the Screen Including UI
 
 		// Helpers for Run() method
-		void UpdateFPS(Uint32 renderEnd, Uint32 lastRender, float& fpsAccumulator, float& currentFPS);
-		void LimitFrameRate(Uint32 renderStart, Uint32 renderEnd);
+		void UpdateFPS(uint32_t renderEnd, uint32_t lastRender, float& fpsAccumulator, float& currentFPS);
+		void LimitFrameRate(uint32_t renderStart, uint32_t renderEnd);
 
 
 	private:
@@ -50,4 +51,8 @@ class Game
 		// UISystem UISystem;         	 // Manages UI logic and state - now inside RenderSystem
 		PhysicsSystem physicsSystem; // Manages physics calculations and Frame Updates
 		RenderSystem renderSystem;	 // Manages all rendering operations
+
+	// private:
+		// Likely move to the game state?
+    	// float m_timeScale = 1.0f; // 1.0 is normal speed, 0.5 is half speed.
 };

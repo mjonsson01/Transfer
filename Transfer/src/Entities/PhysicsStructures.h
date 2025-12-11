@@ -4,6 +4,7 @@
 
 // Standard Library Imports
 #include <cmath>
+#include <iostream>
 
 struct Vector2D
 {
@@ -63,6 +64,9 @@ struct Vector2D
 		return (x_val * x_val + y_val * y_val);
 	}
 
+    double dot(const Vector2D& other){
+        return x_val*other.x_val + y_val*other.y_val;
+    }
 	Vector2D& normalize() {
     	double mag = magnitude();
     	if (mag != 0.0) {
@@ -72,6 +76,9 @@ struct Vector2D
 		return *this;
 	}
 };
+// **DECLARATION ONLY:** The compiler just needs to know this function exists.
+std::ostream& operator<<(std::ostream& os, const Vector2D& Vec);
+
 
 struct BoundingBox
 {

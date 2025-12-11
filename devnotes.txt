@@ -22,3 +22,6 @@ Add animation for instantiation. Investigate bloom on stars? add grav body textu
 
 
 Eventually refactor memory management to use smart pointers. It will vastly improve the readability of the code.
+
+
+Add different types of instantiations -- black holes, dust, gas, planets, and stars. 

@@ -28,11 +28,13 @@ void Game::StartGame()
 
 	// Start the main game loop
 	Game::Run();
+    
+    // End the game and clean up resources after exiting the loop
+    Game::EndGame();
 }
 // Tears down the 'systems' and cleans up allocated resources.
 void Game::EndGame()
 {
-    // renderSystem.getUISystem()->DeleteUIElements(UIState);
     renderSystem.getUISystem()->DeleteUIElements(UIState);
     renderSystem.CleanUp();
     physicsSystem.CleanUp();
@@ -41,8 +43,8 @@ void Game::EndGame()
 void Game::Run()
 {	
 	// Initial time management variables
-	Uint32 lastPhysicsUpdateTime = SDL_GetTicks();
-	Uint32 lastRenderTime = lastPhysicsUpdateTime;
+	uint32_t lastPhysicsUpdateTime = SDL_GetTicks();
+	uint32_t lastRenderTime = lastPhysicsUpdateTime;
 	
 	// Timing accumulators
 	float physicsTimeAccumulator = 0.0f;
@@ -52,7 +54,7 @@ void Game::Run()
 	float currentFPS = 0.0f;
 
 	// Frame interpolation alpha
-	float alpha = 0.0f;
+	float alpha = state.getAlpha();
 
 	while (state.IsPlaying()){
 
@@ -60,25 +62,27 @@ void Game::Run()
 		Game::ProcessInput();
 
 		// Timekeeping
-        Uint32 now = SDL_GetTicks();
+        uint32_t now = SDL_GetTicks();
         float frameDelta = (now - lastPhysicsUpdateTime) / 1000.0f;
         lastPhysicsUpdateTime = now;
-        physicsTimeAccumulator += frameDelta;
+        
+        // Deal with SLOWMO stuff
+        float scaledDelta = frameDelta * state.getTimeScaleFactor(); // Use the new time scale factor
+        physicsTimeAccumulator += scaledDelta;
 
-        // Update Physics
+        // Update Physics (remains untouched, maintaining physics accuracy)
         while (physicsTimeAccumulator >= PHYSICS_TIME_STEP)
         {
             UpdatePhysicsFrame();
             physicsTimeAccumulator -= PHYSICS_TIME_STEP;
         }
-
         // Rendering
         alpha = physicsTimeAccumulator / PHYSICS_TIME_STEP;
         state.setAlpha(alpha);
 
-        Uint32 renderStart = SDL_GetTicks();
+        uint32_t renderStart = SDL_GetTicks();
         RenderFrame();
-        Uint32 renderEnd = SDL_GetTicks();
+        uint32_t renderEnd = SDL_GetTicks();
 
         // FPS Calculation
         UpdateFPS(renderEnd, lastRenderTime, fpsTimeAccumulator, currentFPS);
@@ -123,7 +127,7 @@ void Game::RenderFrame()
 
 
 // FPS Helpers
-void Game::UpdateFPS(Uint32 renderEnd, Uint32 lastRender, float& fpsAccumulator, float& currentFPS)
+void Game::UpdateFPS(uint32_t renderEnd, uint32_t lastRender, float& fpsAccumulator, float& currentFPS)
 {
     float frameTime = (renderEnd - lastRender) / 1000.0f;
     fpsAccumulator += (renderEnd - lastRender);
@@ -139,9 +143,9 @@ void Game::UpdateFPS(Uint32 renderEnd, Uint32 lastRender, float& fpsAccumulator,
     }
 }
 
-void Game::LimitFrameRate(Uint32 renderStart, Uint32 renderEnd)
+void Game::LimitFrameRate(uint32_t renderStart, uint32_t renderEnd)
 {
     double frameDuration = static_cast<double>(renderEnd - renderStart);
     if (frameDuration < FRAME_DELAY_MS)
-        SDL_Delay(static_cast<Uint32>(FRAME_DELAY_MS - frameDuration));
+        SDL_Delay(static_cast<uint32_t>(FRAME_DELAY_MS - frameDuration));
 }

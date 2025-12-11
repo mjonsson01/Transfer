@@ -12,6 +12,9 @@
 // Standard Library Imports
 #include <cmath>
 #include <numeric>
+#include <algorithm>
+
+#include <iostream>
 
 class PhysicsSystem
 {
@@ -30,8 +33,26 @@ class PhysicsSystem
 
         // Function to calculate the resultant force vectors between two bodies
         void calculateGravForceBetweenBodies(GravitationalBody& bodyA, GravitationalBody& bodyB);
-        void updateBodyVectors(GravitationalBody& body);
+        void integrateForwards(GravitationalBody& body);
         void updateBoundingBox(GravitationalBody& body);
+        
+        // Top-level collision handling
         void handleCollisions(GameState& state);
-        void handleElasticCollision(GravitationalBody& bodyA, GravitationalBody& bodyB, Vector2D& unit_direction_vector);
+        
+        // Simple Collision handling helpers
+        void handleElasticCollision(GravitationalBody& bodyA, GravitationalBody& bodyB);
+        
+        // Collision handling helpers
+        // void handleDynamicCollision(GravitationalBody& bodyA, GravitationalBody& bodyB, GameState& state, std::vector<GravitationalBody>& newFragments);
+        void handleDynamicCollision(GravitationalBody& bodyA, GravitationalBody& bodyB, GameState& state);
+        // bool isOverlappingAny(const GravitationalBody& bodyA, const GameState& state);
+
+        std::vector<double> generateRandomFragmentMasses(double totalMass, int numFragments);
+        // void resolvePenetration(GravitationalBody& bodyA, GravitationalBody& bodyB);
+        Vector2D randomDirectionVector();
+
+        // Helper to make sure we don't kill performance with too many bodies.
+        void manageLoad(GameState& state);
+
+        // void handleAccretion(GravitationalBody& smallerM, GravitationalBody& largerM );
 };
