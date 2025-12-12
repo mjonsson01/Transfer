@@ -10,6 +10,7 @@
 #include "Entities/UIElement.h"
 #include "Core/UIState.h"
 #include "Utilities/EngineConstants.h"
+#include "Utilities/GameSystemConstants.h"
 #include "Utilities/Colors.h"
 
 class MassSlider : public UIElement {

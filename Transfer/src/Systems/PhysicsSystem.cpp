@@ -43,6 +43,7 @@ void PhysicsSystem::UpdateSystemFrame(GameState& state, UIState& UIState)
     
     auto& particles = state.getParticlesMutable();
     int num_particles = particles.size();
+    // std::cout<<"num particles"<<num_particles<<std::endl;
 
     auto& bodies = state.getMacroBodiesMutable();
     int num_bodies = bodies.size();
@@ -97,8 +98,8 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& particle, Gravita
     double vB_n_new = (vB_n*(mB - mP) + 2*mP*vP_n) / (mP + mB);
 
 //     // Change in normal components
-    Vector2D vP_change = n * (vP_n_new - vP_n)*0.9;
-    Vector2D vB_change = n * (vB_n_new - vB_n)*0.9;
+    Vector2D vP_change = n * (vP_n_new - vP_n)*0.8;
+    Vector2D vB_change = n * (vB_n_new - vB_n)*0.8;
 
 //     // Apply
     particle.velocity = vP + vP_change;
@@ -118,23 +119,23 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& particle, Gravita
     //     // Also, you may need a small epsilon check on overlap to avoid division by zero if overlap is tiny.
     // }
     // *** VELOCITY-BASED POSITIONAL CORRECTION ***
-    double overlap = particle.radius + body.radius - dist;
+    // double overlap = particle.radius + body.radius - dist;
     
-    if (overlap > 0.0) {
-        // Calculate the required velocity (V_sep) to correct the overlap (P) over 1 timestep (dt)
-        // V_sep = P / dt. The factor of 1.05 gives a slight margin of separation.
-        double sep_velocity_mag = (overlap / PHYSICS_TIME_STEP) * 1.05; 
+    // if (overlap > 0.0) {
+    //     // Calculate the required velocity (V_sep) to correct the overlap (P) over 1 timestep (dt)
+    //     // V_sep = P / dt. The factor of 1.05 gives a slight margin of separation.
+    //     double sep_velocity_mag = (overlap / PHYSICS_TIME_STEP) * 0.07; 
         
-        Vector2D separation_velocity = n * sep_velocity_mag; 
+    //     Vector2D separation_velocity = n * sep_velocity_mag; 
 
-        // Apply the separation velocity, weighted by mass
-        double mSum = particle.mass + body.mass;
+    //     // Apply the separation velocity, weighted by mass
+    //     double mSum = particle.mass + body.mass;
         
-        // Push particle away from the body
-        particle.velocity -= separation_velocity * (body.mass / mSum); 
-        // Push body away from the particle
-        body.velocity += separation_velocity * (particle.mass / mSum); 
-    }
+    //     // Push particle away from the body
+    //     particle.velocity -= separation_velocity * (body.mass / mSum); 
+    //     // Push body away from the particle
+    //     body.velocity += separation_velocity * (particle.mass / mSum); 
+    // }
 }
 
 void PhysicsSystem::calculateTotalEnergy(GameState& state)
@@ -218,7 +219,7 @@ void PhysicsSystem::handleCollisions(GameState& state)
                 {
                     // Rework logic later?
                     substituteWithParticles(bodies[j], state);
-                    substituteWithParticles(bodies[i], state);
+                    // substituteWithParticles(bodies[i], state);
                 }
         }
     }

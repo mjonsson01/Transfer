@@ -5,7 +5,7 @@
 MassSlider::MassSlider()
 {
     // Set default position and size for the Mass Slider
-    setPosition(50.0f, 1040.0f); // top left corner of track rect position //probably need to scale based on resolution?
+    setPosition(50.0f, 3*SCREEN_HEIGHT/4); // top left corner of track rect position //probably need to scale based on resolution?
     setSize(200.0f, 20.0f);    // Example size // Will also need to scale on resolution?
 }
 
