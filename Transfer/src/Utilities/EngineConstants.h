@@ -23,7 +23,7 @@ static const double MIN_SHATTER_SPEED = 90.0; // in px/s need to rescale later t
 
 static const double PI = 3.14159265358979323846;
 
-static const int MAX_BODIES_ALLOWED = 500; // will be defined by system performance?
-
+// static const int MAX_BODIES_ALLOWED = 500; // will be defined by system performance?
+static const int MAX_BODY_TIMES_PARTICLE_ALLOWED = 50000;
 static const double ELASTIC_LOSS_FACTOR = 0.85; // 85% of Velocity retained after elastic collision
 // Add later

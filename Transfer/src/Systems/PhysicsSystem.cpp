@@ -451,9 +451,9 @@ void PhysicsSystem::handleCollisions(GameState& state)
                         substituteWithParticles(bodies[i], state);
                     else {
                         // handleElasticCollisions(bodies[i], bodies[j]); // equal mass, just bounce off each other but immediately substitute with particles
-                        // handleDynamicExplosionCollision(bodies[i], bodies[j], state);
-                        substituteWithParticles(bodies[i], state);
-                        substituteWithParticles(bodies[j], state);
+                        handleDynamicExplosionCollision(bodies[i], bodies[j], state); // for better explosion effect 
+                        // substituteWithParticles(bodies[i], state); // for clean smeary double break  
+                        // substituteWithParticles(bodies[j], state); // for clean smeary double break 
                     }
                 }
                 //     if (net_speed < MIN_SHATTER_SPEED)
