@@ -10,17 +10,20 @@ static const double GRAVITATIONAL_CONSTANT = 6.67430e-8; // in m^3 kg^-1 s^-2
 
 static const double MAX_MASS = 1e15;
 
-static const double ACCRETION_THRESHOLD_RATIO = 100;
-
+// Ratio
+// static const double ACCRETION_THRESHOLD_RATIO = 20.0;
+static const double MIN_BODY_BODY_ACCRETION_THRESHOLD_RATIO = 10.0;
+static const double MIN_BODY_PARTICLE_ACCRETION_THRESHOLD_RATIO = 10.0;
 // static const uint32_t MERGE_COLLISION_TIME_THRESHOLD = 2000; // in milliseconds // switch if necessary
 
-// Max Speed to NOT cause dynamic collision.
-static const double MAX_ELASTIC_COLLISION_SPEED = 200.0; // in px/s need to rescale later to m/s
+
+static const double MAX_ACCRETION_COLLISION_SPEED = 90.0; // in px/s need to rescale later to m/s // not necessarily the same as the min shatter speed
+static const double MIN_SHATTER_SPEED = 90.0; // in px/s need to rescale later to m/s
 // Scaling factors for converting between simulation units and screen units
 
 static const double PI = 3.14159265358979323846;
 
 static const int MAX_BODIES_ALLOWED = 500; // will be defined by system performance?
 
-
+static const double ELASTIC_LOSS_FACTOR = 0.85; // 85% of Velocity retained after elastic collision
 // Add later

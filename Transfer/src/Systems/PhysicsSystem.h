@@ -7,6 +7,7 @@
 #include "Core/UIState.h"
 #include "Utilities/EngineConstants.h"
 #include "Utilities/GameSystemConstants.h"
+#include "Utilities/CustomMathUtilities.h"
 #include "Entities/GravitationalBody.h"
 #include "Entities/PhysicsStructures.h"
 
@@ -38,8 +39,11 @@ class PhysicsSystem
         void integrateForwards_Phase2(GameState& state);
         void handleCollisions(GameState& state);
         void handleElasticCollisions(GravitationalBody& particle, GravitationalBody& body);
+        void handleDynamicExplosionCollision(GravitationalBody& body1, GravitationalBody& body2, GameState& state);
+        void handleAccretion(GravitationalBody& particle, GravitationalBody& body);
         // void handleDynamicCollision(GameState& state);
         void createPlanet(GameState& state, InputState& inputState);
+        void createDust(GameState& state, InputState& inputState);
         // void createPlanetaryCluster(Particle& originalBody, GameState& state);
         void calculateTotalEnergy(GameState& state);
         void substituteWithParticles(GravitationalBody& originalBody, GameState& state);

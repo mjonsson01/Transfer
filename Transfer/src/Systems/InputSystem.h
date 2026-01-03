@@ -30,8 +30,8 @@ class InputSystem
         // Internal state variables for input handling can be added here
     
     private: 
-        // subordinate rendering functions.
-        void createNewBody(SDL_Event& event, GameState& state);
+        // subordinate input functions.
+        // void createNewBody(SDL_Event& event, GameState& state);
 
         // void handleMouseWheelEvent(SDL_Event& event, UIState& UIState); // For window zooming
         // void handleMouseMotionEvent(SDL_Event& event, UIState& UIState); // For panning -- probably combine with shift + mouse click in order to differentiate from mass instantiation.

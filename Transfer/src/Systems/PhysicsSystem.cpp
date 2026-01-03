@@ -29,52 +29,60 @@ void PhysicsSystem::UpdateSystemFrame(GameState& state, UIState& UIState)
         if (inputState.isCreatingPlanet)
             {
                 createPlanet(state, inputState);
-                inputState.dirty = false;
-                inputState.isCreatingPlanet = false;
+                inputState.resetTransientFlags();
             }
         if (inputState.isCreatingDust)
             {
-                // Create dust logic here
-                inputState.dirty = false;
-                inputState.isCreatingDust = false;
+                createDust(state, inputState);
+                inputState.resetTransientFlags();
             }
     }
-    integrateForwards_Phase1(state);
-    
-    auto& particles = state.getParticlesMutable();
-    int num_particles = particles.size();
-    // std::cout<<"num particles"<<num_particles<<std::endl;
 
-    auto& bodies = state.getMacroBodiesMutable();
-    int num_bodies = bodies.size();
-
-    // std::cout<<"num bodies: "<<num_bodies<<", num particles: " << num_particles<<std::endl;
-
-    for (size_t i = 0; i < num_bodies; i++)
-    {
-        for (size_t j = i + 1; j < num_bodies; j++)
-        {
-            calculateGravity(bodies[i], bodies[j]);
-            // std::cout<<"i: "<<i<<"j: "<<j<<std::endl;
-        }
+    if (inputState.clearAll){
+        state.getMacroBodiesMutable().clear();
+        state.getParticlesMutable().clear();
+        inputState.clearAll = false;
     }
+    if (!inputState.isPaused){
+            integrateForwards_Phase1(state);
+        
+        auto& particles = state.getParticlesMutable();
+        int num_particles = particles.size();
+        // std::cout<<"num particles"<<num_particles<<std::endl;
 
-    for (size_t i = 0; i < num_particles; i++)
-        for (size_t j = 0; j < num_bodies; j++)
+        auto& bodies = state.getMacroBodiesMutable();
+        int num_bodies = bodies.size();
+        // std::cout<<"num bodies: "<<num_bodies<<", num particles: " << num_particles<<std::endl;
+        // if (num_bodies > 0)
+        //     std::cout <<"Body Speed"<<2*bodies[0].velocity.magnitude()<<std::endl; 
+
+        for (size_t i = 0; i < num_bodies; i++)
         {
-            calculateGravityForSmallFragments(particles[i], bodies[j]);
+            for (size_t j = i + 1; j < num_bodies; j++)
+            {
+                calculateGravity(bodies[i], bodies[j]);
+                // std::cout<<"i: "<<i<<"j: "<<j<<std::endl;
+            }
         }
 
+        for (size_t i = 0; i < num_particles; i++)
+            for (size_t j = 0; j < num_bodies; j++)
+            {
+                calculateGravityForSmallFragments(particles[i], bodies[j]);
+            }
 
-    // integrateForwards(state);
-    integrateForwards_Phase2(state);
 
-    // check total energy
-    // calculateTotalEnergy(state);
+        // integrateForwards(state);
+        integrateForwards_Phase2(state);
 
-    handleCollisions(state);
-    cleanupParticles(state);
-    cleanupMacroBodies(state);
+        // check total energy
+        // calculateTotalEnergy(state);
+
+        handleCollisions(state);
+        cleanupParticles(state);
+        cleanupMacroBodies(state);
+    }
+    
 
 }
 
@@ -98,12 +106,42 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& particle, Gravita
     double vB_n_new = (vB_n*(mB - mP) + 2*mP*vP_n) / (mP + mB);
 
 //     // Change in normal components
-    Vector2D vP_change = n * (vP_n_new - vP_n)*0.8;
-    Vector2D vB_change = n * (vB_n_new - vB_n)*0.8;
+    Vector2D vP_change = n * (vP_n_new - vP_n)*ELASTIC_LOSS_FACTOR;
+    Vector2D vB_change = n * (vB_n_new - vB_n)*ELASTIC_LOSS_FACTOR;
 
 //     // Apply
     particle.velocity = vP + vP_change;
     body.velocity = vB + vB_change;
+    
+    double overlap = particle.radius + body.radius - dist;
+
+    // std::cout<<"Grav Body:\n"<<body<<std::endl;
+    // std::cout<<"Particle:\n"<<particle<<std::endl;
+
+    if (abs(overlap) > 0){
+        // Small slop to avoid micro jitter
+        const double slop = 0.01;
+        const double percent = 0.8; // correction strength
+
+        double correctionMag = std::max(overlap - slop, 0.0) * percent;
+        Vector2D correction = n * correctionMag;
+
+        double totalMass = particle.mass + body.mass;
+
+        particle.position -= correction * (body.mass / totalMass);
+        body.position += correction * (particle.mass / totalMass);
+
+        // Critical: prevent fake velocity from Verlet-style position jumps
+        particle.prevPosition = particle.position;
+        body.prevPosition = body.position;
+    }
+    // std::cout<<"overlap: "<<overlap<<std::endl;
+    // if (overlap > 1.0) // more than a pixel overlap
+    // {
+    //     // Vector2D separation_velocity = n * (overlap / PHYSICS_TIME_STEP);
+    //     // particle.velocity -= separation_velocity * 0.5; // push particle away
+    //     // body.velocity += separation_velocity * 0.5; // push body away
+    // }
 
     // // *** NEW VELOCITY-BASED POSITIONAL CORRECTION ***
     // double overlap = particle.radius + body.radius - dist;
@@ -138,6 +176,150 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& particle, Gravita
     // }
 }
 
+void PhysicsSystem::handleDynamicExplosionCollision(GravitationalBody& body1, GravitationalBody& body2, GameState& state)
+{
+
+    // end with substituting both with particles
+    // substituteWithParticles(body1, state);
+    // substituteWithParticles(body2, state);
+      // A simplified value for the collision radius (R)
+    const double R1 = body1.radius;
+    const double R2 = body2.radius;
+    const Vector2D center1 = body1.position;
+    const Vector2D center2 = body2.position;
+    const Vector2D center_of_explosion = (center1 + center2)/ 2.0;
+    const double originalMass1 = body1.mass;
+    const double originalMass2 = body2.mass;
+    const Vector2D originalVelocity1 = body1.velocity;
+    const Vector2D originalVelocity2 = body2.velocity;
+    
+    std::vector<Vector2D> pixelPositions1; 
+
+    // 1. RASTERIZATION (Find all pixel positions)
+    // Assuming a 1-to-1 mapping where 1 unit = 1 pixel for simplicity.
+    int R_int1 = static_cast<int>(R1);
+    for (int i = -R_int1; i <= R_int1; ++i) {
+        for (int j = -R_int1; j <= R_int1; ++j) {
+            // Check if (i, j) is inside the circle
+            if ((i * i) + (j * j) <= (R1 * R1)) {
+                // Store the particle's center position
+                pixelPositions1.push_back(center1 + Vector2D{(double)i, (double)j});
+            }
+        }
+    }
+    std::vector<Vector2D> pixelPositions2; 
+    int R_int2 = static_cast<int>(R2);
+    for (int i = -R_int2; i <= R_int2; ++i) {
+        for (int j = -R_int2; j <= R_int2; ++j) {
+            // Check if (i, j) is inside the circle
+            if ((i * i) + (j * j) <= (R2 * R2)) {
+                // Store the particle's center position
+                pixelPositions2.push_back(center2 + Vector2D{(double)i, (double)j});
+            }
+        }
+    }
+    
+    // Check if we found any pixels (safety)
+    if (pixelPositions1.empty()){
+        // std::cout<<"no pixels"<<std::endl;
+        return;
+    } 
+        // Check if we found any pixels (safety)
+    if (pixelPositions2.empty()){
+        // std::cout<<"no pixels"<<std::endl;
+        return;
+    } 
+
+    // 2. MASS CALCULATION
+    const double particleMass1 = originalMass1 / pixelPositions1.size();
+    const double particleMass2 = originalMass2 / pixelPositions2.size();
+
+    // 3. PARTICLE INSTANTIATION
+    for (const auto& pos : pixelPositions1) {
+        GravitationalBody p;
+        p.mass = particleMass1;
+        p.radius = 1.0; 
+        p.position = pos;
+        p.isFragment = true;
+        
+        Vector2D r = pos - center_of_explosion;
+        double dist = r.magnitude();
+
+        Vector2D n = (dist > 1e-8) ? (r / dist) : Vector2D(1, 0);
+        Vector2D t = Vector2D(-n.y_val, n.x_val);
+
+        // Pick a characteristic radius for falloff.
+        // This makes the falloff scale with the explosion size.
+        double falloffRadius = 0.5 * (R1 + R2);          // or tweak: 0.25*(R1+R2), etc.
+        double d = dist / (falloffRadius + 1e-8);
+
+        // falloff in (0,1], where 1 at center, ~0 far away
+        double falloff = 1.0 / (1.0 + d * d);            // nice smooth curve
+
+        double factor = originalVelocity1.magnitude();
+        double blast = factor * falloff;
+        double shear = factor * falloff;
+
+        double jitter = randomDouble(-1.0, 1.0) * falloff;
+
+        // p.velocity = lerp(originalVelocity2, originalVelocity1, 0.5) + n * (blast + jitter) + t * (shear * randomDouble(-1.0, 1.0));
+        Vector2D originalVel1 = originalVelocity1; // or originalVelocity2 depending on loop
+
+        // Near center: use blended/mixed base. Far: keep original body velocity.
+        Vector2D mixedBase1 = lerp(originalVelocity2, originalVelocity1, 0.5);
+        Vector2D baseVel1   = lerp(originalVel1, mixedBase1, falloff);
+        
+        p.velocity = baseVel1 + n * (blast + jitter) + t * (shear * randomDouble(-1.0, 1.0));
+
+
+        p.prevPosition = p.position - p.velocity * PHYSICS_TIME_STEP;
+
+        state.getParticlesMutable().push_back(p);
+    }
+    for (const auto& pos : pixelPositions2) {
+        GravitationalBody p;
+        p.mass = particleMass2;
+        p.radius = 1.0; 
+        p.position = pos;
+        p.isFragment = true;
+        
+        Vector2D r = pos - center_of_explosion;
+        double dist = r.magnitude();
+
+        Vector2D n = (dist > 1e-8) ? (r / dist) : Vector2D(1, 0);
+        Vector2D t = Vector2D(-n.y_val, n.x_val);
+
+        // Pick a characteristic radius for falloff.
+        // This makes the falloff scale with the explosion size.
+        double falloffRadius = 0.5 * (R1 + R2);          // or tweak: 0.25*(R1+R2), etc.
+        double d = dist / (falloffRadius + 1e-8);
+
+        // falloff in (0,1], where 1 at center, ~0 far away
+        double falloff = 1.0 / (1.0 + d * d);            // nice smooth curve
+        double factor = originalVelocity2.magnitude();
+        double blast = factor * falloff;
+        double shear = factor * falloff;
+
+        double jitter = randomDouble(-1.0, 1.0) * falloff;
+
+        // p.velocity = lerp(originalVelocity1, originalVelocity2, 0.5) + n * (blast + jitter) + t * (shear * randomDouble(-1.0, 1.0));
+        Vector2D originalVel2 = originalVelocity2; // or originalVelocity2 depending on loop
+
+        // Near center: use blended/mixed base. Far: keep original body velocity.
+        Vector2D mixedBase2 = lerp(originalVelocity2, originalVelocity1, 0.5);
+        Vector2D baseVel2   = lerp(originalVel2, mixedBase2, falloff);
+        p.velocity = baseVel2 + n * (blast + jitter) + t * (shear * randomDouble(-1.0, 1.0));
+
+        p.prevPosition = p.position - p.velocity * PHYSICS_TIME_STEP;
+        
+        
+        state.getParticlesMutable().push_back(p);
+    }
+
+    // 4. CLEANUP
+    body1.markedForDeletion = true; // Destroy the original macroscopic body
+    body2.markedForDeletion = true;
+}
 void PhysicsSystem::calculateTotalEnergy(GameState& state)
 {
     // Calculate total energy logic here
@@ -212,15 +394,84 @@ void PhysicsSystem::handleCollisions(GameState& state)
     auto& bodies = state.getMacroBodiesMutable();
     for (size_t i = 0; i < bodies.size(); ++i)
     {
+        if (bodies[i].markedForDeletion) continue;
         for (size_t j = i + 1; j < bodies.size(); ++j)
         {
-                double distance = (bodies[i].position - bodies[j].position).magnitude();
-                if (distance < (bodies[i].radius + bodies[j].radius))
-                {
-                    // Rework logic later?
-                    substituteWithParticles(bodies[j], state);
-                    // substituteWithParticles(bodies[i], state);
+            if (bodies[j].markedForDeletion) continue;
+            double distance = (bodies[i].position - bodies[j].position).magnitude();
+            // double net_speed = (bodies[i].velocity - bodies[j].velocity).magnitude();
+            Vector2D r_vector = (bodies[i].position - bodies[j].position);
+            Vector2D r_unit_vector = r_vector.normalize();
+            Vector2D net_velocity= (bodies[i].velocity - bodies[j].velocity);
+            double normal_speed = net_velocity.dot(r_unit_vector);
+            double abs_normal_speed = std::abs(normal_speed);
+            // add helper function to return more massive body and get rid of this case check
+            int case_check = 0;
+            if (bodies[i].mass > bodies[j].mass){
+                case_check = 1; // mass 1 GREATER
+            }
+            else if (bodies[i].mass < bodies[j].mass){
+                case_check = 2; // mass 2 GREATER
+            }
+            else
+                case_check = 3; // equal
+            double mass_ratio = 0; // prob rewrite as helper here too
+
+            if (case_check == 0)
+                break;
+            else if (case_check == 1)
+                mass_ratio = bodies[i].mass / bodies[j].mass;
+            else if (case_check == 2)
+                mass_ratio = bodies[j].mass / bodies[i].mass;
+            else
+                mass_ratio = 1.0;
+
+
+
+            if (distance < (bodies[i].radius + bodies[j].radius)){
+                if (abs_normal_speed < MIN_SHATTER_SPEED){ //not in shatter speed territory
+                    if (mass_ratio >= MIN_BODY_BODY_ACCRETION_THRESHOLD_RATIO) // if ratio is bigger than min body accretion threshold ratio (one body dwarfs the other by enough)
+                        {
+                            if (case_check == 1)
+                                handleAccretion(bodies[j],bodies[i]);// j is lighter
+                            else
+                                handleAccretion(bodies[i],bodies[j]);// i is lighter
+                        }
+                    else if (mass_ratio < MIN_BODY_BODY_ACCRETION_THRESHOLD_RATIO)
+                        // refactor again later
+                        if (case_check == 1)
+                            handleElasticCollisions(bodies[j], bodies[i]); // no shatter logic yet, just bounce the bodies off each other
+                        else
+                            handleElasticCollisions(bodies[i], bodies[j]); // no shatter logic yet, just bounce the bodies off each other
                 }
+                else // in shatter speed territory
+                    if (case_check == 1)
+                        substituteWithParticles(bodies[j], state);
+                    else if (case_check == 2)
+                        substituteWithParticles(bodies[i], state);
+                    else {
+                        // handleElasticCollisions(bodies[i], bodies[j]); // equal mass, just bounce off each other but immediately substitute with particles
+                        // handleDynamicExplosionCollision(bodies[i], bodies[j], state);
+                        substituteWithParticles(bodies[i], state);
+                        substituteWithParticles(bodies[j], state);
+                    }
+                }
+                //     if (net_speed < MIN_SHATTER_SPEED)
+                //     {
+                //         handleElasticCollisions(bodies[i], bodies[j]); 
+                //     }
+                //     else
+                //     {
+                //         // shatter more massive body
+                //         if (bodies[i].mass > bodies[j].mass)
+                //             substituteWithParticles(bodies[j], state);
+                //         else if (bodies[j].mass > bodies[i].mass)
+                //             substituteWithParticles(bodies[i], state);
+                //         else {
+                //             substituteWithParticles(bodies[j], state);
+                //             substituteWithParticles(bodies[i], state);
+                //         }    
+                //     }
         }
     }
     auto& particles = state.getParticlesMutable();
@@ -228,15 +479,32 @@ void PhysicsSystem::handleCollisions(GameState& state)
 
     for (auto& particle : particles)
     {
+        if (particle.markedForDeletion) continue;
         for (auto& body : bodies){
+            if (body.markedForDeletion) continue;
             double distance = (particle.position - body.position).magnitude();
             
             if (distance < (particle.radius + body.radius))
             {
                 // Call the function containing the fixed logic
-                handleElasticCollisions(particle, body); 
+                // double net_speed = (particle.velocity - body.velocity).magnitude();
+                Vector2D r_vector = (particle.position - body.position);
+                Vector2D r_unit_vector = r_vector.normalize();
+                Vector2D net_velocity= (particle.velocity - body.velocity);
+                // double normal_velocity = net_velocity.dot(r_unit_vector);
+                // double net_normal_speed = (normal_velocity).magnitude();
+                double normal_speed = net_velocity.dot(r_unit_vector);
+                double abs_normal_speed = std::abs(normal_speed);
+
+                if (abs_normal_speed > MAX_ACCRETION_COLLISION_SPEED)// && body.mass / particle.mass > MIN_BODY_PARTICLE_ACCRETION_THRESHOLD_RATIO) //
+                    {
+                        // std::cout<<"elastic"<<std::endl;
+                        // handleElasticCollisions(particle, body);
+                        handleAccretion(particle, body);
+                    }
+                else 
+                    handleAccretion(particle, body);
             }
-            // std::cout<<"Elastic Collision"<<std::endl;
         }
     }
 }
@@ -395,6 +663,16 @@ void PhysicsSystem::calculateGravity(GravitationalBody& body1, GravitationalBody
     body2.netForce -= force;
 //    std::cout<<"body1 net force: "<<body1.netForce<<std::endl;
 }
+
+void PhysicsSystem::handleAccretion(GravitationalBody& particle, GravitationalBody& body)
+{
+    // Accrete mass
+    body.mass += particle.mass;
+    // Add to radius
+    body.radius = body.radius * pow((body.mass + particle.mass) / body.mass, 1.0/3.0); // investigate caching this calculation?
+    particle.markedForDeletion = true;
+}
+
 // void PhysicsSystem::createPlanet(GameState& state, InputState& inputState)
 // {
 //     GravitationalBody body;
@@ -445,11 +723,23 @@ void PhysicsSystem::createPlanet(GameState& state, InputState& inputState)
             particle.prevPosition = particle.position;
         }
     }
-    // --- END NEW LOGIC ---
 
     state.getMacroBodiesMutable().push_back(body);
 }
 
+void PhysicsSystem::createDust(GameState& state, InputState& inputState)
+{
+    GravitationalBody body;
+    body.mass = inputState.selectedMass;
+    body.radius = inputState.selectedRadius;
+    body.position = inputState.mouseCurrPosition;
+    body.prevPosition = body.position;
+    body.isDust = inputState.isCreatingDust;
+    body.isStatic = inputState.isCreatingStatic;
+    inputState.isCreatingDust = false;
+    state.getParticlesMutable().push_back(body);
+    inputState.dirty = false;
+}
 void PhysicsSystem::substituteWithParticles(GravitationalBody& originalBody, GameState& state)
 {
     // A simplified value for the collision radius (R)
@@ -467,7 +757,7 @@ void PhysicsSystem::substituteWithParticles(GravitationalBody& originalBody, Gam
         for (int j = -R_int; j <= R_int; ++j) {
             // Check if (i, j) is inside the circle
             if ((i * i) + (j * j) <= (R * R)) {
-                // Store the particle's centerc position
+                // Store the particle's center position
                 pixelPositions.push_back(center + Vector2D{(double)i, (double)j});
             }
         }
@@ -486,7 +776,6 @@ void PhysicsSystem::substituteWithParticles(GravitationalBody& originalBody, Gam
     for (const auto& pos : pixelPositions) {
         GravitationalBody p;
         p.mass = particleMass;
-        // GravitationalBody radius is tiny, often 0.5 (half a pixel) for collision checks
         p.radius = 1.0; 
         p.position = pos;
         p.prevPosition = pos; // Initialize for Verlet integration
@@ -499,9 +788,11 @@ void PhysicsSystem::substituteWithParticles(GravitationalBody& originalBody, Gam
         // This is necessary to make the cloud expand.
         Vector2D explosionVector = (pos - center); // Vector from center to particle
         // Normalize and scale by a collision factor (e.g., 0.1)
-        explosionVector = explosionVector.normalize() * (0.01 * originalVelocity.magnitude()); 
+        explosionVector = explosionVector.normalize() * (0 * originalVelocity.magnitude()); 
         
         p.velocity += explosionVector;
+        p.prevPosition = p.position - p.velocity * PHYSICS_TIME_STEP;
+
 
         state.getParticlesMutable().push_back(p);
     }

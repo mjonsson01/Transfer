@@ -49,7 +49,7 @@ class GameState
         float getTimeScaleFactor() const {if (toggleSlow) return SLOW_TIME_SCALE_FACTOR; else return REGULAR_TIME_SCALE_FACTOR;}
         // void setTimeScaleFactor(float scale) {timeScaleFactor = scale;}
 
-        // bool getToggleSlow() const {return toggleSlow;}
+        bool getToggleSlow() const {return toggleSlow;}
         void invertToggleSlow() {toggleSlow = !toggleSlow;}
 
 

@@ -72,3 +72,22 @@ struct GravitationalBody
     bool isFragment = false;
     bool isDust = false;
 };
+inline std::ostream& operator<<(std::ostream& os, const GravitationalBody& b)
+{
+    os << "GravitationalBody{"
+       << " position=" << b.position
+       << ", prevPosition=" << b.prevPosition
+       << ", velocity=" << b.velocity
+       << ", netForce=" << b.netForce
+       << ", prevForce=" << b.prevForce
+       << ", mass=" << b.mass
+       << ", radius=" << b.radius
+       << ", collisionEnabled=" << std::boolalpha << b.collisionEnabled
+       << ", markedForDeletion=" << std::boolalpha << b.markedForDeletion
+       << ", isStatic=" << std::boolalpha << b.isStatic
+       << ", isPlanet=" << std::boolalpha << b.isPlanet
+       << ", isFragment=" << std::boolalpha << b.isFragment
+       << ", isDust=" << std::boolalpha << b.isDust
+       << "}";
+    return os;
+}

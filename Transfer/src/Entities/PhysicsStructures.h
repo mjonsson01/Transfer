@@ -75,7 +75,13 @@ struct Vector2D
    		}
 		return *this;
 	}
+    
 };
+static inline Vector2D lerp(const Vector2D& a, const Vector2D& b, double t)
+{
+    return a + (b - a) * t;
+}
+
 // **DECLARATION ONLY:** The compiler just needs to know this function exists.
 std::ostream& operator<<(std::ostream& os, const Vector2D& Vec);
 

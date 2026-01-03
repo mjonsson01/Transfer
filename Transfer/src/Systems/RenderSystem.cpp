@@ -87,8 +87,18 @@ void RenderSystem::renderBodies(GameState& state)
         SDL_Texture* tex = getCircleTexture(static_cast<int>(particle.radius), color);
         Vector2D currPosition = particle.position;
         Vector2D prevPosition = particle.prevPosition;
-        float renderX = prevPosition.x_val * (1.0f - alpha) + currPosition.x_val * alpha;
-        float renderY = prevPosition.y_val * (1.0f - alpha) + currPosition.y_val * alpha;
+        // interpolation causes particle flickers for small particles. Remove for now. Figure out dynamical fix later.
+        float renderX, renderY;
+        if (particle.radius <= 1.0 && state.getToggleSlow() == false) {
+            renderX = particle.position.x_val;
+            renderY = particle.position.y_val;
+            renderX = std::round(renderX);
+            renderY = std::round(renderY);
+        }
+        else {
+            renderX = prevPosition.x_val * (1.0f - alpha) + currPosition.x_val * alpha;
+            renderY = prevPosition.y_val * (1.0f - alpha) + currPosition.y_val * alpha;
+        }
         float r = static_cast<float>(particle.radius);
         SDL_FRect dstRect = {
             renderX - r,
