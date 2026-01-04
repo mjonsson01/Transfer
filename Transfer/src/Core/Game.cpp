@@ -5,7 +5,7 @@
 
 // Likely change the resolution to be scalable in the future? default 1920x1080 for now. Will be inside the Render system eventually.
 Game::Game()
-	:  state(), UIState(), inputSystem(), physicsSystem(), renderSystem()
+	:  gameState(), UIState(), inputSystem(), physicsSystem(), renderSystem()
 {
 	// fill in imp here
 }
@@ -20,8 +20,8 @@ Game::~Game()
 // Initializes SDL windows, renderer, and starts the main game loop
 void Game::StartGame()
 {
-	// Initialize any other useful state variables here.
-	state.SetPlaying(true);
+	// Initialize any other useful gameState variables here.
+	gameState.SetPlaying(true);
 
 	// Initialize UI elements (like FPS counter and Sliders) and other vars as we go.
 	renderSystem.getUISystem()->InitializeUIElements(UIState);
@@ -42,91 +42,89 @@ void Game::EndGame()
 }
 void Game::Run()
 {	
-	// Initial time management variables
-	uint32_t lastPhysicsUpdateTime = SDL_GetTicks();
-	uint32_t lastRenderTime = lastPhysicsUpdateTime;
+	// Initialize the time management variables
+	uint32_t last_physics_update_time = SDL_GetTicks();
+	uint32_t last_render_time = 0;
+    uint32_t now = 0;
+    float frame_delta = 0.0f;
+    float scaled_frame_delta = 0.0f;
+    uint32_t render_start = 0.0f;
+    uint32_t render_end = 0.0f;
 	
 	// Timing accumulators
-	float physicsTimeAccumulator = 0.0f;
-	float fpsTimeAccumulator = 0.0f;
+	float physics_time_accumulator = 0.0f;
+	float fps_time_accumulator = 0.0f;
 
-	// Local fps variable
-	float currentFPS = 0.0f;
+	// Local FPS variable
+	float current_fps = 0.0f;
 
-	// Frame interpolation alpha
-	float alpha = state.getAlpha();
+	// Frame interpolation alpha (dynamic)
+	float alpha = gameState.getAlpha();
 
-	while (state.IsPlaying()){
+	while (gameState.IsPlaying()){
 
 		// Poll for SDL Events and Process Input
 		Game::ProcessInput();
 
 		// Timekeeping
-        uint32_t now = SDL_GetTicks();
-        float frameDelta = (now - lastPhysicsUpdateTime) / 1000.0f;
-        lastPhysicsUpdateTime = now;
+        now = SDL_GetTicks();
+        frame_delta = (now - last_physics_update_time) / 1000.0f;
+        last_physics_update_time = now;
         
-        // Deal with SLOWMO stuff
-        float scaledDelta = frameDelta * state.getTimeScaleFactor(); // Use the new time scale factor
-        physicsTimeAccumulator += scaledDelta;
+        // Deal with SLOWMO or SPEEDUP
+        scaled_frame_delta = frame_delta * gameState.getTimeScaleFactor(); // Use the new time scale factor
+        physics_time_accumulator += scaled_frame_delta;
 
-        // Update Physics (remains untouched, maintaining physics accuracy)
-        while (physicsTimeAccumulator >= PHYSICS_TIME_STEP)
+        // Update Physics (remains untouched by time scaling of rendering, maintaining physics accuracy)
+        while (physics_time_accumulator >= PHYSICS_TIME_STEP)
         {
             UpdatePhysicsFrame();
-            physicsTimeAccumulator -= PHYSICS_TIME_STEP;
+            physics_time_accumulator -= PHYSICS_TIME_STEP;
         }
         // Rendering
-        alpha = physicsTimeAccumulator / PHYSICS_TIME_STEP;
-        state.setAlpha(alpha);
+        alpha = physics_time_accumulator / PHYSICS_TIME_STEP;
+        gameState.setAlpha(alpha);
 
-        uint32_t renderStart = SDL_GetTicks();
+        render_start = SDL_GetTicks();
         RenderFrame();
-        uint32_t renderEnd = SDL_GetTicks();
+        render_end = SDL_GetTicks();
 
         // FPS Calculation
-        UpdateFPS(renderEnd, lastRenderTime, fpsTimeAccumulator, currentFPS);
-        lastRenderTime = renderEnd;
+        UpdateFPS(render_end, last_render_time, fps_time_accumulator, current_fps);
+        last_render_time = render_end;
 
-        // Frame limiting
-        LimitFrameRate(renderStart, renderEnd);
+        // Frame limiting (soft limiting)
+        LimitFrameRate(render_start, render_end);
     }
 
 }
 
 
-// Dispatch function methods.
+// --------- DISPATCH TO SYSTEM METHODS --------- //
 
-// prob will dispatch to UI system as well. 
-
-// Thoughts here that maybe inputSystem should still be the one dispatching to the UI? or maybe the UI system is a fully external overlay not tracked
-// within the window, resulting in a separate system. Still want to have a shared pointer or maybe singleton instance of the game so that
-// the state doesn't need to be passed around so much lol
 void Game::ProcessInput()
 {
 	// Dispatch to Input System
-	// inputSystem.ProcessSystemFrame(state);
-//	UISystem.ProcessUIFrame(state, UIState);
-    // Updates the UI state and 
-	inputSystem.ProcessSystemInputFrame(state, UIState);
+	// inputSystem.ProcessSystemFrame(gameState);
+//	UISystem.ProcessUIFrame(gameState, UIState);
+    // Updates the UI gameState and 
+	inputSystem.ProcessSystemInputFrame(gameState, UIState);
 }
 
 void Game::UpdatePhysicsFrame()
 {
 	// Dispatch to Physics System
-	physicsSystem.UpdateSystemFrame(state, UIState);
+	physicsSystem.UpdateSystemFrame(gameState, UIState);
 }
 
 void Game::RenderFrame()
 {
 	// Dispatch to Renderer System -- fills in UI as well.
-	renderSystem.RenderFullFrame(state, UIState);
+	renderSystem.RenderFullFrame(gameState, UIState);
 }
 
-// Helpers to clean up the Run() method
+// --------- UTILITY METHODS FOR FPS --------- //
 
-
-// FPS Helpers
 void Game::UpdateFPS(uint32_t renderEnd, uint32_t lastRender, float& fpsAccumulator, float& currentFPS)
 {
     float frameTime = (renderEnd - lastRender) / 1000.0f;
@@ -145,7 +143,7 @@ void Game::UpdateFPS(uint32_t renderEnd, uint32_t lastRender, float& fpsAccumula
 
 void Game::LimitFrameRate(uint32_t renderStart, uint32_t renderEnd)
 {
-    double frameDuration = static_cast<double>(renderEnd - renderStart);
-    if (frameDuration < FRAME_DELAY_MS)
-        SDL_Delay(static_cast<uint32_t>(FRAME_DELAY_MS - frameDuration));
+    double frame_duration = static_cast<double>(renderEnd - renderStart);
+    if (frame_duration < FRAME_DELAY_MS)
+        SDL_Delay(static_cast<uint32_t>(FRAME_DELAY_MS - frame_duration));
 }

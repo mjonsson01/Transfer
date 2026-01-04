@@ -10,9 +10,6 @@
 // Standard Library Imports
 #include <vector>
 
-
-
-
 class GameState
 {
     public:
@@ -25,32 +22,26 @@ class GameState
         bool IsPlaying() const { return isPlaying; }
         void SetPlaying(bool playing) { isPlaying = playing; }
 
-        // void updateSelectedRadius(float radius) { inputState.selectedRadius = radius; }
-        // float getSelectedRadius() const { return inputState.selectedRadius; }
-        
-        // void updateSelectedMass(double mass) { inputState.selectedMass = mass; }
-        // double getSelectedMass() const { return inputState.selectedMass; }
-        
-        // void setBodySelectionValidity(bool isValid) { inputState.bodySelectionValidity = isValid; }
-        // bool isBodySelectionValid() const { return inputState.bodySelectionValidity; }
-
-
-
+        // Getters for Particles with a mutable and nonmutable version to respect System hierarchies
         const std::vector<GravitationalBody>& getParticles() const {return particles;}
         std::vector<GravitationalBody>& getParticlesMutable() {return particles;}
 
+        // Getters for Bodies with a mutable and nonmutable version to respect System hierarchies
         const std::vector<GravitationalBody>& getMacroBodies() const {return macroBodies;}
         std::vector<GravitationalBody>& getMacroBodiesMutable() {return macroBodies;}
         
-
+        // Getter and setter for the alpha rendering variable
         float getAlpha() const {return alpha;}
         void setAlpha(float alphaIn) {alpha = alphaIn;}
 
-        float getTimeScaleFactor() const {if (toggleSlow) return SLOW_TIME_SCALE_FACTOR; else return REGULAR_TIME_SCALE_FACTOR;}
-        // void setTimeScaleFactor(float scale) {timeScaleFactor = scale;}
+        // Getter for the current time scale factor
+        float getTimeScaleFactor() const {if (toggleSlow && !toggleFast) return SLOW_TIME_SCALE_FACTOR; else if (!toggleSlow && toggleFast) return FAST_TIME_SCALE_FACTOR; else return REGULAR_TIME_SCALE_FACTOR;}
 
         bool getToggleSlow() const {return toggleSlow;}
         void invertToggleSlow() {toggleSlow = !toggleSlow;}
+
+        bool getToggleFast() const {return toggleFast;}
+        void invertToggleFast() {toggleFast = !toggleFast;}
 
 
     private:
@@ -61,10 +52,12 @@ class GameState
         // Frame helper vars
         float alpha = 0.0f;
         
-        // float timeScaleFactor = REGULAR_TIME_SCALE_FACTOR; // default to 1.0 for standard scaling
         bool toggleSlow = false; // default to false for regular speed
+        bool toggleFast = false; // default to false for regular speed
 
+        // Database for all the Macro Bodies
         std::vector<GravitationalBody> macroBodies;
+        // Database for all the Particle Bodies
         std::vector<GravitationalBody> particles;
 };
 

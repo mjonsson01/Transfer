@@ -20,7 +20,7 @@ class FPSCounter : public UIElement
         FPSCounter();
         ~FPSCounter() = default;
         
-        virtual void renderElement(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) override;
+        virtual void renderElement(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) override; // FPS Counter Specialty Render Method
     
     private:
 };

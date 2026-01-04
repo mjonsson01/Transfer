@@ -19,7 +19,7 @@ class UIElement{
         UIElement();
         virtual ~UIElement();
 
-        virtual void renderElement(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont)
+        virtual void renderElement(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) // Default renderElement implementation
         {
             // Default implementation (can be empty)
             return;

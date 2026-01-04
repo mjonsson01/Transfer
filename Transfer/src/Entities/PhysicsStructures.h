@@ -8,80 +8,94 @@
 
 struct Vector2D
 {
-	double x_val;
-	double y_val;
+	double xVal;
+	double yVal;
 
 	// Constructor
-	Vector2D(): x_val(0.0), y_val(0.0){};
-	Vector2D(double x, double y): x_val(x), y_val(y){};
+	Vector2D(): xVal(0.0), yVal(0.0){};
+	Vector2D(double x, double y): xVal(x), yVal(y){};
 
-	 // --- Arithmetic operators ---
+	// --- Vector-Vector Arithmetic operators --- //
     Vector2D operator+(const Vector2D& other) const {
-        return {x_val + other.x_val, y_val + other.y_val};
+        return {xVal + other.xVal, yVal + other.yVal};
     }
-
     Vector2D operator-(const Vector2D& other) const {
-        return {x_val - other.x_val, y_val - other.y_val};
+        return {xVal - other.xVal, yVal - other.yVal};
     }
-
+    
+    // --- Vector-Scalar Arithmetic operators --- //
     Vector2D operator*(double scalar) const {
-        return {x_val * scalar, y_val * scalar};
+        return {xVal * scalar, yVal * scalar};
     }
-
     Vector2D operator/(double scalar) const {
-        return {x_val / scalar, y_val / scalar};
+        return {xVal / scalar, yVal / scalar};
     }
-	 // --- Compound assignment (optional but handy) ---
+	
+    // --- Vector-Vector Assignment operations --- //
     Vector2D& operator+=(const Vector2D& other) {
-        x_val += other.x_val;
-        y_val += other.y_val;
+        xVal += other.xVal;
+        yVal += other.yVal;
         return *this;
     }
-
     Vector2D& operator-=(const Vector2D& other) {
-        x_val -= other.x_val;
-        y_val -= other.y_val;
+        xVal -= other.xVal;
+        yVal -= other.yVal;
         return *this;
     }
 
+    // --- Vector-Scalar Assignment operations --- //
     Vector2D& operator*=(double scalar) {
-        x_val *= scalar;
-        y_val *= scalar;
+        xVal *= scalar;
+        yVal *= scalar;
         return *this;
     }
-
     Vector2D& operator/=(double scalar) {
-        x_val /= scalar;
-        y_val /= scalar;
+        xVal /= scalar;
+        yVal /= scalar;
         return *this;
     }
 	
-    // custom utilities
+    // --- Special Vector Utilities --- //
     double magnitude() const {
-        return sqrt(x_val * x_val + y_val * y_val);
+        return sqrt(xVal * xVal + yVal * yVal);
     }
 	double square_magnitude() const {
-		return (x_val * x_val + y_val * y_val);
+		return (xVal * xVal + yVal * yVal);
 	}
-
     double dot(const Vector2D& other){
-        return x_val*other.x_val + y_val*other.y_val;
+        return xVal*other.xVal + yVal*other.yVal;
     }
-	Vector2D& normalize() {
+	Vector2D& normalizeInPlace() {
     	double mag = magnitude();
     	if (mag != 0.0) {
-        	x_val /= mag;
-        	y_val /= mag;
+        	xVal /= mag;
+        	yVal /= mag;
    		}
 		return *this;
 	}
+    Vector2D normalize() {
+        double mag = magnitude();
+    	if (mag != 0.0) {
+        	xVal /= mag;
+        	yVal /= mag;
+   		}
+		return Vector2D(xVal, yVal);
+    }
     
 };
+
+// --------- SPECIALTY METHODS --------- //
+
+// Linear interpolation betweeen two vectors
 static inline Vector2D lerp(const Vector2D& a, const Vector2D& b, double t)
 {
     return a + (b - a) * t;
 }
 
-// **DECLARATION ONLY:** The compiler just needs to know this function exists.
-std::ostream& operator<<(std::ostream& os, const Vector2D& Vec);
+// --------- I/O OPERATOR OVERLOAD --------- //
 
+// Print operator overload
+inline std::ostream& operator<<(std::ostream& os, const Vector2D& Vec) {
+    os << "{ "<< Vec.xVal << ", " << Vec.yVal << " }";
+    return os;
+}

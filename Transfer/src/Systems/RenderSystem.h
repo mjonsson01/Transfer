@@ -8,6 +8,8 @@
 #include <unordered_map>
 #include <random>
 #include <numeric>
+#include <algorithm>
+#include <cmath>
 
 // SDL3 Imports
 #include "SDL3/SDL.h"
@@ -22,7 +24,7 @@
 #include "Utilities/GameSystemConstants.h"
 #include "Systems/UISystem.h"
 
-// Circle (grav body) texture cache.
+// Circle (Gravitational body) texture cache.
 struct CircleKey {
     int radius;
     SDL_Color color;
@@ -60,10 +62,14 @@ class RenderSystem
 		
 		// Main Loop Rendering Function, renders engine state and UI state
 		void RenderFullFrame(GameState& state, UIState& UIState);
-		void CleanUp(); 
+
+		// Main Cleanup method (tears down all the SDL components)
+		void CleanUp();
 		// Getters for SDL Components
 		SDL_Renderer* getRenderer() const { return renderer; }
 		TTF_Font* getUIFont() const { return UIFont; }
+
+		// Getter for UI System
 		UISystem* getUISystem() { return &uiSystem; }
 
 	private:
@@ -73,37 +79,35 @@ class RenderSystem
 		// Font for UI Elements that require text
 		TTF_Font* UIFont = nullptr;
 
-		std::vector<Star> stars;
-		std::vector<SDL_Texture*> starTextures; // pre-created tiny textures (1-3 px)
+		// Container for background twinkling stars
+		std::vector<TwinklingStar> twinklingStars;
+		// Container for textures of all background twinkling stars
+		std::vector<SDL_Texture*> twinklingStarTextures; // pre-created tiny textures (1-3 px)
 			
 	private:
 		// Subordinate Rendering Functions
-		void renderBodies(GameState& state);
+		void renderBodies(GameState& state); // Renders all the gravitational bodies (both Macro and Particle)
 
+		// Renders Input Artifacts
 		void renderInputArtifacts(GameState& state);
-
-		// Renders the frame rate counter on screen 
-		// Now a part of UISystem as a subclass
-		// void renderFrameRateCounter(float fps); 
 
 		// Utility Rendering Helper Functions
 		SDL_Color getColorForMass(double mass);
 		
-
-		// circle textures help.
+		// Store for circle textures
 		std::unordered_map<CircleKey, SDL_Texture*> circleTextureCache;
+		// Circle textures helpers
 		SDL_Texture* getCircleTexture(int radius, SDL_Color color);
 		SDL_Texture* createCircleTexture(int radius, SDL_Color color);
 
-		// Destructor helper
+		// Texture cleanup helper
 		void clearCachedCircleTextures();
 
 		// Single Call GenerateStar pattern
-		
 		void createStarField(int numStars);
+		void createStarTextures();
 		void updateStars();
 		void renderStars();
-		void createStarTextures();
 	private:
 		// Managing system for UI overlay
 		UISystem uiSystem;

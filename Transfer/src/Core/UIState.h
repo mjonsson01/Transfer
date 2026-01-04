@@ -2,8 +2,6 @@
 
 #pragma once
 
-// No SDL here. Will just include data to manage the UI state.
-
 // Custom Imports
 #include "Core/InputState.h"
 
@@ -25,11 +23,13 @@ class UIState
 
 
         // Add UI state management methods and members here
-        std::vector<UIElement*> getUIElements() const { return uielements; }
+        std::vector<UIElement*> getUIElements() const { return UIElements; }
+        
         // Initializing helper.
-        void addUIElement(UIElement* uielement) { uielements.push_back(uielement); }
+        void addUIElement(UIElement* uielement) { UIElements.push_back(uielement); }
+
         // Cleanup helper.
-        void clearUIElements() { uielements.clear(); }
+        void clearUIElements() { UIElements.clear(); }
 
         bool getShowFPSCounter() const { return showFPSCounter; }
         void setShowFPSCounter(bool show) { showFPSCounter = show; }
@@ -40,8 +40,10 @@ class UIState
         // FPS counter state
         float fps = 0.0f;
         bool showFPSCounter = false;
+
         // Input state for UI interactions
         InputState inputState;
+        
         // Collection of UI elements
-        std::vector<UIElement*> uielements;
+        std::vector<UIElement*> UIElements;
 };

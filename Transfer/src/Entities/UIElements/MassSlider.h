@@ -15,23 +15,25 @@
 
 class MassSlider : public UIElement {
     public:
-        MassSlider();
-        virtual ~MassSlider();
+        MassSlider(); // constructor
+        virtual ~MassSlider(); // destructor
 
     public:
-        virtual void renderElement(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) override;
+        virtual void renderElement(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) override; // Mass Slider specialty render method
 
-        public:
+    public:
         // Special Getter and Setter for Mass Value
         float getSelectedMassValue() const { return selectedMassValue; }
         void setSelectedMassValue(float mass) { selectedMassValue = mass; }
-        // void handleInputEvent(const SDL_Event& event, UIState& UIState); // Handled in InputSystem. Events should be clear from this.
+        void getTrackAndKnobPositions();
+        // add method to handle moving the trackRect
     private:
-        // state variables
+        // Element State variables
         float selectedMassValue = 0.0f; // Current mass value selected by the slider
         float minMassValue = 0.0f;      // Minimum mass value -- revisit to allow negative masses?
-        float maxMassValue = MAX_MASS;    // Maximum mass value
+        float maxMassValue = MAX_MASS;    // Maximum mass value on slider
         bool isSelected = false;        // Slider Interaction Status
+        
         // GUI Elements
         SDL_FRect trackRect;
         SDL_FRect knobRect;

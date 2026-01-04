@@ -24,3 +24,15 @@ Eventually refactor memory management to use smart pointers. It will vastly impr
 
 
 Add different types of instantiations -- black holes, dust, gas, planets, and stars. 
+
+
+Will want to refactor Game System constants to include some dynamically changing user prefs as well
+
+Clearly define terms -- fragments, dust, particles, (macro) bodies, planets, stars, etc.
+
+function signature elements and struct members should be camelCase
+
+intermediary calculated values and local variables should be snake case
+
+
+UI will always be capitalized (because I decided this :D)

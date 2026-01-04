@@ -12,179 +12,128 @@ InputSystem::~InputSystem()
     // Cleanup if necessary
 }
 
-void InputSystem::CleanUp()
-{
-    // Any necessary cleanup code for the input system
-}
-void InputSystem::ProcessSystemInputFrame(GameState& state, UIState& UIState)
-{
-    // Process input events and update the game state accordingly
-    // (Implementation details would go here)
 
+
+// --------- SYSTEM-LEVEL METHOD --------- //
+
+void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState)
+{
+    // Process input events and update the Game State, UI State, and internal input gameState accordingly
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
 
         switch (event.type) {
             // Handle different event types here
             case SDL_EVENT_QUIT:
-                state.SetPlaying(false);
+                gameState.SetPlaying(false);
                 break;
             case SDL_EVENT_MOUSE_MOTION:
             {
-                auto& newState = UIState.getMutableInputState();
-                newState.mouseCurrPosition = {event.motion.x, event.motion.y};
+                auto& updated_input_state = UIState.getMutableInputState();
+                updated_input_state.mouseCurrPosition = {event.motion.x, event.motion.y};
                 break;
             }
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
             {
                 if (event.button.button == SDL_BUTTON_LEFT) {
-                    auto& newState = UIState.getMutableInputState();
-                    newState.isHoldingLeftMouseButton = true;
-                    newState.dirty = true;
-                    newState.isCreatingPlanet = true;
-                    newState.isCreatingDust = false;
-                    newState.isCreatingCluster = false;
-                    newState.isCreatingStatic = false;
-                    newState.mouseCurrPosition = {event.button.x, event.button.y};
-                    newState.selectedMass = MAX_MASS/10.0;
-                    newState.selectedRadius = 50.0;
+                    auto& updated_input_state = UIState.getMutableInputState();
+                    updated_input_state.isHoldingLeftMouseButton = true;
+                    updated_input_state.dirty = true;
+                    updated_input_state.isCreatingMacro = true;
+                    // updated_input_state.mouseCurrPosition = {event.button.x, event.button.y};
+                    updated_input_state.selectedMass = MAX_MASS/10.0;
+                    updated_input_state.selectedRadius = 50.0;
                     break;
                 }
                 if (event.button.button == SDL_BUTTON_RIGHT) {
-                    // Right mouse button logic (if any) goes here
-                    auto& newState = UIState.getMutableInputState();
-                    newState.isHoldingRightMouseButton = true;
-                    newState.mouseCurrPosition = {event.button.x, event.button.y};
+                    auto& updated_input_state = UIState.getMutableInputState();
+                    updated_input_state.isHoldingRightMouseButton = true;
+                    updated_input_state.mouseCurrPosition = {event.button.x, event.button.y};
                     break;
                 }
                 
             }
             case SDL_EVENT_MOUSE_BUTTON_UP:
             {
-                // std::cout<<"mouse button up"<<std::endl;
-                auto& newState = UIState.getMutableInputState();
-                newState.isHoldingRightMouseButton = false;
-                newState.isHoldingLeftMouseButton = false;
-                newState.spawnAccumulator = 0.0;
+                auto& updated_input_state = UIState.getMutableInputState();
+                updated_input_state.isHoldingRightMouseButton = false;
+                updated_input_state.isHoldingLeftMouseButton = false;
+                updated_input_state.spawnAccumulator = 0.0;
                 break;
             }
             case SDL_EVENT_KEY_DOWN:
                 if (event.key.scancode == SDL_SCANCODE_SPACE){
-                    auto& newState = UIState.getMutableInputState();
-                    newState.dirty = true;
-                    newState.isCreatingPlanet = true;
-                    newState.isCreatingStatic = true;
-                    // newState.mouseCurrPosition = {event.button.x, event.button.y};
-                    // newState.mouseCurrPosition = { SCREEN_WIDTH / 2, 2 * SCREEN_HEIGHT / 3 };
-                    newState.selectedMass = MAX_MASS/2.0;
-                    newState.selectedRadius = 50.0;
+                    auto& updated_input_state = UIState.getMutableInputState();
+                    updated_input_state.dirty = true;
+                    updated_input_state.isCreatingMacro = true;
+                    updated_input_state.isCreatingStatic = true;
+                    updated_input_state.selectedMass = MAX_MASS;
+                    updated_input_state.selectedRadius = 50.0;
                     break;
                 }
                 else if (event.key.scancode == SDL_SCANCODE_TAB)
                 {
-                    state.invertToggleSlow();
+                    gameState.invertToggleSlow();
                 }
                 else if (event.key.scancode == SDL_SCANCODE_P)
                 {
-                    UIState.getMutableInputState().isPaused = !UIState.getMutableInputState().isPaused;
+                    UIState.getMutableInputState().togglePhysicsPause();
                 }
                 else if (event.key.scancode == SDL_SCANCODE_BACKSPACE || event.key.scancode == SDL_SCANCODE_DELETE)
                 {
-                    UIState.getMutableInputState().clearAll = true;
+                    UIState.getMutableInputState().clearAllBodies();
                 }
+                // else if (event.key.scancode == SDL_SCANCODE_T)
+                // {
+                //     auto& updated_input_state = UIState.getMutableInputState();
+                //     updated_input_state.dirty = true;
+                //     updated_input_state.isCreatingParticleCluster = true ;
+                //     updated_input_state.selectedMass = MAX_MASS/100000.0;
+                //     updated_input_state.selectedRadius = 100.0;
+                //     break;
+                // }
 
 
         }
         
     }
 
-    auto& inputState = UIState.getMutableInputState();
-    double dt = FRAME_DELAY_MS;
-
-    if (inputState.isHoldingRightMouseButton)
+    auto& updated_input_state = UIState.getMutableInputState();
+    if (updated_input_state.isHoldingRightMouseButton)
     {
-        inputState.spawnAccumulator += dt;
+        updated_input_state.spawnAccumulator += FRAME_DELAY_MS;
 
-        while (inputState.spawnAccumulator >= SPAWN_DELAY_MS)
+        while (updated_input_state.spawnAccumulator >= SPAWN_DELAY_MS)
         {
-            inputState.spawnAccumulator -= SPAWN_DELAY_MS;
+            updated_input_state.spawnAccumulator -= SPAWN_DELAY_MS;
 
-            inputState.dirty = true;
-            inputState.isCreatingDust = true;
-            inputState.isCreatingPlanet = false;
-            inputState.selectedMass = MAX_MASS/1000.0;
-            inputState.selectedRadius = 1.0;
+            updated_input_state.dirty = true;
+            updated_input_state.isCreatingParticle = true;
+            updated_input_state.selectedMass = MAX_MASS/100000.0;
+            updated_input_state.selectedRadius = 1.0;
         }
     }
     else
     {
-        inputState.spawnAccumulator = 0.0;
+        updated_input_state.spawnAccumulator = 0.0;
     }
 
-        // Additional input handling logic can be added here
+    // Additional input handling logic to be implemented later
 }
 
-// void InputSystem::createNewBody(SDL_Event& event, GameState& state)
-// {
-//     GravitationalBody newBody;
 
-//     float radius = 15.0;
-//     newBody.setRadius(radius);
+// --------- CLEANUP HELPER METHOD --------- //
 
-//     double mass = MAX_MASS; // in kilograms
-//     newBody.setMass(mass);
-
-//     // Vector2D bodyVelocity = {100,0};
-//     // newBody.setNetVelocity(bodyVelocity);
-
-//     newBody.setCollisionEnabled(true);
-    
-//     Vector2D bodyPosition = { event.button.x, event.button.y }; // position measured in pixel xy cooriifnates measured from top-left corner.
-//     newBody.setPosition(bodyPosition);
-
-//     Vector2D prevPosition = bodyPosition; // previous pixel position
-//     newBody.setPrevPosition(prevPosition);
-
-//     state.addBody(newBody);
-
-//     std::cout<<"New Body Created: "<<std::endl;
-//     std::cout<<newBody<<std::endl;
-
-// };
-
-void InputSystem::handleMassSliderInput(SDL_Event& event, UIState& UIState)
+void InputSystem::CleanUp()
 {
-    // Implementation for handling mass slider input events
-    // (This function can be expanded based on specific requirements)
+    // Any necessary cleanup code for the input system
 }
 
-
-// void InputSystem::createNewGravitationalCluster(SDL_Event& event, GameState& state)
+// --------- ADDITIONAL METHODS --------- //
+// void InputSystem::handleMassSliderInput(SDL_Event& event, UIState& UIState)
 // {
-//     // Implementation for creating a new cluster based on input events
-//     // (This function can be expanded based on specific requirements)
-    
-//     GravitationalCluster newCluster;
-//     // float radius = 15.0;
-//     // newBody.setRadius(radius);
-
-//     // double mass = MAX_MASS; // in kilograms
-//     // newBody.setMass(mass);
-
-//     // // Vector2D bodyVelocity = {100,0};
-//     // // newBody.setNetVelocity(bodyVelocity);
-
-//     // newBody.setCollisionEnabled(true);
-    
-//     // Vector2D bodyPosition = { event.button.x, event.button.y }; // position measured in pixel xy cooriifnates measured from top-left corner.
-//     // newBody.setPosition(bodyPosition);
-
-//     // Vector2D prevPosition = bodyPosition; // previous pixel position
-//     // newBody.setPrevPosition(prevPosition);
-
-//     // state.addBody(newBody);
-
-//     // std::cout<<"New Body Created: "<<std::endl;
-//     // std::cout<<newBody<<std::endl;
-
+//     // Implementation for handling mass slider input events
 // }
+
+
+
