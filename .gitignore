@@ -2,5 +2,5 @@
 
 build/
 
- # for macOS
+# for macOS
 .DS_Store

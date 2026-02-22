@@ -59,6 +59,9 @@ void Game::Run()
 	// Frame interpolation alpha (dynamic)
 	float alpha = gameState.getAlpha();
 
+    // slowdown cout output pace timer
+    uint32_t slowdown_print_timer = 300; // print every 100 ms
+    uint32_t last_slowdown_print_time = SDL_GetTicks();
     
 
 	while (gameState.IsPlaying()){
@@ -67,6 +70,13 @@ void Game::Run()
         Game::PlayAudio();
 		// Poll for SDL Events and Process Input
 		Game::ProcessInput();
+
+        if (SDL_GetTicks() - last_slowdown_print_time > slowdown_print_timer)
+        {
+            std::cout<< "Current mouse position: " << UIState.getInputState().mouseCurrPosition<<std::endl;
+            std::cout<< "current mass knob position: " << UIState.getMassKnobRect().x << ", " << UIState.getMassKnobRect().y << ", " << UIState.getMassKnobRect().w << ", " << UIState.getMassKnobRect().h << std::endl;
+            last_slowdown_print_time = SDL_GetTicks();
+        }
 
 		// Timekeeping
         now = SDL_GetTicks();

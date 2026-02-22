@@ -23,6 +23,8 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState
     // Process input events and update the Game State, UI State, and internal input gameState accordingly
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
+        auto& updated_input_state = UIState.getMutableInputState();
+        auto& current_input_state = UIState.getInputState(); 
 
         switch (event.type)
         {
@@ -32,15 +34,30 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState
                 break;
             case SDL_EVENT_MOUSE_MOTION:
             {
-                auto& updated_input_state = UIState.getMutableInputState();
                 updated_input_state.mouseCurrPosition = {event.motion.x, event.motion.y};
+                // If dragging the mass knob, update the drag end position and knob location
+                if (updated_input_state.isDraggingMassKnob) {
+                    updated_input_state.mouseDragEndPosition = {event.motion.x, event.motion.y};
+                    UIState.setMassKnobRectPosition(updated_input_state.mouseDragEndPosition);
+                }
                 break;
             }
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
             {
+
+                // if held down and dragging inside the space of the knob rectangle location, capture the motion
+                // and pull the knob rect along with it.
+                
+                if (UIState.inRect(UIState.getMassKnobRect()))
+                {
+                    std::cout << "Dragging mass knob!" << std::endl;
+                    updated_input_state.isDraggingMassKnob = true;
+                    updated_input_state.mouseDragStartPosition = {event.motion.x, event.motion.y};
+                    UIState.setMassKnobRectPosition(updated_input_state.mouseDragStartPosition);
+                    break; // need to update position
+                }
                 if (event.button.button == SDL_BUTTON_LEFT)
                 {
-                    auto& updated_input_state = UIState.getMutableInputState();
                     updated_input_state.isHoldingLeftMouseButton = true;
                     updated_input_state.dirty = true;
                     updated_input_state.isCreatingMacro = true;
@@ -50,9 +67,7 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState
                 }
                 if (event.button.button == SDL_BUTTON_RIGHT)
                 {
-                    auto& updated_input_state = UIState.getMutableInputState();
                     updated_input_state.isHoldingRightMouseButton = true;
-                    updated_input_state.mouseCurrPosition = {event.button.x, event.button.y};
                     break;
                 }
                 
@@ -62,6 +77,7 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState
                 auto& updated_input_state = UIState.getMutableInputState();
                 updated_input_state.isHoldingRightMouseButton = false;
                 updated_input_state.isHoldingLeftMouseButton = false;
+                updated_input_state.isDraggingMassKnob = false;
                 updated_input_state.spawnAccumulator = 0.0;
                 break;
             }
