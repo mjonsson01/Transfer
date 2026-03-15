@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
+# set(CMAKE_BUILD_TYPE Debug)
 # ----------------------------------
 # Platform-specific SDL setup
 # ----------------------------------
@@ -59,7 +59,8 @@ file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
 # ----------------------------------
 # Executable
 # ----------------------------------
-add_executable(${PROJECT_NAME} ${SRC_FILES})
+# add_executable(${PROJECT_NAME} ${SRC_FILES})
+add_executable(${PROJECT_NAME} ${SRC_FILES} Transfer.rc)
 
 # ----------------------------------
 # Include directories

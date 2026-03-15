@@ -14,13 +14,21 @@
 // Standard Library Imports
 #include <string>
 
+// class FPSCounter : public UIElement
+// {
+//     public:
+//         FPSCounter();
+//         ~FPSCounter() = default;
+        
+//         virtual void renderElement(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) override; // FPS Counter Specialty Render Method
+    
+//     private:
+// };
+
 class FPSCounter : public UIElement
 {
     public:
         FPSCounter();
         ~FPSCounter() = default;
-        
-        virtual void renderElement(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) override; // FPS Counter Specialty Render Method
-    
-    private:
+        virtual void renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) override;
 };

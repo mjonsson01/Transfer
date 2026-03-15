@@ -69,8 +69,6 @@ class RenderSystem
 		SDL_Renderer* getRenderer() const { return renderer; }
 		TTF_Font* getUIFont() const { return UIFont; }
 
-		// Getter for UI System
-		UISystem* getUISystem() { return &uiSystem; }
 
 	private:
 		//SDL Components
@@ -91,6 +89,9 @@ class RenderSystem
 		// Renders Input Artifacts
 		void renderInputArtifacts(GameState& state);
 
+		// Renders UI Elements
+		void renderUIElements(UIState& state);
+
 		// Utility Rendering Helper Functions
 		SDL_Color getColorForMass(double mass);
 		
@@ -110,5 +111,5 @@ class RenderSystem
 		void renderStars();
 	private:
 		// Managing system for UI overlay
-		UISystem uiSystem;
+		UISystem UISystem;
 };

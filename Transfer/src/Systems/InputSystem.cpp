@@ -36,10 +36,10 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState
             {
                 updated_input_state.mouseCurrPosition = {event.motion.x, event.motion.y};
                 // If dragging the mass knob, update the drag end position and knob location
-                if (updated_input_state.isDraggingMassKnob) {
-                    updated_input_state.mouseDragEndPosition = {event.motion.x, event.motion.y};
-                    UIState.setMassKnobRectPosition(updated_input_state.mouseDragEndPosition);
-                }
+                // if (updated_input_state.isDraggingMassKnob) {
+                //     updated_input_state.mouseDragEndPosition = {event.motion.x, event.motion.y};
+                //     UIState.setMassKnobRectPosition(updated_input_state.mouseDragEndPosition);
+                // }
                 break;
             }
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
@@ -48,14 +48,14 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState
                 // if held down and dragging inside the space of the knob rectangle location, capture the motion
                 // and pull the knob rect along with it.
                 
-                if (UIState.inRect(UIState.getMassKnobRect()))
-                {
-                    std::cout << "Dragging mass knob!" << std::endl;
-                    updated_input_state.isDraggingMassKnob = true;
-                    updated_input_state.mouseDragStartPosition = {event.motion.x, event.motion.y};
-                    UIState.setMassKnobRectPosition(updated_input_state.mouseDragStartPosition);
-                    break; // need to update position
-                }
+                // if (UIState.inRect(UIState.getMassKnobRect()))
+                // {
+                //     std::cout << "Dragging mass knob!" << std::endl;
+                //     updated_input_state.isDraggingMassKnob = true;
+                //     updated_input_state.mouseDragStartPosition = {event.motion.x, event.motion.y};
+                //     UIState.setMassKnobRectPosition(updated_input_state.mouseDragStartPosition);
+                //     break; // need to update position
+                // }
                 if (event.button.button == SDL_BUTTON_LEFT)
                 {
                     updated_input_state.isHoldingLeftMouseButton = true;
@@ -77,7 +77,7 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState
                 auto& updated_input_state = UIState.getMutableInputState();
                 updated_input_state.isHoldingRightMouseButton = false;
                 updated_input_state.isHoldingLeftMouseButton = false;
-                updated_input_state.isDraggingMassKnob = false;
+                // updated_input_state.isDraggingMassKnob = false;
                 updated_input_state.spawnAccumulator = 0.0;
                 break;
             }
@@ -108,10 +108,10 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState
                 {
                     gameState.invertPlayMusic();
                 }
-                else if (event.key.scancode == SDL_SCANCODE_MINUS)
-                {
-                    UIState.invertUIElementsVisibility();
-                }
+                // else if (event.key.scancode == SDL_SCANCODE_MINUS)
+                // {
+                //     UIState.invertUIElementsVisibility();
+                // }
                 else if (event.key.scancode == SDL_SCANCODE_EQUALS)
                 {
                     gameState.invertToggleFast();
@@ -163,10 +163,3 @@ void InputSystem::CleanUp()
 }
 
 // --------- ADDITIONAL METHODS --------- //
-// void InputSystem::handleMassSliderInput(SDL_Event& event, UIState& UIState)
-// {
-//     // Implementation for handling mass slider input events
-// }
-
-
-

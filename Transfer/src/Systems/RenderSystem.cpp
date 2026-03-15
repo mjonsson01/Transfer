@@ -4,6 +4,7 @@
 
 // Constructor: Initializes SDL Window and Renderer
 RenderSystem::RenderSystem()
+    : UISystem()
 {
     // Add audio later
     SDL_InitSubSystem(SDL_INIT_VIDEO);
@@ -56,7 +57,7 @@ void RenderSystem::CleanUp()
 }
 
 
-// --------- TOTAL ENERGY CALCULATION METHOD --------- //
+// --------- RENDER FULL FRAME METHOD --------- //
 
 void RenderSystem::RenderFullFrame(GameState& state, UIState& UIState)
 {
@@ -70,8 +71,7 @@ void RenderSystem::RenderFullFrame(GameState& state, UIState& UIState)
     // Render all the bodies (particles)
     RenderSystem::renderBodies(state);
 
-    // Render UI Elements
-    uiSystem.RenderUIElements(renderer, UIState, UIFont);
+    RenderSystem::renderUIElements(UIState);
 
     // Display the frame
     SDL_RenderPresent(renderer);
@@ -138,6 +138,30 @@ void RenderSystem::renderInputArtifacts(GameState& state)
 {
 
 }
+
+// --------- RENDER UI ELEMENTS METHOD --------- //
+
+void RenderSystem::renderUIElements(UIState& UIState)
+{
+    if (!UIState.getAllVisibility()) return;
+
+    std::vector<UIElement*> all_UI_elements = UISystem.getUIElements();
+
+    for (auto& element : all_UI_elements)
+    {
+        element->renderMe(renderer, UIState, UIFont);
+    }
+}
+
+// void UISystem::RenderUIElements(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont)
+// {
+//     std::vector<UIElement*> ui_elements = UIState.getUIElements();
+//     if (!UIState.getUIElementsVisible()) return; // Skip rendering if UI elements are hidden
+    
+//     for (auto& element : ui_elements) {
+//         element->renderElement(renderer, UIState, UIFont); // Pass UIFont if needed
+//     }
+// }
 
 // Smooth interpolation color lookup function
 

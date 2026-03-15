@@ -29,9 +29,9 @@ class InputSystem
         
         private: 
         // Helper method to handle Keyboard Inputs
-        void handleKeyboardInput(SDL_Event& event, GameState& gameState, UIState& UIState);
+        // void handleKeyboardInput(SDL_Event& event, GameState& gameState, UIState& UIState);
         // Helper method to handle Mouse Inputs
-        void handleMouseInput(SDL_Event& event, GameState& gameState, UIState& UIState);
+        // void handleMouseInput(SDL_Event& event, GameState& gameState, UIState& UIState);
 
 
 

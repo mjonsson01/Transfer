@@ -23,8 +23,8 @@ void Game::StartGame()
 	// Initialize any other useful gameState variables here.
 	gameState.SetPlaying(true);
 
-	// Initialize UI elements (like FPS counter and Sliders) and other vars as we go.
-	renderSystem.getUISystem()->InitializeUIElements(UIState);
+	// // Initialize UI elements (like FPS counter and Sliders) and other vars as we go.
+	// renderSystem.getUISystem()->InitializeUIElements(UIState);
 
 
 	// Start the main game loop
@@ -36,7 +36,7 @@ void Game::StartGame()
 // Tears down the 'systems' and cleans up allocated resources.
 void Game::EndGame()
 {
-    renderSystem.getUISystem()->DeleteUIElements(UIState);
+    // renderSystem.getUISystem()->DeleteUIElements(UIState);
 }
 void Game::Run()
 {	
@@ -54,13 +54,13 @@ void Game::Run()
 	float fps_time_accumulator = 0.0f;
 
 	// Local FPS variable
-	float current_fps = 0.0f;
+	float current_fps = TARGET_FPS; //initialize to target
 
 	// Frame interpolation alpha (dynamic)
 	float alpha = gameState.getAlpha();
 
     // slowdown cout output pace timer
-    uint32_t slowdown_print_timer = 300; // print every 100 ms
+    uint32_t slowdown_print_timer = 300;
     uint32_t last_slowdown_print_time = SDL_GetTicks();
     
 
@@ -73,9 +73,7 @@ void Game::Run()
 
         if (SDL_GetTicks() - last_slowdown_print_time > slowdown_print_timer)
         {
-            std::cout<< "Current mouse position: " << UIState.getInputState().mouseCurrPosition<<std::endl;
-            std::cout<< "current mass knob position: " << UIState.getMassKnobRect().x << ", " << UIState.getMassKnobRect().y << ", " << UIState.getMassKnobRect().w << ", " << UIState.getMassKnobRect().h << std::endl;
-            last_slowdown_print_time = SDL_GetTicks();
+            // Add slowed down print statements here
         }
 
 		// Timekeeping
