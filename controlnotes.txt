@@ -1,0 +1,46 @@
+Definitions of potential control layouts
+
+
+A + D controls ship orientation using limited fuel RCS thrusters. Angular momentum can be auto canceled on release or it can be preserved, but it won't brake on its own
+
+W + S control the main engine thrust percentage. 0-100% thrust. More fuel burns with higher thrust percentage. Will need to calculate thrust in Newtons and likely Tsiolkovsky Rocket Eqn]
+
+SPACE should fire the main engine at whatever thrust percentage is toggled
+
+Left Mouse Button (LMB) should instantiate a selected type of grav body at a specific point (the mouse event location). 
+Right Mouse Button (RMB) should allow you to give an initial velocity to the grav body based on a velocity vector you drag out from the center of the body.
+
+There should be a ghost hover image that follows your mouse when toggled on with enter. You can only place stuff with LMB RMB if this is toggled. It should allow you to see the size and location of the grav body that will be instantiated at your mouse location (if toggled on).
+
+Backspace should delete your most recent body addition (with multiple backspaces respected)
+Shift Backspace should clear the entire screen of all bodies.
+
+LMB within the region of a UI element should either interact with it if its a knob/button, or do nothing (if FPS).
+
+Scroll wheel should zoom in and out centered around the location of the cursor. It will be capped at some specific time.
+
+Escape should bring up the pause menu with options to exit to main menu, skip track, mute music, and show options for Frame Rate Cap, Max particle allowance (maybe?), and a full list of controls.
+
+P should pause the Physics simulation but still allow the game to continue running the rest of the system in the background.
+
+The Selected Mass and Radius of the LMB + RMB sequences should be defined by the sliders on the screen.
+
+The simulation speed (independent of the Physics timestep) should be controlled by an additional SIM SPEED sliders
+
+
+Control sequence might go something like this
+
+Always track mouse position. If scolling, zoom out/in
+
+Check for Pause menu Events first. If in pause menu, mouse events and escape key presses are the only things to get checked.
+
+If Enter pressed to toggle Ghost+Place Mode, enter main control loop.
+
+    if mouse click detected, handle mouse input (which will include shift as a modifier key). Shift as modifier will be handled as a flag set in the InputState that turns false immediately when released
+
+    if key pressed, handle key input
+
+else
+    If mouse click detected, ignore since not enabled place mode
+
+    If Key Pressed handle Key input (not including shift as modifier key.)

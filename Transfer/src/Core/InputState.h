@@ -12,6 +12,7 @@ struct InputState
     bool isMouseDragging = false;
     bool isHoldingRightMouseButton = false;
     bool isHoldingLeftMouseButton = false;
+    bool isDraggingMassKnob = false;
     double selectedMass = 0.0;
     double selectedRadius = 0.0;
 

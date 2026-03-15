@@ -8,13 +8,16 @@
 
 // Custom Imports
 #include "Utilities/Colors.h"
-#include "Core/UIState.h"
+#include "Entities/UIElementTypeEnum.h"
 
 // Standard Library Imports
 #include <string>
 
+// Forward declaration - UIState is only used as a parameter, not instantiated
+class UIState;
 
-class UIElement{
+class UIElement
+{
     public:
         UIElement();
         virtual ~UIElement();
@@ -24,6 +27,8 @@ class UIElement{
             // Default implementation (can be empty)
             return;
         }; // will be overloaded by derived classes
+
+        virtual void setKnob(SDL_FRect newKnobRect) {}; // Virtual method for setting knob position, overridden in derived classes
 
     public:
         // Getters and Setters

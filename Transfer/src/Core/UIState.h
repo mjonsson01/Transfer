@@ -2,13 +2,18 @@
 
 #pragma once
 
+// SDL3 Imports
+#include <SDL3/SDL.h>
+
 // Custom Imports
 #include "Core/InputState.h"
+#include "Utilities/GameSystemConstants.h"
+#include "Entities/UIElement.h"
+#include "Entities/UIElementTypeEnum.h"
 
 // Standard Library Imports
 #include <vector>
 
-// Forward declaration of UI Element class. Full include leads to circular dependency, causing failures in compilation.
 class UIElement;
 
 class UIState
@@ -23,7 +28,7 @@ class UIState
 
 
         // Add UI state management methods and members here
-        std::vector<UIElement*> getUIElements() const { return UIElements; }
+        const std::vector<UIElement*>& getUIElements() const { return UIElements; }
         
         // Initializing helper.
         void addUIElement(UIElement* uielement) { UIElements.push_back(uielement); }
@@ -39,11 +44,39 @@ class UIState
 
         bool getUIElementsVisible() const { return UIElementsVisible; }
         void invertUIElementsVisibility() { UIElementsVisible = !UIElementsVisible; }
+
+        bool inRect(const SDL_FRect& rect) const {
+            bool inRect = inputState.mouseCurrPosition.xVal >= rect.x &&
+                    inputState.mouseCurrPosition.xVal <= rect.x + rect.w &&
+                    inputState.mouseCurrPosition.yVal >= rect.y &&
+                    inputState.mouseCurrPosition.yVal <= rect.y + rect.h;
+            return inRect;
+        }
+        SDL_FRect getMassKnobRect() const {
+            return massKnobRect;
+        }
+        SDL_FRect getMassElementRect() const {
+            return massElementRect;
+        }
+        void setMassKnobRectPosition(Vector2D position) {
+            // Only update X coordinate, center knob on click position (subtract half knob width)
+            massKnobRect.x = position.xVal - (massKnobRect.w / 2.0f);
+            // Y coordinate stays fixed for horizontal slider
+            if (UIElements.size() > UIElementType::MASS_KNOB_INDEX) {
+                UIElements[UIElementType::MASS_KNOB_INDEX]->setKnob(massKnobRect);
+                std::cout<< "Updated mass knob rect to: " << massKnobRect.x << ", " << massKnobRect.y << ", " << massKnobRect.w << ", " << massKnobRect.h << std::endl;
+            }
+        };
         
     private:
         // FPS counter state
         float fps = 0.0f;
         bool showFPSCounter = false;
+
+        // Rectangle locations for UI element targets.
+        // SDL_FRect massTrackRect;
+        SDL_FRect massElementRect;
+        SDL_FRect massKnobRect;
 
         // Input state for UI interactions
         InputState inputState;

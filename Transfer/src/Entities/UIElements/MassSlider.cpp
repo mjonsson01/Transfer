@@ -7,6 +7,7 @@ MassSlider::MassSlider()
     // Set default position and size for the Mass Slider
     setPosition(50.0f, 3*SCREEN_HEIGHT/4); // top left corner of track rect position, will need to scale based on resolution
     setSize(200.0f, 20.0f);    // Example size, will need to update based on resolution
+    knobRect = {50.0f, 3*SCREEN_HEIGHT/4-10.0f, 20.0f, 40.0f}; 
 }
 
 MassSlider::~MassSlider()
@@ -19,7 +20,7 @@ MassSlider::~MassSlider()
 void MassSlider::renderElement(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont)
 {
     // Get the positions for the trackRect and knobRect
-    getTrackAndKnobPositions();
+    // getTrackAndKnobPositions();
 
     SDL_SetRenderDrawColor(renderer, ColorLibrary::Gray.r, ColorLibrary::Gray.g, ColorLibrary::Gray.b, ColorLibrary::Gray.a);
     SDL_RenderFillRect(renderer, &trackRect);
@@ -28,17 +29,9 @@ void MassSlider::renderElement(SDL_Renderer* renderer, UIState& UIState, TTF_Fon
 }
 
 // --------- UTILITY METHOD FOR POSITIONS --------- //
-void MassSlider::getTrackAndKnobPositions()
-{
-    // Get the track rect positions
-    trackRect.x = getX();
-    trackRect.y = getY();
-    trackRect.w = getWidth();
-    trackRect.h = getHeight();
+// void MassSlider::getTrackAndKnobPositions()
+// {
+//     // Get the track rect positions
 
-    // Get the slider knob positions
-    knobRect.x = getX();
-    knobRect.y = getY()-0.5f*getHeight();
-    knobRect.w = 0.1f * getWidth();
-    knobRect.h = 2.0f*getHeight();
-}
+//     // // Get the slider knob positions
+// }

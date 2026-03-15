@@ -23,10 +23,17 @@ class InputSystem
     public:
         // Main method to process input
         void ProcessSystemInputFrame(GameState& gameState, UIState& UIState);
-
+        
         // Clean up helper
         void CleanUp();
+        
+        private: 
+        // Helper method to handle Keyboard Inputs
+        void handleKeyboardInput(SDL_Event& event, GameState& gameState, UIState& UIState);
+        // Helper method to handle Mouse Inputs
+        void handleMouseInput(SDL_Event& event, GameState& gameState, UIState& UIState);
 
-    private: 
+
+
         // void handleMassSliderInput(SDL_Event& event, UIState& UIState); 
 };
