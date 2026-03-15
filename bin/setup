@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+THIS_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+source "$THIS_DIR/setup-cmake"

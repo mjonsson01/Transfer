@@ -1,0 +1,25 @@
+#!/usr/bin/env sh
+
+CMAKE_HOMEBREW_DEPENDENCY_LIST="sdl3 sdl3_ttf"
+
+which cmake >/dev/null
+if [ $? -ne 0 ]; then
+  printf "\e[4mcmake\e[24m is not installed\n"
+fi
+
+which brew >/dev/null
+if [ $? -eq 0 ]; then
+  brew list cmake >/dev/null
+  if [ $? -ne 0 ]; then
+    brew install cmake
+  fi
+
+  brew list $CMAKE_HOMEBREW_DEPENDENCY_LIST >/dev/null
+  if [ $? -ne 0 ]; then
+    printf "One or more \e[4mcmake\e[24m dependencies are not installed\n"
+    brew install $CMAKE_HOMEBREW_DEPENDENCY_LIST
+  fi
+else
+  printf "Homebrew is not installed —— see \e[4mhttps://brew.sh/\e[24m\n"
+  exit 1
+fi
