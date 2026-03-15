@@ -9,9 +9,9 @@
 // Custom Imports
 #include "Core/GameState.h"
 #include "Core/UIState.h"
-#include "Entities/UIElement.h"
-#include "Entities/UIElements/FPSCounter.h"
-#include "Entities/UIElements/MassSlider.h"
+#include "Entities/UIElements/UIElement.h"
+#include "Entities/UIElements/Overlay/FPSCounter.h"
+#include "Entities/UIElements/Sliders/MassSlider.h"
 
 
 // Standard Library Imports

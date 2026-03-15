@@ -8,7 +8,6 @@
 // Custom Imports
 #include "Core/InputState.h"
 #include "Utilities/GameSystemConstants.h"
-#include "Entities/UIElementTypeEnum.h"
 
 // Standard Library Imports
 #include <vector>
