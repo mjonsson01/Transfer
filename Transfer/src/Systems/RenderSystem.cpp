@@ -59,7 +59,7 @@ void RenderSystem::CleanUp()
 
 // --------- RENDER FULL FRAME METHOD --------- //
 
-void RenderSystem::RenderFullFrame(GameState& state, UIState& UIState)
+void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState)
 {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // black background
     SDL_RenderClear(renderer);
@@ -69,7 +69,7 @@ void RenderSystem::RenderFullFrame(GameState& state, UIState& UIState)
     renderStars();
 
     // Render all the bodies (particles)
-    RenderSystem::renderBodies(state);
+    RenderSystem::renderBodies(gameState);
 
     RenderSystem::renderUIElements(UIState);
 
@@ -78,11 +78,11 @@ void RenderSystem::RenderFullFrame(GameState& state, UIState& UIState)
 }
 
 // --------- RENDER GRAVITATIONAL BODIES METHOD --------- //
-void RenderSystem::renderBodies(GameState& state)
+void RenderSystem::renderBodies(GameState& gameState)
 {
-    float alpha = state.getAlpha();
+    float alpha = gameState.getAlpha();
     // Render Particles
-    for (auto& particle : state.getParticles()) {
+    for (auto& particle : gameState.getParticles()) {
         SDL_Color color = getColorForMass(particle.mass);
         SDL_Texture* tex = getCircleTexture(static_cast<int>(particle.radius), color);
         Vector2D current_position = particle.position;
@@ -90,7 +90,7 @@ void RenderSystem::renderBodies(GameState& state)
         // Alpha Interpolation causes particle flickers for small particles. Remove for now. Figure out dynamical fix later. 
         // Leave interpolation on for slow mo.
         float render_x, render_y;
-        if (particle.radius <= 1.0 && state.getToggleSlow() == false) {
+        if (particle.radius <= 1.0 && gameState.getToggleSlow() == false) {
             render_x = particle.position.xVal;
             render_y = particle.position.yVal;
             render_x = std::round(render_x);
@@ -112,7 +112,7 @@ void RenderSystem::renderBodies(GameState& state)
     }
 
     // Render Macro Bodies
-    for (auto& body : state.getMacroBodies()) {
+    for (auto& body : gameState.getMacroBodies()) {
         SDL_Color color = getColorForMass(body.mass);
         SDL_Texture* tex = getCircleTexture(static_cast<int>(body.radius), color);
         Vector2D current_position = body.position;
@@ -134,7 +134,7 @@ void RenderSystem::renderBodies(GameState& state)
 
 // --------- RENDER INPUT ARTIFACTS METHOD --------- //
 // Renders user input artifacts like drag lines. TBI
-void RenderSystem::renderInputArtifacts(GameState& state)
+void RenderSystem::renderInputArtifacts(GameState& gameState)
 {
 
 }

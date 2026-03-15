@@ -1,6 +1,6 @@
 // File: Transfer/src/Core/GameState.cpp
 
-#include "Core/Game.h"
+#include "Core/GameState.h"
 
 GameState::GameState()
 {

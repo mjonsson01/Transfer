@@ -36,3 +36,6 @@ intermediary calculated values and local variables should be snake case
 
 
 UI will always be capitalized (because I decided this :D)
+
+
+Probably should make the UIFont something that gets statically loaded in the background too? no reason to pass to the arguments?

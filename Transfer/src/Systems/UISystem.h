@@ -23,27 +23,9 @@ class UISystem
     public:
         UISystem();
         ~UISystem();
+        void CleanUp();
         std::vector<UIElement*>& getUIElements() { return allUIElements;}
     private:
         std::vector<UIElement*> allUIElements;
 
 };
-
-
-
-// class UISystem
-// {
-//     public:
-//         UISystem();
-//         ~UISystem();
-
-//         void ProcessUIFrame(GameState& state, UIState& UIState);
-
-//         void RenderUIElements(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont);
-        
-//         void InitializeUIElements(UIState& UIState);
-        
-//         void DeleteUIElements(UIState& UIState);
-//     private:
-//         // Add UI system members and methods here
-// };

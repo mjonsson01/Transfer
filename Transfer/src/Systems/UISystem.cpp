@@ -14,16 +14,19 @@ UISystem::UISystem()
 UISystem::~UISystem()
 {
     // Clean up any allocated resources here
+    CleanUp();
+
+}
+void UISystem::CleanUp()
+{
     for (auto& element : allUIElements) {
         delete element;
     }
     allUIElements.clear();
-
 }
 
 
-
-// void UISystem::ProcessUIFrame(GameState& state, UIState& UIState)
+// void UISystem::ProcessUIFrame(GameState& gameState, UIState& UIState)
 // {
     
 // }

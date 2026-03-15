@@ -61,7 +61,7 @@ class RenderSystem
 		~RenderSystem(); // make sure to teardown destructor and window
 		
 		// Main Loop Rendering Function, renders engine state and UI state
-		void RenderFullFrame(GameState& state, UIState& UIState);
+		void RenderFullFrame(GameState& gameState, UIState& UIState);
 
 		// Main Cleanup method (tears down all the SDL components)
 		void CleanUp();
@@ -84,13 +84,13 @@ class RenderSystem
 			
 	private:
 		// Subordinate Rendering Functions
-		void renderBodies(GameState& state); // Renders all the gravitational bodies (both Macro and Particle)
+		void renderBodies(GameState& gameState); // Renders all the gravitational bodies (both Macro and Particle)
 
 		// Renders Input Artifacts
-		void renderInputArtifacts(GameState& state);
+		void renderInputArtifacts(GameState& gameState);
 
 		// Renders UI Elements
-		void renderUIElements(UIState& state);
+		void renderUIElements(UIState& UIState);
 
 		// Utility Rendering Helper Functions
 		SDL_Color getColorForMass(double mass);
