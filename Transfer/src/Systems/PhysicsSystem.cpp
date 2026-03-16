@@ -297,10 +297,13 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
                 if (pair.equal)
                 {
                     handleDynamicExplosionCollision(body_a, body_b, gameState);
+                    // substituteWithParticles(*pair.light, gameState);
+                    // substituteWithParticles(*pair.heavy, gameState);
                 }
                 else
                 {
                     substituteWithParticles(*pair.light, gameState);
+                    // handleDynamicExplosionCollision(body_a, body_b, gameState);
                 }
             }
         }
