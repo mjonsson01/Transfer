@@ -2,6 +2,22 @@
 
 #include "Entities/UIElements/Sliders/MassSlider.h"
 
+
+MassSlider::MassSlider()
+    : Slider(Orientation::Horizontal, SDL_FRect{100,300,200,6})
+{
+        minValue = 0.0;
+        maxValue = MAX_MASS;
+        knobRect = SDL_FRect{100, 300-7, 14, 20}; // default knob position and size
+        setVisibility(true);
+        setPosition(trackRect.x, trackRect.y);
+        sliderValue = 0.0;
+        // updateKnobPosition(MAX_MASS/2); WORKS :DDDDD
+}
+
+
+
+
 // MassSlider::MassSlider()
 // {
 //     setPosition(50.0f, 3*SCREEN_HEIGHT/4); //upper left corner of element. Other dimensions determined at the system level, or as global constants?

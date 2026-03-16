@@ -1,4 +1,4 @@
-// File: Transfer/src/Entities/PhysicsStructures.h
+// File: Transfer/src/Entities/MathStructures.h
 
 #pragma once
 

@@ -5,7 +5,7 @@
 
 // Likely change the resolution to be scalable in the future? default 1920x1080 for now. Will be inside the Render system eventually.
 Game::Game()
-	:  gameState(), UIState(), inputSystem(), physicsSystem(), renderSystem(), audioSystem()
+	:  gameState(), UIState(), inputSystem(), physicsSystem(), renderSystem(), audioSystem(), UISystem()
 {
 	// fill in imp here
 }
@@ -23,9 +23,6 @@ void Game::StartGame()
 	// Initialize any other useful gameState variables here.
 	gameState.SetPlaying(true);
 
-	// // Initialize UI elements (like FPS counter and Sliders) and other vars as we go.
-	// renderSystem.getUISystem()->InitializeUIElements(UIState);
-
 
 	// Start the main game loop
 	Game::Run();
@@ -36,7 +33,7 @@ void Game::StartGame()
 // Tears down the 'systems' and cleans up allocated resources.
 void Game::EndGame()
 {
-    // renderSystem.getUISystem()->DeleteUIElements(UIState);
+    
 }
 void Game::Run()
 {	
@@ -116,6 +113,7 @@ void Game::ProcessInput()
 {
 	// Dispatch to Input System
 	inputSystem.ProcessSystemInputFrame(gameState, UIState);
+    UISystem.UpdateUIElements(gameState, UIState);
 }
 
 void Game::UpdatePhysicsFrame()
@@ -127,7 +125,8 @@ void Game::UpdatePhysicsFrame()
 void Game::RenderFrame()
 {
 	// Dispatch to Renderer System -- renders UI as well.
-	renderSystem.RenderFullFrame(gameState, UIState);
+    const std::vector<UIElement*> allUIElements = UISystem.getUIElements();
+	renderSystem.RenderFullFrame(gameState, UIState, allUIElements);
 }
 
 void Game::PlayAudio()

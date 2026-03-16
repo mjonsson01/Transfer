@@ -24,8 +24,9 @@ class UISystem
         UISystem();
         ~UISystem();
         void CleanUp();
-        std::vector<UIElement*>& getUIElements() { return allUIElements;}
+        void UpdateUIElements(GameState& gameState, UIState& UIState);
+        std::vector<UIElement*>& getUIElementsMutable() { return allUIElements;}
+        const std::vector<UIElement*>& getUIElements() const {return allUIElements;}
     private:
         std::vector<UIElement*> allUIElements;
-
 };

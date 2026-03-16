@@ -3,7 +3,7 @@
 #pragma once
 
 // Custom Imports
-#include "Entities/PhysicsStructures.h"
+#include "Entities/MathStructures.h"
 
 // Standard Library Imports
 #include <cstdint>

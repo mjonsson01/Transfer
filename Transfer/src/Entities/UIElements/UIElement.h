@@ -25,13 +25,14 @@ class UIElement
         {
             return;
         }
+        // virtual const char* getTypeName() const { return "UIElement"; }
         void setPosition(float x, float y)
         {
             posX = x;
             posY = y;
         }
-        float getX() {return posX;}
-        float getY() {return posY;}
+        float getX() const {return posX;}
+        float getY() const {return posY;}
         void setVisibility(bool desiredVisibility) { visible = desiredVisibility;}
     private: 
         float posX = 0;

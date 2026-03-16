@@ -52,4 +52,5 @@ class Game
 		PhysicsSystem physicsSystem; // Manages physics calculations and Frame Updates
 		RenderSystem renderSystem;	 // Manages all rendering operations
 		AudioSystem audioSystem;     // Manages all audio operations
+		UISystem UISystem;
 };

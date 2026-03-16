@@ -1,7 +1,7 @@
 // File: Transfer/src/Core/InputState.h
 
 #pragma once
-#include "Entities/PhysicsStructures.h"
+#include "Entities/MathStructures.h"
 
 struct InputState
 {   

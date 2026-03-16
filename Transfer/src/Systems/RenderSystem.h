@@ -18,6 +18,7 @@
 // Custom Imports
 #include "Core/GameState.h"
 #include "Core/UIState.h"
+#include "Entities/UIElements/UIElement.h"
 #include "Utilities/Colors.h"
 #include "Entities/TwinklingStars.h"
 #include "Utilities/EngineConstants.h"
@@ -61,7 +62,7 @@ class RenderSystem
 		~RenderSystem(); // make sure to teardown destructor and window
 		
 		// Main Loop Rendering Function, renders engine state and UI state
-		void RenderFullFrame(GameState& gameState, UIState& UIState);
+		void RenderFullFrame(GameState& gameState, UIState& UIState, const std::vector<UIElement*>& allUIElements);
 
 		// Main Cleanup method (tears down all the SDL components)
 		void CleanUp();
@@ -90,7 +91,7 @@ class RenderSystem
 		void renderInputArtifacts(GameState& gameState);
 
 		// Renders UI Elements
-		void renderUIElements(UIState& UIState);
+		void renderUIElements(UIState& UIState, std::vector<UIElement*> allUIElements);
 
 		// Utility Rendering Helper Functions
 		SDL_Color getColorForMass(double mass);
@@ -109,7 +110,5 @@ class RenderSystem
 		void createStarTextures();
 		void updateStars();
 		void renderStars();
-	private:
-		// Managing system for UI overlay
-		UISystem UISystem;
+	
 };

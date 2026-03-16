@@ -7,14 +7,21 @@ UISystem::UISystem()
     : allUIElements()
 {
     // Initialize any UI system state here
-    FPSCounter* fpsCounter = new FPSCounter();
-    allUIElements.push_back(fpsCounter);
+    FPSCounter* fps_counter = new FPSCounter();
+    allUIElements.push_back(fps_counter);
+    MassSlider* mass_slider = new MassSlider();
+    allUIElements.push_back(mass_slider);
 }
 // Destructor
 UISystem::~UISystem()
 {
     // Clean up any allocated resources here
     CleanUp();
+
+}
+
+void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState)
+{
 
 }
 void UISystem::CleanUp()

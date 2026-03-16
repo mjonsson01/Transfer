@@ -9,7 +9,7 @@
 #include "Utilities/GameSystemConstants.h"
 #include "Utilities/CustomMathUtilities.h"
 #include "Entities/GravitationalBody.h"
-#include "Entities/PhysicsStructures.h"
+#include "Entities/MathStructures.h"
 
 // Standard Library Imports
 #include <cmath>

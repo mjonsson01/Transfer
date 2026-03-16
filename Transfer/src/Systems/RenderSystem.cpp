@@ -4,7 +4,6 @@
 
 // Constructor: Initializes SDL Window and Renderer
 RenderSystem::RenderSystem()
-    : UISystem()
 {
     // Add audio later
     SDL_InitSubSystem(SDL_INIT_VIDEO);
@@ -59,7 +58,7 @@ void RenderSystem::CleanUp()
 
 // --------- RENDER FULL FRAME METHOD --------- //
 
-void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState)
+void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState,  const std::vector<UIElement*>& allUIElements)
 {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // black background
     SDL_RenderClear(renderer);
@@ -71,7 +70,7 @@ void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState)
     // Render all the bodies (particles)
     RenderSystem::renderBodies(gameState);
 
-    RenderSystem::renderUIElements(UIState);
+    RenderSystem::renderUIElements(UIState, allUIElements);
 
     // Display the frame
     SDL_RenderPresent(renderer);
@@ -141,13 +140,11 @@ void RenderSystem::renderInputArtifacts(GameState& gameState)
 
 // --------- RENDER UI ELEMENTS METHOD --------- //
 
-void RenderSystem::renderUIElements(UIState& UIState)
+void RenderSystem::renderUIElements(UIState& UIState,  std::vector<UIElement*> allUIElements)
 {
     if (!UIState.getAllVisibility()) return;
 
-    std::vector<UIElement*> all_UI_elements = UISystem.getUIElements();
-
-    for (auto& element : all_UI_elements)
+    for (auto& element : allUIElements)
     {
         element->renderMe(renderer, UIState, UIFont);
     }
