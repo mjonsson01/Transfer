@@ -1,6 +1,8 @@
 // File: Transfer/src/Core/Game.cpp
 
 #include "Core/Game.h"
+#include "Utilities/SystemPathUtility.h"
+#include <iostream>
 
 
 // Likely change the resolution to be scalable in the future? default 1920x1080 for now. Will be inside the Render system eventually.
@@ -23,7 +25,6 @@ void Game::StartGame()
 	// Initialize any other useful gameState variables here.
 	gameState.SetPlaying(true);
 
-
 	// Start the main game loop
 	Game::Run();
     
@@ -33,7 +34,12 @@ void Game::StartGame()
 // Tears down the 'systems' and cleans up allocated resources.
 void Game::EndGame()
 {
-    
+    inputSystem.CleanUp();
+    audioSystem.CleanUp();
+    physicsSystem.CleanUp();
+    UISystem.CleanUp();
+    renderSystem.CleanUp();
+
 }
 void Game::Run()
 {	
@@ -63,10 +69,11 @@ void Game::Run()
 
 	while (gameState.IsPlaying()){
 
-        // Play Audio
-        Game::PlayAudio();
 		// Poll for SDL Events and Process Input
 		Game::ProcessInput();
+        if (!gameState.IsPlaying()) break; // stop immediately
+        // Play Audio
+        Game::PlayAudio();
 
         if (SDL_GetTicks() - last_slowdown_print_time > slowdown_print_timer)
         {
@@ -131,10 +138,7 @@ void Game::RenderFrame()
 
 void Game::PlayAudio()
 {
-    if (gameState.getPlayMusic())
-    {
-        audioSystem.ProcessSystemAudioFrame(gameState, UIState);
-    }
+    audioSystem.ProcessSystemAudioFrame(gameState, UIState);
 }
 // --------- UTILITY METHODS FOR FPS --------- //
 

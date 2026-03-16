@@ -2,18 +2,9 @@
 
 #pragma once
 
-// Standard Library Imports
-#include <string>
-#include <iostream>
-#include <unordered_map>
-#include <random>
-#include <numeric>
-#include <algorithm>
-#include <cmath>
-
 // SDL3 Imports
-#include "SDL3/SDL.h"
-#include "SDL3_ttf/SDL_ttf.h"
+#include <SDL3/SDL.h>
+#include <SDL3_ttf/SDL_ttf.h>
 
 // Custom Imports
 #include "Core/GameState.h"
@@ -23,7 +14,16 @@
 #include "Entities/TwinklingStars.h"
 #include "Utilities/EngineConstants.h"
 #include "Utilities/GameSystemConstants.h"
-#include "Systems/UISystem.h"
+#include "Utilities/SystemPathUtility.h"
+
+// Standard Library Imports
+#include <string>
+#include <iostream>
+#include <unordered_map>
+#include <random>
+#include <numeric>
+#include <algorithm>
+#include <cmath>
 
 // Circle (Gravitational body) texture cache.
 struct CircleKey {

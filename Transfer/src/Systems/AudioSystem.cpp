@@ -13,47 +13,46 @@ AudioSystem::AudioSystem()
     {
         SDL_Log("Failed to open audio device: %s", SDL_GetError());
     }
-    AddAllMusicToPlaylist("Transfer/Assets/Music");
+    AddAllMusicToPlaylist(Utilities::GetResourcePath("Music"));
     SDL_PauseAudioDevice(device);
 }
 
 
 AudioSystem::~AudioSystem()
 {   
-    CleanUp();
-    stream = nullptr;
-    device = 0;
-    wavBuffer = nullptr;
-    wavLength = 0;
+    
 }
 
 void AudioSystem::CleanUp()
 {
+    if (device) SDL_PauseAudioDevice(device); 
     if (stream)
     {
         SDL_DestroyAudioStream(stream);
-        stream = nullptr;
     }
-
+    SDL_Delay(10);
     if (device)
     {
         SDL_CloseAudioDevice(device);
-        device = 0;
     }
 
     if (wavBuffer)
     {
         SDL_free(wavBuffer);
-        wavBuffer = nullptr;
     }
-
+    stream = nullptr;
+    device = 0;
+    wavBuffer = nullptr;
+    wavLength = 0;
     SDL_QuitSubSystem(SDL_INIT_AUDIO);
 }
 
 
 void AudioSystem::ProcessSystemAudioFrame(GameState& gameState, UIState& UIState)
 {
+    if (gameState.getIsShuttingDownAudioSystem()) return;
     if (!device) return;
+
     if (gameState.getPlayMusic())
     {
         if (!isQueued)
@@ -63,18 +62,24 @@ void AudioSystem::ProcessSystemAudioFrame(GameState& gameState, UIState& UIState
                 std::string nextTrack = musicPlaylist.front();
                 musicPlaylist.pop();
                 musicPlaylist.emplace(nextTrack);
+
+                // Always try to load the next track
                 if (LoadTrack(nextTrack))
                 {
-                    SDL_PutAudioStreamData(stream, wavBuffer, wavLength);
-                    SDL_FlushAudioStream(stream);
-                    isQueued = true;
-                    SDL_ResumeAudioDevice(device);
+                    if (wavBuffer && wavLength > 0 && stream)
+                    {
+                        SDL_PutAudioStreamData(stream, wavBuffer, wavLength);
+                        SDL_FlushAudioStream(stream);
+                        isQueued = true;
+                        SDL_ResumeAudioDevice(device);
+                    }
                 }
             }
         }
-        else 
+        else
         {
-            if (SDL_GetAudioStreamAvailable(stream) == 0)
+            // If the current track finished
+            if (stream && SDL_GetAudioStreamAvailable(stream) == 0)
             {
                 isQueued = false;
             }
@@ -82,7 +87,8 @@ void AudioSystem::ProcessSystemAudioFrame(GameState& gameState, UIState& UIState
     }
     else
     {
-        SDL_ClearAudioStream(stream);
+        // Pause music
+        if (stream) SDL_ClearAudioStream(stream);
         SDL_PauseAudioDevice(device);
         isQueued = false;
     }
@@ -90,7 +96,7 @@ void AudioSystem::ProcessSystemAudioFrame(GameState& gameState, UIState& UIState
 
 bool AudioSystem::LoadTrack(const std::string& musicFilePath)
 {
-    // Free previous buffer if it exists
+    // Free previous buffer
     if (wavBuffer)
     {
         SDL_free(wavBuffer);
@@ -104,16 +110,41 @@ bool AudioSystem::LoadTrack(const std::string& musicFilePath)
         return false;
     }
 
-    // Recreate stream to match new wavSpec
+    // Destroy old stream safely
     if (stream)
+    {
         SDL_DestroyAudioStream(stream);
         stream = nullptr;
+    }
 
     stream = SDL_CreateAudioStream(&wavSpec, &wavSpec);
-    SDL_BindAudioStream(device, stream);
+    if (!stream)
+    {
+        SDL_Log("Failed to create audio stream: %s", SDL_GetError());
+        SDL_free(wavBuffer);
+        wavBuffer = nullptr;
+        wavLength = 0;
+        return false;
+    }
+
+    if (device)
+    {
+        SDL_BindAudioStream(device, stream);
+    }
+    else
+    {
+        SDL_Log("Audio device invalid!");
+        SDL_DestroyAudioStream(stream);
+        stream = nullptr;
+        SDL_free(wavBuffer);
+        wavBuffer = nullptr;
+        wavLength = 0;
+        return false;
+    }
 
     return true;
 }
+
 
 void AudioSystem::AddAllMusicToPlaylist(const std::string& folderPath)
 {

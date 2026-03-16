@@ -16,7 +16,6 @@ UISystem::UISystem()
 UISystem::~UISystem()
 {
     // Clean up any allocated resources here
-    CleanUp();
 
 }
 

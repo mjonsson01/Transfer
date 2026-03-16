@@ -10,8 +10,7 @@ InputSystem::InputSystem()
 
 InputSystem::~InputSystem()
 {
-    // Cleanup if necessary
-    CleanUp();
+
 }
 
 
@@ -31,6 +30,7 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState
             // Handle different event types here
             case SDL_EVENT_QUIT:
                 gameState.SetPlaying(false);
+                gameState.setIsShuttingDownAudioSystem(true);
                 break;
             case SDL_EVENT_MOUSE_MOTION:
             {
@@ -107,6 +107,7 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState
                 else if (event.key.scancode == SDL_SCANCODE_0)
                 {
                     gameState.invertPlayMusic();
+                    // std::cout<<"0 hit"<<std::endl;
                 }
                 // else if (event.key.scancode == SDL_SCANCODE_MINUS)
                 // {

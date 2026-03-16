@@ -22,8 +22,7 @@ RenderSystem::RenderSystem()
         SDL_Log("Failed to initialize SDL_ttf: %s", SDL_GetError());
         return;
     }
-    const char* basePath = SDL_GetBasePath(); // returns the folder where the executable lives
-    std::string fontPath = std::string(basePath) + "Assets/Fonts/SpaceMono-Bold.ttf";
+    std::string fontPath = Utilities::GetResourcePath("Fonts/SpaceMono-Regular.ttf");
 
     UIFont = TTF_OpenFont(fontPath.c_str(), 18);
     if (!UIFont) {
@@ -37,7 +36,13 @@ RenderSystem::RenderSystem()
 // Destructor: Cleans up SDL Window and Renderer
 RenderSystem::~RenderSystem()
 {
-    CleanUp();
+    // TTF_Quit() and SDL_QUIT() handled at the Game level
+}
+
+// --------- CLEANUP METHOD --------- //
+void RenderSystem::CleanUp()
+{
+    clearCachedCircleTextures();
     if (renderer) {
         SDL_DestroyRenderer(renderer);
         renderer = nullptr;
@@ -46,13 +51,6 @@ RenderSystem::~RenderSystem()
         SDL_DestroyWindow(window);
         window = nullptr;
     }
-    // TTF_Quit() and SDL_QUIT() handled at the Game level
-}
-
-// --------- CLEANUP METHOD --------- //
-void RenderSystem::CleanUp()
-{
-    clearCachedCircleTextures();
 }
 
 
@@ -150,15 +148,6 @@ void RenderSystem::renderUIElements(UIState& UIState,  std::vector<UIElement*> a
     }
 }
 
-// void UISystem::RenderUIElements(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont)
-// {
-//     std::vector<UIElement*> ui_elements = UIState.getUIElements();
-//     if (!UIState.getUIElementsVisible()) return; // Skip rendering if UI elements are hidden
-    
-//     for (auto& element : ui_elements) {
-//         element->renderElement(renderer, UIState, UIFont); // Pass UIFont if needed
-//     }
-// }
 
 // Smooth interpolation color lookup function
 

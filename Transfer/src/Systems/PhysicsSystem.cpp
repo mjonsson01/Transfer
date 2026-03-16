@@ -9,7 +9,7 @@ PhysicsSystem::PhysicsSystem()
 
 PhysicsSystem::~PhysicsSystem()
 {
-    CleanUp();
+    
 }
 
 // --------- ANONYMOUS NAMESPACE HELPER STRUCTS --------- //
