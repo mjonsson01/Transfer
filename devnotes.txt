@@ -39,3 +39,8 @@ UI will always be capitalized (because I decided this :D)
 
 
 Probably should make the UIFont something that gets statically loaded in the background too? no reason to pass to the arguments?
+
+
+User Input -> InputSystem -> UIState(inputState on inside) -> UISystem (update all elements) -> UIElement(mass slider, calculate new positions, and actual mass value) -> pass mass Value to UIState -> render at end?
+
+Flow for ui interactions
