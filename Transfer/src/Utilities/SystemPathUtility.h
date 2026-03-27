@@ -21,7 +21,6 @@ inline std::string GetBasePath()
 inline std::string GetResourcePath(const std::string& relativePath)
 {
     std::string base = GetBasePath();
-    std::cout<<base<<std::endl;
     #ifdef __APPLE__
         // If we're inside a .app bundle, base will end with Contents/Resources/
         if (base.find("Contents/Resources/") != std::string::npos)
@@ -36,6 +35,7 @@ inline std::string GetResourcePath(const std::string& relativePath)
         }
     #else
         // Windows/Linux: relative to exe folder need to implement.
+        return base + "Resources/" + relativePath;
 #endif
 }
 

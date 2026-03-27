@@ -2,12 +2,15 @@
 set -eEuo pipefail
 
 BUILD_DIR="build"
-
 trap 'echo "Build failed at line $LINENO: $BASH_COMMAND" >&2' ERR
 
+# --- Normalize input to lowercase ---
+ARG="${1:-}"
+ARG_LOWER=$(echo "$ARG" | tr '[:upper:]' '[:lower:]')
+
 # --- Determine build type ---
-BUILD_TYPE="Debug"  # default build type
-case "${1:-}" in
+BUILD_TYPE="Debug"  # default
+case "$ARG_LOWER" in
     debug) BUILD_TYPE="Debug" ;;
     release) BUILD_TYPE="Release" ;;
     clean)
