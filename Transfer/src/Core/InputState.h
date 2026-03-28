@@ -1,24 +1,33 @@
 // File: Transfer/src/Core/InputState.h
 
 #pragma once
+
 #include "Entities/MathStructures.h"
+
 
 struct InputState
 {   
-    // Persistent Flags
-    Vector2D mouseCurrPosition = {0.0, 0.0};
+    // Persistent flags and details
+    Vector2D mouseCurrPosition = {0.0, 0.0}; // set by from event input router
     Vector2D mouseDragStartPosition = {0.0, 0.0};
-    Vector2D mouseDragEndPosition = {0.0, 0.0};
-    bool isMouseDragging = false;
-    bool isHoldingRightMouseButton = false;
-    bool isHoldingLeftMouseButton = false;
-    bool isDraggingMassKnob = false;
-    double selectedMass = 0.0;
-    double selectedRadius = 0.0;
 
+    // Physics locations if instantiateDirty gets thrown. If the event is not consumed by a UI event, then instantiate dirty will be set by the UIState.
+    Vector2D instantiatePosition = {0.0, 0.0}; // derived from event input router, set by UISystem if determined that click event did not interact with a UI element.
+    Vector2D instantiateDragStartPosition = {0.0, 0.0}; // only possible in game or level editor, derived from transfer inputs / editor inputs and set in the Input System
+
+
+    bool isDragging = false; // set in Input System
+    bool isHoldingRightMouseButton = false; // set by transfer inputs
+    bool isHoldingMiddleMouseButton = false; // set by transfer inputs
+    bool isHoldingLeftMouseButton = false; // set by tranfer inputs
+
+    double selectedMass = 0.0; // spit back up from UI element to UISystem to UIState
+    double selectedRadius = 0.0; // spit back up from UI element to UISystem to UIState
+
+    bool UIInputConsumed = false; // Does not get reset as a transient flag
     
     // Transient Flags reset at end of processing an event
-    bool dirty = false;             // Flag for body instantiation/rendering required
+    bool instantiateDirty = false;             // Flag for body instantiation/rendering required. If dirty is set to true, instantiate at the instantiate position then flip back to false.
 
     // Creation type flags
     bool isCreatingMacro = false;    
@@ -40,8 +49,6 @@ struct InputState
     bool isCreatingAccretable = false;  
     bool isCreatingCollidable = false;  
 
-    double spawnAccumulator = 0.0;  // To track time elapsed between last spawn.
-
     
     // Managed by player input
     bool clearAll = false; // Toggled when screen wipe is requested
@@ -50,7 +57,7 @@ struct InputState
 
     InputState& resetTransientFlags()
     {
-        dirty = false;             // Flag for body instantiation/rendering required
+        instantiateDirty = false;             // Flag for body instantiation/rendering required
 
         // Creation type flags
         isCreatingMacro = false;    
@@ -72,7 +79,6 @@ struct InputState
         isCreatingAccretable = false;  
         isCreatingCollidable = false;  
 
-        double spawnAccumulator = 0.0;  // To track time elapsed between last spawn.
         return *this;
     }
     

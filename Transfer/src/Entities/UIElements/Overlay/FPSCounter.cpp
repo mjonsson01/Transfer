@@ -6,6 +6,7 @@ FPSCounter::FPSCounter()
 {
     setPosition(10.0f,10.0f);
     setVisibility(true);
+    UIElementTypeIdentifier = UIElementType::FPS_COUNTER_INDEX;
 }
 
 void FPSCounter::renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont)
@@ -27,6 +28,13 @@ void FPSCounter::renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UI
     float width = static_cast<float>(text_surface->w);
     float height = static_cast<float>(text_surface->h);
     SDL_FRect dst_rect = {getX(), getY(), width, height};
+    hotZoneRect = dst_rect;
+
+    if (UIState.getRenderDebug()){
+        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 60); // lighter alpha
+        SDL_RenderFillRect(renderer, &hotZoneRect);
+    }
     SDL_RenderTexture(renderer, text_texture, nullptr, &dst_rect);
     SDL_DestroySurface(text_surface);
     SDL_DestroyTexture(text_texture);

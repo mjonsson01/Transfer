@@ -9,6 +9,7 @@
 // Custom Imports
 #include "Core/GameState.h"
 #include "Core/UIState.h"
+#include "Core/InputState.h"
 #include "Entities/UIElements/UIElement.h"
 #include "Entities/UIElements/Overlay/FPSCounter.h"
 #include "Entities/UIElements/Sliders/MassSlider.h"
@@ -27,6 +28,9 @@ class UISystem
         void UpdateUIElements(GameState& gameState, UIState& UIState);
         std::vector<UIElement*>& getUIElementsMutable() { return allUIElements;}
         const std::vector<UIElement*>& getUIElements() const {return allUIElements;}
+        UIElementType isPositionInUIElementHotZone(InputState& inputsReceived);
+        void updateSpecificElementAndPropagateUpwards(UIElementType elementToUpdate, InputState& inputState);
     private:
         std::vector<UIElement*> allUIElements;
+        UIElementType activeElement = UIElementType::NONE;
 };

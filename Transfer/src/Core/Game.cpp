@@ -25,6 +25,12 @@ void Game::StartGame()
 	// Initialize any other useful gameState variables here.
 	gameState.SetPlaying(true);
 
+    // Default to starting in the level scene since other scenes are not implemented yet.
+
+    // NEED TO FIX. THIS WILL BE ADJUSTED IN UPDATES TO SCENE MANAGEMENT TBI
+    UIState.setLevelScene(true);
+    UIState.setRenderDebug(true); // default to true for now to help with development
+
 	// Start the main game loop
 	Game::Run();
     
@@ -78,6 +84,7 @@ void Game::Run()
         if (SDL_GetTicks() - last_slowdown_print_time > slowdown_print_timer)
         {
             // Add slowed down print statements here
+            // std::cout<<"number of particles"<<gameState.getParticles().size()<<std::endl;
         }
 
 		// Timekeeping
@@ -120,6 +127,7 @@ void Game::ProcessInput()
 {
 	// Dispatch to Input System
 	inputSystem.ProcessSystemInputFrame(gameState, UIState);
+    // std::cout<<"instantiate dirty: "<<UIState.getMutableInputState().instantiateDirty<<std::endl;
     UISystem.UpdateUIElements(gameState, UIState);
 }
 

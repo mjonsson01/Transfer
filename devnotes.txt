@@ -43,4 +43,18 @@ Probably should make the UIFont something that gets statically loaded in the bac
 
 User Input -> InputSystem -> UIState(inputState on inside) -> UISystem (update all elements) -> UIElement(mass slider, calculate new positions, and actual mass value) -> pass mass Value to UIState -> render at end?
 
-Flow for ui interactions
+
+
+
+
+NEED TO FIX THE MOUSE BUTTON HOLDING BUG RECAPTURING THE UI ELEMENT
+
+Also need to add easy ui scaling?
+Need to add radius slider
+Need to fix mouse cursor centering of grabbing the slider
+need to replace physics spawn time accumulator DTs with the true physics dt.
+
+
+really need to add initial velocity vector instantiation
+
+also add black hole class soon :D

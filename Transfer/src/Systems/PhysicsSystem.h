@@ -20,6 +20,28 @@
 #include <iostream>
 
 
+struct SpawnLimiter
+{
+    double accumulator = 0.0;
+    double delay = 0.15; // 
+
+    bool canSpawn(double deltaTime)
+    {
+        accumulator += deltaTime;
+
+        if (accumulator >= delay)
+        {
+            accumulator -= delay;
+            return true;
+        }
+        return false;
+    }
+
+    void reset()
+    {
+        accumulator = 0.0;
+    }
+};
 
 class PhysicsSystem
 {
@@ -66,4 +88,8 @@ class PhysicsSystem
         // Cleanup Functions
         void cleanupParticles(GameState& gameState);   // Clears any Particles from the screen flagged as marked for deletion
         void cleanupMacroBodies(GameState& gameState); // Clears any Macro Bodies from the screen flagged as marked for deletion
+    private:
+        SpawnLimiter macroLimiter;
+        SpawnLimiter particleLimiter;
+        SpawnLimiter clusterLimiter;
 };

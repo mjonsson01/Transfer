@@ -20,9 +20,37 @@ UISystem::~UISystem()
 }
 
 void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState)
-{
+{   
+    // std::cout<<"UISystem active element: "<<activeElement<<std::endl;
+    InputState& inputsReceived = UIState.getMutableInputState();
+    // Left mouse button click is the only one UI cares about
+    if (!inputsReceived.isHoldingLeftMouseButton)
+    {
+        activeElement = UIElementType::NONE;
+        return;
+    }
+    
+    // If nothing is active yet, try to acquire one
+    if (activeElement == UIElementType::NONE)
+    {
+        activeElement = isPositionInUIElementHotZone(inputsReceived);
+    }
+     // If we have an active UI element → ALWAYS route input to it
+    if (activeElement != UIElementType::NONE &&
+        activeElement != UIElementType::FPS_COUNTER_INDEX)
+    {
+        updateSpecificElementAndPropagateUpwards(activeElement, inputsReceived);
+        inputsReceived.UIInputConsumed = true;
+        inputsReceived.instantiateDirty = false;
+        return;
+    }
 
+    // Otherwise → pass to world
+    inputsReceived.instantiateDirty = true;
+    inputsReceived.instantiatePosition = inputsReceived.mouseCurrPosition;
+    inputsReceived.instantiateDragStartPosition = inputsReceived.mouseDragStartPosition;
 }
+
 void UISystem::CleanUp()
 {
     for (auto& element : allUIElements) {
@@ -31,6 +59,38 @@ void UISystem::CleanUp()
     allUIElements.clear();
 }
 
+void UISystem::updateSpecificElementAndPropagateUpwards(UIElementType elementTypeToUpdate, InputState& inputState)
+{
+    UIElement* elementToUpdate = allUIElements[elementTypeToUpdate];
+
+    // this could be further abstracted into passing the full input state so that the UIelement decides what it updates, but I want to make the ui element as stupid as possible
+    if (elementTypeToUpdate == UIElementType::MASS_KNOB_INDEX)
+    {
+        double massVal = 0.0;
+        elementToUpdate->updateMe(inputState.mouseCurrPosition, massVal);
+        inputState.selectedMass = massVal;
+    }
+    // if (elementTypeToUpdate == UIElementType::RADIUS_SLIDER_INDEX)
+    // {
+    // }
+    
+    
+}
+
+UIElementType UISystem::isPositionInUIElementHotZone(InputState& inputsReceived)
+{
+    UIElementType hotzoneType = UIElementType::NONE; // default result
+    Vector2D curr_pos = inputsReceived.mouseCurrPosition;
+    for (auto& element : allUIElements)
+    {
+        hotzoneType = element->isInDeadZone(curr_pos);
+        if (hotzoneType != UIElementType::NONE)
+        {
+            break; // stop at the first hit
+        }
+    }
+    return hotzoneType; // single return
+}
 
 // void UISystem::ProcessUIFrame(GameState& gameState, UIState& UIState)
 // {

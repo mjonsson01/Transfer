@@ -10,8 +10,12 @@
 #include "Core/GameState.h"
 #include "Utilities/GameSystemConstants.h"
 #include "Utilities/EngineConstants.h"
+#include "Utilities/TransferInputs.h"
 
 // Standard Library Imports
+#include <iostream>
+
+// struct LevelEditorInputs. TBI
 
 class InputSystem
 {
@@ -27,13 +31,9 @@ class InputSystem
         // Clean up helper
         void CleanUp();
         
-        private: 
-        // Helper method to handle Keyboard Inputs
-        // void handleKeyboardInput(SDL_Event& event, GameState& gameState, UIState& UIState);
-        // Helper method to handle Mouse Inputs
-        // void handleMouseInput(SDL_Event& event, GameState& gameState, UIState& UIState);
+    private: 
 
-
-
-        // void handleMassSliderInput(SDL_Event& event, UIState& UIState); 
+        void routeSDL_EventInputInGame(SDL_Event* event);
+        void translateAndPassTransferInputsOff(UIState& UIState);
+        TransferInputs transferInputs; // in game inputs
 };

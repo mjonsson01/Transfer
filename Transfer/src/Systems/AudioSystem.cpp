@@ -164,7 +164,7 @@ void AudioSystem::AddAllMusicToPlaylist(const std::string& folderPath)
             if (entry.path().extension() == ".wav")
             {
                 musicPlaylist.push(path);
-                SDL_Log("Added to playlist: %s", path.c_str());
+                // SDL_Log("Added to playlist: %s", path.c_str());
             }
         }
     }

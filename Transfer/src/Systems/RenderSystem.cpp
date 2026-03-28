@@ -140,7 +140,7 @@ void RenderSystem::renderInputArtifacts(GameState& gameState)
 
 void RenderSystem::renderUIElements(UIState& UIState,  std::vector<UIElement*> allUIElements)
 {
-    if (!UIState.getAllVisibility()) return;
+    if (!UIState.getAllUIVisibility()) return;
 
     for (auto& element : allUIElements)
     {
@@ -152,17 +152,49 @@ void RenderSystem::renderUIElements(UIState& UIState,  std::vector<UIElement*> a
 // Smooth interpolation color lookup function
 
 // --------- RENDER UTILITY HELPERS --------- //
+// SDL_Color RenderSystem::getColorForMass(double mass)
+// {
+//     // Simple mapping: lighter masses are blue, heavier masses are red
+//     Uint8 r = static_cast<Uint8>(std::min((mass / MAX_MASS) * 255, 255.0)); // assuming max mass of 1e25 for scaling
+//     Uint8 g = 0;
+//     Uint8 b = static_cast<Uint8>(255 - r);
+//     Uint8 a = 255; // fully opaque
+//     // if (mass >= MAX_MASS-1000.0) return ColorLibrary::Black;
+//     // if (mass <= MAX_MASS/10000.0) return ColorLibrary::White;
+    
+//     return SDL_Color{ r, g, b, a };
+// }
+
 SDL_Color RenderSystem::getColorForMass(double mass)
 {
-    // Simple mapping: lighter masses are blue, heavier masses are red
-    Uint8 r = static_cast<Uint8>(std::min((mass / MAX_MASS) * 255, 255.0)); // assuming max mass of 1e25 for scaling
-    Uint8 g = 0;
-    Uint8 b = static_cast<Uint8>(255 - r);
-    Uint8 a = 255; // fully opaque
-    // if (mass >= MAX_MASS-1000.0) return ColorLibrary::Black;
-    // if (mass <= MAX_MASS/10000.0) return ColorLibrary::White;
-    
-    return SDL_Color{ r, g, b, a };
+    // 1. Use Logarithmic scaling so small changes in light bodies are visible
+    // mass + 1.0 avoids log(0)
+    double logMass = std::log10(mass + 1.0);
+    double logMax = std::log10(MAX_MASS + 1.0);
+    double t = std::clamp(logMass / logMax, 0.0, 1.0);
+
+    // 2. Multi-stop gradient (Blue -> Cyan -> Green -> Yellow -> Red)
+    Uint8 r, g, b;
+
+    if (t < 0.25) { // Blue to Cyan
+        r = 0;
+        g = static_cast<Uint8>(t * 4.0 * 255);
+        b = 255;
+    } else if (t < 0.5) { // Cyan to Green
+        r = 0;
+        g = 255;
+        b = static_cast<Uint8>((0.5 - t) * 4.0 * 255);
+    } else if (t < 0.75) { // Green to Yellow
+        r = static_cast<Uint8>((t - 0.5) * 4.0 * 255);
+        g = 255;
+        b = 0;
+    } else { // Yellow to Red
+        r = 255;
+        g = static_cast<Uint8>((1.0 - t) * 4.0 * 255);
+        b = 0;
+    }
+
+    return SDL_Color{ r, g, b, 255 };
 }
 
 // Paired below

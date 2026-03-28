@@ -8,6 +8,7 @@
 
 // Custom Imports
 #include "Entities/UIElements/UIElement.h"
+#include "Entities/UIElements/UIElementTypeEnum.h"
 #include "Core/UIState.h"
 #include "Utilities/Colors.h"
 

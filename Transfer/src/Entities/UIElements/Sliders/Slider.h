@@ -8,6 +8,7 @@
 
 // Custom Imports
 #include "Entities/UIElements/UIElement.h"
+#include "Entities/UIElements/UIElementTypeEnum.h"
 #include "Core/UIState.h"
 #include "Entities/MathStructures.h"
 
@@ -23,17 +24,15 @@ enum Orientation
 class Slider : public UIElement
 {
     public:
-        Slider(Orientation orientation, SDL_FRect track);
+        Slider();
         ~Slider() = default;
         void renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) override;
         virtual std::string getDisplayText() const { return std::to_string(sliderValue);}
-        void updateKnobPosition(double desiredValue);
-        // double convertKnobPositionToValue(SDL_FRect knobPosition);
-        Vector2D convertValueToKnobPosition(double valueToConvert) const;
+        void updateMe(Vector2D positionOfEvent, double& returnedElementValue) override;
         double getSliderValue() { return sliderValue;}
     protected:
         Orientation orientation;
-        const SDL_FRect trackRect;
+        SDL_FRect trackRect;
         SDL_FRect knobRect;
         double sliderValue;
         double minValue;
