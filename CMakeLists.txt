@@ -7,12 +7,22 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ----------------------------------
-# Platform-specific SDL setup
+# Collect source files
 # ----------------------------------
-if (WIN32)
-    # --- Windows paths --- NEEDS TO BE UPDATED.
-    set(SDL3_DIR      "${CMAKE_SOURCE_DIR}/../../SDL3")
-    set(SDL3_TTF_DIR  "${CMAKE_SOURCE_DIR}/../../SDL3_TTF")
+file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/Transfer/src/*.cpp"
+    "${CMAKE_SOURCE_DIR}/Transfer/src/*.h"
+)
+
+# ----------------------------------
+# Platform-specific configuration
+# ----------------------------------
+if(WIN32)
+    message(STATUS "Configuring for Windows")
+
+    # SDL paths
+    set(SDL3_DIR "${CMAKE_SOURCE_DIR}/../../SDL3")
+    set(SDL3_TTF_DIR "${CMAKE_SOURCE_DIR}/../../SDL3_TTF")
 
     set(SDL3_INCLUDE_DIRS
         "${SDL3_DIR}/include"
@@ -24,42 +34,46 @@ if (WIN32)
         "${SDL3_TTF_DIR}/lib/x64/SDL3_ttf.lib"
     )
 
-elseif (APPLE)
-    # --- macOS Homebrew installation paths ---
-    message(STATUS "Configuring for macOS (Homebrew SDL3 and SDL3_ttf expected)")
+    # DLLs to copy
+    set(SDL3_DLLS
+        "${SDL3_DIR}/lib/x64/SDL3.dll"
+        "${SDL3_TTF_DIR}/lib/x64/SDL3_ttf.dll"
+    )
+    list(APPEND SRC_FILES "${CMAKE_SOURCE_DIR}/Transfer/Assets/Transfer.rc")
 
-    # Try to find SDL3 and SDL3_ttf automatically
-    # find_package(SDL3 REQUIRED CONFIG)
-    # find_package(SDL3_ttf REQUIRED CONFIG)
+elseif(APPLE)
+    message(STATUS "Configuring for macOS")
 
-    # If not found automatically, you can override manually like:
+    # Find SDL via Homebrew
     set(SDL3_DIR "/opt/homebrew/lib/cmake/SDL3")
     find_package(SDL3 REQUIRED CONFIG)
 
     set(SDL3_TTF_DIR "/opt/homebrew/lib/cmake/SDL3_ttf")
     find_package(SDL3_ttf REQUIRED CONFIG)
-    # Note: Homebrew installs headers and libraries under /opt/homebrew
-    
+
     set(SDL3_LIBS
         SDL3::SDL3
         SDL3_ttf::SDL3_ttf
     )
-else()
-    message(FATAL_ERROR "Unsupported platform. Only Windows and macOS are supported right now.")
+
+    # macOS bundle info
+    set(MACOSX_BUNDLE_ICON_FILE Transfer.icns)
+    set(MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/Transfer/Info.plist")
 endif()
 
 # ----------------------------------
-# Collect source files
+# Executable definition
 # ----------------------------------
-file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
-    "${CMAKE_SOURCE_DIR}/Transfer/src/*.cpp"
-    "${CMAKE_SOURCE_DIR}/Transfer/src/*.h"
-)
-
-# ----------------------------------
-# Executable
-# ----------------------------------
-add_executable(${PROJECT_NAME} ${SRC_FILES})
+if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release")
+    message(STATUS "Building Release as .app bundle")
+    add_executable(${PROJECT_NAME} MACOSX_BUNDLE ${SRC_FILES})
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_ICON_FILE Transfer.icns
+    )
+else()
+    add_executable(${PROJECT_NAME} ${SRC_FILES})
+endif()
 
 # ----------------------------------
 # Include directories
@@ -79,28 +93,63 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 # ----------------------------------
-# Copy DLLs to output directory (Windows only)
+# Post-build steps
 # ----------------------------------
-if (WIN32)
-    foreach(dll IN ITEMS
-        "${SDL3_DIR}/lib/x64/SDL3.dll"
-        "${SDL3_TTF_DIR}/lib/x64/SDL3_ttf.dll"
-    )
+if(WIN32)
+    # Copy DLLs
+    foreach(dll IN LISTS SDL3_DLLS)
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "${dll}" $<TARGET_FILE_DIR:${PROJECT_NAME}>
         )
     endforeach()
+
+    # Copy ICO icon next to executable ONLY
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_SOURCE_DIR}/Transfer/Assets/Visual/Transfer.ico"
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Transfer.ico"
+        COMMENT "Copying app icon (ICO) next to executable for Windows"
+    )
+
+    # Copy other assets
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_SOURCE_DIR}/Transfer/Assets"
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Resources"
+        COMMENT "Copying Resources next to executable"
+    )
+elseif(APPLE)
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        # Copy icon into bundle
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+                "${CMAKE_SOURCE_DIR}/Transfer/Assets/Visual/Transfer.icns"
+                "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/Resources/Transfer.icns"
+            COMMENT "Copying app icon into bundle Resources folder"
+        )
+
+        # Copy all assets into app bundle
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_SOURCE_DIR}/Transfer/Assets"
+                "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/Resources/Assets/"
+            COMMENT "Copying game resources into app bundle"
+        )
+    else()
+        # Debug: simplified asset copy
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_SOURCE_DIR}/Transfer/Assets"
+                "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Resources/Assets/"
+            COMMENT "Copying game resources into Resources/Assets for Debug"
+        )
+    endif()
 endif()
 
-# --- Copy Assets folder next to the executable ---
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_SOURCE_DIR}/Transfer/Assets"
-        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Assets"
-)
-
-# --- Custom targets ---
+# ----------------------------------
+# Custom targets
+# ----------------------------------
 add_custom_target(clean_all
     COMMAND ${CMAKE_COMMAND} -E echo "Cleaning build and binary files ..."
     COMMAND ${CMAKE_COMMAND} -E remove_directory "${CMAKE_BINARY_DIR}"

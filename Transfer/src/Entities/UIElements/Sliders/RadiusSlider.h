@@ -1,0 +1,31 @@
+// File: Transfer/src/Entities/UIElements/Sliders/RadiusSlider.h
+
+#pragma once
+
+// SDL3 Imports
+#include <SDL3/SDL.h>
+#include <SDL3_ttf/SDL_ttf.h>
+
+// Custom Imports
+#include "Entities/UIElements/UIElement.h"
+#include "Entities/UIElements/UIElementTypeEnum.h"
+#include "Entities/UIElements/Sliders/Slider.h"
+#include "Core/UIState.h"
+#include "Entities/MathStructures.h"
+#include "Utilities/EngineConstants.h"
+#include "Utilities/GameSystemConstants.h"
+#include "Utilities/Colors.h"
+
+// Standard Library Imports
+#include <string>
+
+class RadiusSlider : public Slider
+{
+public:
+    RadiusSlider();
+    ~RadiusSlider() = default;
+    std::string getDisplayText() const override
+    {
+        return "Radius: " + std::to_string(sliderValue); // add units?
+    }
+};

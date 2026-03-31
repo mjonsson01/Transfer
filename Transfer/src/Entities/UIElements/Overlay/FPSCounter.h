@@ -1,4 +1,4 @@
-// File: Transfer/src/Entities/FPSCounter.h
+// File: Transfer/src/Entities/UIElements/Overlay/FPSCounter.h
 
 #pragma once
 
@@ -7,7 +7,8 @@
 #include <SDL3_ttf/SDL_ttf.h>
 
 // Custom Imports
-#include "Entities/UIElement.h"
+#include "Entities/UIElements/UIElement.h"
+#include "Entities/UIElements/UIElementTypeEnum.h"
 #include "Core/UIState.h"
 #include "Utilities/Colors.h"
 
@@ -19,8 +20,5 @@ class FPSCounter : public UIElement
     public:
         FPSCounter();
         ~FPSCounter() = default;
-        
-        virtual void renderElement(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) override; // FPS Counter Specialty Render Method
-    
-    private:
+        virtual void renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) override;
 };

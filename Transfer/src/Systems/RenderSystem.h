@@ -2,6 +2,20 @@
 
 #pragma once
 
+// SDL3 Imports
+#include <SDL3/SDL.h>
+#include <SDL3_ttf/SDL_ttf.h>
+
+// Custom Imports
+#include "Core/GameState.h"
+#include "Core/UIState.h"
+#include "Entities/UIElements/UIElement.h"
+#include "Utilities/Colors.h"
+#include "Entities/TwinklingStars.h"
+#include "Utilities/EngineConstants.h"
+#include "Utilities/GameSystemConstants.h"
+#include "Utilities/SystemPathUtility.h"
+
 // Standard Library Imports
 #include <string>
 #include <iostream>
@@ -10,19 +24,6 @@
 #include <numeric>
 #include <algorithm>
 #include <cmath>
-
-// SDL3 Imports
-#include "SDL3/SDL.h"
-#include "SDL3_ttf/SDL_ttf.h"
-
-// Custom Imports
-#include "Core/GameState.h"
-#include "Core/UIState.h"
-#include "Utilities/Colors.h"
-#include "Entities/TwinklingStars.h"
-#include "Utilities/EngineConstants.h"
-#include "Utilities/GameSystemConstants.h"
-#include "Systems/UISystem.h"
 
 // Circle (Gravitational body) texture cache.
 struct CircleKey {
@@ -61,7 +62,7 @@ class RenderSystem
 		~RenderSystem(); // make sure to teardown destructor and window
 		
 		// Main Loop Rendering Function, renders engine state and UI state
-		void RenderFullFrame(GameState& state, UIState& UIState);
+		void RenderFullFrame(GameState& gameState, UIState& UIState, const std::vector<UIElement*>& allUIElements);
 
 		// Main Cleanup method (tears down all the SDL components)
 		void CleanUp();
@@ -69,8 +70,6 @@ class RenderSystem
 		SDL_Renderer* getRenderer() const { return renderer; }
 		TTF_Font* getUIFont() const { return UIFont; }
 
-		// Getter for UI System
-		UISystem* getUISystem() { return &uiSystem; }
 
 	private:
 		//SDL Components
@@ -86,10 +85,13 @@ class RenderSystem
 			
 	private:
 		// Subordinate Rendering Functions
-		void renderBodies(GameState& state); // Renders all the gravitational bodies (both Macro and Particle)
+		void renderBodies(GameState& gameState); // Renders all the gravitational bodies (both Macro and Particle)
 
 		// Renders Input Artifacts
-		void renderInputArtifacts(GameState& state);
+		void renderInputArtifacts(GameState& gameState);
+
+		// Renders UI Elements
+		void renderUIElements(UIState& UIState, std::vector<UIElement*> allUIElements);
 
 		// Utility Rendering Helper Functions
 		SDL_Color getColorForMass(double mass);
@@ -108,7 +110,5 @@ class RenderSystem
 		void createStarTextures();
 		void updateStars();
 		void renderStars();
-	private:
-		// Managing system for UI overlay
-		UISystem uiSystem;
+	
 };

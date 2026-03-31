@@ -1,11 +1,13 @@
 // File: Transfer/src/Core/Game.cpp
 
 #include "Core/Game.h"
+#include "Utilities/SystemPathUtility.h"
+#include <iostream>
 
 
 // Likely change the resolution to be scalable in the future? default 1920x1080 for now. Will be inside the Render system eventually.
 Game::Game()
-	:  gameState(), UIState(), inputSystem(), physicsSystem(), renderSystem(), audioSystem()
+	:  gameState(), UIState(), inputSystem(), physicsSystem(), renderSystem(), audioSystem(), UISystem()
 {
 	// fill in imp here
 }
@@ -23,9 +25,11 @@ void Game::StartGame()
 	// Initialize any other useful gameState variables here.
 	gameState.SetPlaying(true);
 
-	// Initialize UI elements (like FPS counter and Sliders) and other vars as we go.
-	renderSystem.getUISystem()->InitializeUIElements(UIState);
+    // Default to starting in the level scene since other scenes are not implemented yet.
 
+    // NEED TO FIX. THIS WILL BE ADJUSTED IN UPDATES TO SCENE MANAGEMENT TBI
+    UIState.setLevelScene(true);
+    UIState.setRenderDebug(true); // default to true for now to help with development
 
 	// Start the main game loop
 	Game::Run();
@@ -36,7 +40,12 @@ void Game::StartGame()
 // Tears down the 'systems' and cleans up allocated resources.
 void Game::EndGame()
 {
-    renderSystem.getUISystem()->DeleteUIElements(UIState);
+    inputSystem.CleanUp();
+    audioSystem.CleanUp();
+    physicsSystem.CleanUp();
+    UISystem.CleanUp();
+    renderSystem.CleanUp();
+
 }
 void Game::Run()
 {	
@@ -54,28 +63,28 @@ void Game::Run()
 	float fps_time_accumulator = 0.0f;
 
 	// Local FPS variable
-	float current_fps = 0.0f;
+	float current_fps = TARGET_FPS; //initialize to target
 
 	// Frame interpolation alpha (dynamic)
 	float alpha = gameState.getAlpha();
 
     // slowdown cout output pace timer
-    uint32_t slowdown_print_timer = 300; // print every 100 ms
+    uint32_t slowdown_print_timer = 300;
     uint32_t last_slowdown_print_time = SDL_GetTicks();
     
 
 	while (gameState.IsPlaying()){
 
-        // Play Audio
-        Game::PlayAudio();
 		// Poll for SDL Events and Process Input
 		Game::ProcessInput();
+        if (!gameState.IsPlaying()) break; // stop immediately
+        // Play Audio
+        Game::PlayAudio();
 
         if (SDL_GetTicks() - last_slowdown_print_time > slowdown_print_timer)
         {
-            std::cout<< "Current mouse position: " << UIState.getInputState().mouseCurrPosition<<std::endl;
-            std::cout<< "current mass knob position: " << UIState.getMassKnobRect().x << ", " << UIState.getMassKnobRect().y << ", " << UIState.getMassKnobRect().w << ", " << UIState.getMassKnobRect().h << std::endl;
-            last_slowdown_print_time = SDL_GetTicks();
+            // Add slowed down print statements here
+            // std::cout<<"number of particles"<<gameState.getParticles().size()<<std::endl;
         }
 
 		// Timekeeping
@@ -118,6 +127,8 @@ void Game::ProcessInput()
 {
 	// Dispatch to Input System
 	inputSystem.ProcessSystemInputFrame(gameState, UIState);
+    // std::cout<<"instantiate dirty: "<<UIState.getMutableInputState().instantiateDirty<<std::endl;
+    UISystem.UpdateUIElements(gameState, UIState);
 }
 
 void Game::UpdatePhysicsFrame()
@@ -129,15 +140,13 @@ void Game::UpdatePhysicsFrame()
 void Game::RenderFrame()
 {
 	// Dispatch to Renderer System -- renders UI as well.
-	renderSystem.RenderFullFrame(gameState, UIState);
+    const std::vector<UIElement*> allUIElements = UISystem.getUIElements();
+	renderSystem.RenderFullFrame(gameState, UIState, allUIElements);
 }
 
 void Game::PlayAudio()
 {
-    if (gameState.getPlayMusic())
-    {
-        audioSystem.ProcessSystemAudioFrame(gameState, UIState);
-    }
+    audioSystem.ProcessSystemAudioFrame(gameState, UIState);
 }
 // --------- UTILITY METHODS FOR FPS --------- //
 

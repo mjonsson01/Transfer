@@ -22,6 +22,9 @@ class GameState
         bool IsPlaying() const { return isPlaying; }
         void SetPlaying(bool playing) { isPlaying = playing; }
 
+        bool getIsShuttingDownAudioSystem() const {return isShuttingDownAudioSystem;}
+        void setIsShuttingDownAudioSystem(bool shutdown) {isShuttingDownAudioSystem = shutdown;}
+        
         // Getters for Particles with a mutable and nonmutable version to respect System hierarchies
         const std::vector<GravitationalBody>& getParticles() const {return particles;}
         std::vector<GravitationalBody>& getParticlesMutable() {return particles;}
@@ -51,7 +54,7 @@ class GameState
         // State variables
         bool isPlaying = false;
         bool playMusic = false;
-        
+        bool isShuttingDownAudioSystem = false;
 
         // Frame helper vars
         float alpha = 0.0f;

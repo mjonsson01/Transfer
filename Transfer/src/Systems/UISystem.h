@@ -3,28 +3,35 @@
 #pragma once
 
 // SDL3 Imports
-#include "SDL3/SDL.h"
-#include "SDL3_ttf/SDL_ttf.h"
+#include <SDL3/SDL.h>
+#include <SDL3_ttf/SDL_ttf.h>
 
 // Custom Imports
 #include "Core/GameState.h"
 #include "Core/UIState.h"
-#include "Entities/UIElement.h"
+#include "Core/InputState.h"
+#include "Entities/UIElements/UIElement.h"
+#include "Entities/UIElements/Overlay/FPSCounter.h"
+#include "Entities/UIElements/Sliders/MassSlider.h"
+#include "Entities/UIElements/Sliders/RadiusSlider.h"
 
-// Handles Logic of UI Components
+// Standard Library Imports
+#include <vector>
+
+// Owns Logic of UI Components and stores the UIElements while dispatching information to the GameState and UIState
 class UISystem
 {
-    public:
-        UISystem();
-        ~UISystem();
+public:
+    UISystem();
+    ~UISystem();
+    void CleanUp();
+    void UpdateUIElements(GameState &gameState, UIState &UIState);
+    std::vector<UIElement *> &getUIElementsMutable() { return allUIElements; }
+    const std::vector<UIElement *> &getUIElements() const { return allUIElements; }
+    UIElementType isPositionInUIElementHotZone(InputState &inputsReceived);
+    void updateSpecificElementAndPropagateUpwards(UIElementType elementToUpdate, InputState &inputState);
 
-        void ProcessUIFrame(GameState& state, UIState& UIState);
-
-        void RenderUIElements(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont);
-        
-        void InitializeUIElements(UIState& UIState);
-        
-        void DeleteUIElements(UIState& UIState);
-    private:
-        // Add UI system members and methods here
+private:
+    std::vector<UIElement *> allUIElements;
+    UIElementType activeElement = UIElementType::NONE;
 };

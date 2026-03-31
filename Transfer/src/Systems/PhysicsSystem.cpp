@@ -9,7 +9,7 @@ PhysicsSystem::PhysicsSystem()
 
 PhysicsSystem::~PhysicsSystem()
 {
-    CleanUp();
+    
 }
 
 // --------- ANONYMOUS NAMESPACE HELPER STRUCTS --------- //
@@ -90,26 +90,32 @@ void PhysicsSystem::CleanUp()
 
 // --------- BODY INSTANTIATION METHOD --------- //
 
-void PhysicsSystem::updateGravBodyInstantiations(GameState& gameState, UIState& UIState)
+void PhysicsSystem::updateGravBodyInstantiations(GameState& gameState, UIState& UIState )
 {
     InputState& input_state = UIState.getMutableInputState();
-    if (input_state.dirty)
+    if (input_state.instantiateDirty)
     {
-        if (input_state.isCreatingMacro)
+        if (input_state.isCreatingMacro && macroLimiter.canSpawn(1/UIState.getFPS()))
             {
                 createMacroBody(gameState, input_state);
                 input_state.resetTransientFlags();
             }
-        else if (input_state.isCreatingParticle)
+        else if (input_state.isCreatingParticle && particleLimiter.canSpawn(1/UIState.getFPS()))
             {
                 createParticle(gameState, input_state);
                 input_state.resetTransientFlags();
             }
-        else if (input_state.isCreatingParticleCluster)
+        else if (input_state.isCreatingParticleCluster && clusterLimiter.canSpawn(1/UIState.getFPS()))
             {
                 createParticleCluster(gameState, input_state);
                 input_state.resetTransientFlags();
             }
+    }
+    else
+    {
+        macroLimiter.reset();
+        particleLimiter.reset();
+        clusterLimiter.reset();
     }
     // Check if all Gravitational Bodies are supposed to be wiped
     if (input_state.clearAll){
@@ -188,10 +194,11 @@ void PhysicsSystem::integrateForwardsPhase1(GameState& gameState)
     // Phase 1 integrate particles
     for (auto& particle : particles)
     {
-        if (particle.isStatic) continue; // Skip any Static particles
+        if (particle.isStatic || abs(particle.mass) <= EPSILON ) continue; // Skip any Static particles
 
         // Calculate current acceleration (a_t)
         Vector2D current_acceleration = particle.netForce / particle.mass;
+        // check for 0 mass?
 
         // Step 1. Kick 1: Update velocity by half the acceleration over one PHYSICS TIME STEP (dt)
         particle.velocity += current_acceleration * (PHYSICS_TIME_STEP / 2.0);
@@ -207,11 +214,13 @@ void PhysicsSystem::integrateForwardsPhase1(GameState& gameState)
     // Phase 1 integrate macro bodies
     for (auto& body : macro_bodies)
     {
-        if (body.isStatic) continue;
+        if (body.isStatic || abs(body.mass) <= EPSILON) continue;
 
         // Calculate current acceleration (a_t)
+        //
+        // std::cout<<body.mass<<std::endl;
         Vector2D current_acceleration = body.netForce / body.mass;
-
+        // std::cout<<current_acceleration<<std::endl;
         // Step 1. Kick 1: Update velocity by half the acceleration over one PHYSICS TIME STEP (dt)
         body.velocity += current_acceleration * (PHYSICS_TIME_STEP / 2.0);
 
@@ -233,7 +242,7 @@ void PhysicsSystem::integrateForwardsPhase2(GameState& gameState)
     // Phase 2 integrate particles
     for (auto& particle : particles)
     {
-        if (particle.isStatic) continue;
+        if (particle.isStatic || abs(particle.mass) <= EPSILON) continue;
 
         // Calculate new acceleration (a_t + dt) using the newly calculated netForce
         Vector2D new_acceleration = particle.netForce / particle.mass;
@@ -245,7 +254,7 @@ void PhysicsSystem::integrateForwardsPhase2(GameState& gameState)
     // Phase 2 integrate macro bodies
     for (auto& body : macro_bodies)
     {
-        if (body.isStatic) continue;
+        if (body.isStatic || abs(body.mass) <= EPSILON) continue;
 
         // Calculate new acceleration (a_t + dt) using the newly calculated netForce
         Vector2D new_acceleration = body.netForce / body.mass;
@@ -297,10 +306,13 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
                 if (pair.equal)
                 {
                     handleDynamicExplosionCollision(body_a, body_b, gameState);
+                    // substituteWithParticles(*pair.light, gameState);
+                    // substituteWithParticles(*pair.heavy, gameState);
                 }
                 else
                 {
                     substituteWithParticles(*pair.light, gameState);
+                    // handleDynamicExplosionCollision(body_a, body_b, gameState);
                 }
             }
         }
@@ -585,7 +597,7 @@ void PhysicsSystem::createParticle(GameState& gameState, InputState& inputState)
     body.isStatic = inputState.isCreatingStatic;
     inputState.isCreatingDust = false;
     gameState.getParticlesMutable().push_back(body);
-    inputState.dirty = false;
+    inputState.instantiateDirty = false;
 }
 
 void PhysicsSystem::createParticleCluster(GameState& gameState, InputState& inputState)
@@ -635,7 +647,7 @@ void PhysicsSystem::calculateTotalEnergy(GameState& gameState)
             totalEnergy -= GRAVITATIONAL_CONSTANT * bodies[i].mass*bodies[j].mass/denominator;
         }
     }
-    std::cout<<"Total E: "<< totalEnergy << std::endl;
+    // std::cout<<"Total E: "<< totalEnergy << std::endl;
 }
 
 // --------- PARTICLE SUBSTITUTION METHOD --------- //
@@ -739,3 +751,4 @@ void PhysicsSystem::cleanupMacroBodies(GameState& gameState)
     //    This efficiently shrinks the vector to the correct size.
     particles.erase(new_end, particles.end());
 }
+

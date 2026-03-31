@@ -22,8 +22,7 @@ RenderSystem::RenderSystem()
         SDL_Log("Failed to initialize SDL_ttf: %s", SDL_GetError());
         return;
     }
-    const char* basePath = SDL_GetBasePath(); // returns the folder where the executable lives
-    std::string fontPath = std::string(basePath) + "Assets/Fonts/SpaceMono-Bold.ttf";
+    std::string fontPath = Utilities::GetResourcePath("Fonts/SpaceMono-Regular.ttf");
 
     UIFont = TTF_OpenFont(fontPath.c_str(), 18);
     if (!UIFont) {
@@ -37,7 +36,13 @@ RenderSystem::RenderSystem()
 // Destructor: Cleans up SDL Window and Renderer
 RenderSystem::~RenderSystem()
 {
-    CleanUp();
+    // TTF_Quit() and SDL_QUIT() handled at the Game level
+}
+
+// --------- CLEANUP METHOD --------- //
+void RenderSystem::CleanUp()
+{
+    clearCachedCircleTextures();
     if (renderer) {
         SDL_DestroyRenderer(renderer);
         renderer = nullptr;
@@ -46,19 +51,12 @@ RenderSystem::~RenderSystem()
         SDL_DestroyWindow(window);
         window = nullptr;
     }
-    // TTF_Quit() and SDL_QUIT() handled at the Game level
-}
-
-// --------- CLEANUP METHOD --------- //
-void RenderSystem::CleanUp()
-{
-    clearCachedCircleTextures();
 }
 
 
-// --------- TOTAL ENERGY CALCULATION METHOD --------- //
+// --------- RENDER FULL FRAME METHOD --------- //
 
-void RenderSystem::RenderFullFrame(GameState& state, UIState& UIState)
+void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState,  const std::vector<UIElement*>& allUIElements)
 {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // black background
     SDL_RenderClear(renderer);
@@ -68,21 +66,20 @@ void RenderSystem::RenderFullFrame(GameState& state, UIState& UIState)
     renderStars();
 
     // Render all the bodies (particles)
-    RenderSystem::renderBodies(state);
+    RenderSystem::renderBodies(gameState);
 
-    // Render UI Elements
-    uiSystem.RenderUIElements(renderer, UIState, UIFont);
+    RenderSystem::renderUIElements(UIState, allUIElements);
 
     // Display the frame
     SDL_RenderPresent(renderer);
 }
 
 // --------- RENDER GRAVITATIONAL BODIES METHOD --------- //
-void RenderSystem::renderBodies(GameState& state)
+void RenderSystem::renderBodies(GameState& gameState)
 {
-    float alpha = state.getAlpha();
+    float alpha = gameState.getAlpha();
     // Render Particles
-    for (auto& particle : state.getParticles()) {
+    for (auto& particle : gameState.getParticles()) {
         SDL_Color color = getColorForMass(particle.mass);
         SDL_Texture* tex = getCircleTexture(static_cast<int>(particle.radius), color);
         Vector2D current_position = particle.position;
@@ -90,7 +87,7 @@ void RenderSystem::renderBodies(GameState& state)
         // Alpha Interpolation causes particle flickers for small particles. Remove for now. Figure out dynamical fix later. 
         // Leave interpolation on for slow mo.
         float render_x, render_y;
-        if (particle.radius <= 1.0 && state.getToggleSlow() == false) {
+        if (particle.radius <= 1.0 && gameState.getToggleSlow() == false) {
             render_x = particle.position.xVal;
             render_y = particle.position.yVal;
             render_x = std::round(render_x);
@@ -112,7 +109,7 @@ void RenderSystem::renderBodies(GameState& state)
     }
 
     // Render Macro Bodies
-    for (auto& body : state.getMacroBodies()) {
+    for (auto& body : gameState.getMacroBodies()) {
         SDL_Color color = getColorForMass(body.mass);
         SDL_Texture* tex = getCircleTexture(static_cast<int>(body.radius), color);
         Vector2D current_position = body.position;
@@ -134,25 +131,70 @@ void RenderSystem::renderBodies(GameState& state)
 
 // --------- RENDER INPUT ARTIFACTS METHOD --------- //
 // Renders user input artifacts like drag lines. TBI
-void RenderSystem::renderInputArtifacts(GameState& state)
+void RenderSystem::renderInputArtifacts(GameState& gameState)
 {
 
 }
 
+// --------- RENDER UI ELEMENTS METHOD --------- //
+
+void RenderSystem::renderUIElements(UIState& UIState,  std::vector<UIElement*> allUIElements)
+{
+    if (!UIState.getAllUIVisibility()) return;
+
+    for (auto& element : allUIElements)
+    {
+        element->renderMe(renderer, UIState, UIFont);
+    }
+}
+
+
 // Smooth interpolation color lookup function
 
 // --------- RENDER UTILITY HELPERS --------- //
+// SDL_Color RenderSystem::getColorForMass(double mass)
+// {
+//     // Simple mapping: lighter masses are blue, heavier masses are red
+//     Uint8 r = static_cast<Uint8>(std::min((mass / MAX_MASS) * 255, 255.0)); // assuming max mass of 1e25 for scaling
+//     Uint8 g = 0;
+//     Uint8 b = static_cast<Uint8>(255 - r);
+//     Uint8 a = 255; // fully opaque
+//     // if (mass >= MAX_MASS-1000.0) return ColorLibrary::Black;
+//     // if (mass <= MAX_MASS/10000.0) return ColorLibrary::White;
+    
+//     return SDL_Color{ r, g, b, a };
+// }
+
 SDL_Color RenderSystem::getColorForMass(double mass)
 {
-    // Simple mapping: lighter masses are blue, heavier masses are red
-    Uint8 r = static_cast<Uint8>(std::min((mass / MAX_MASS) * 255, 255.0)); // assuming max mass of 1e25 for scaling
-    Uint8 g = 0;
-    Uint8 b = static_cast<Uint8>(255 - r);
-    Uint8 a = 255; // fully opaque
-    // if (mass >= MAX_MASS-1000.0) return ColorLibrary::Black;
-    // if (mass <= MAX_MASS/10000.0) return ColorLibrary::White;
-    
-    return SDL_Color{ r, g, b, a };
+    // 1. Use Logarithmic scaling so small changes in light bodies are visible
+    // mass + 1.0 avoids log(0)
+    double logMass = std::log10(mass + 1.0);
+    double logMax = std::log10(MAX_MASS + 1.0);
+    double t = std::clamp(logMass / logMax, 0.0, 1.0);
+
+    // 2. Multi-stop gradient (Blue -> Cyan -> Green -> Yellow -> Red)
+    Uint8 r, g, b;
+
+    if (t < 0.25) { // Blue to Cyan
+        r = 0;
+        g = static_cast<Uint8>(t * 4.0 * 255);
+        b = 255;
+    } else if (t < 0.5) { // Cyan to Green
+        r = 0;
+        g = 255;
+        b = static_cast<Uint8>((0.5 - t) * 4.0 * 255);
+    } else if (t < 0.75) { // Green to Yellow
+        r = static_cast<Uint8>((t - 0.5) * 4.0 * 255);
+        g = 255;
+        b = 0;
+    } else { // Yellow to Red
+        r = 255;
+        g = static_cast<Uint8>((1.0 - t) * 4.0 * 255);
+        b = 0;
+    }
+
+    return SDL_Color{ r, g, b, 255 };
 }
 
 // Paired below
