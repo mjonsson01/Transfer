@@ -9,12 +9,11 @@ UIElement::UIElement()
 
 UIElement::~UIElement()
 {
-    
 }
 
-UIElementType UIElement::isInDeadZone(const Vector2D& positionToCheck)
+UIElementType UIElement::isInDeadZone(const Vector2D &positionToCheck)
 {
-    SDL_FPoint point = { static_cast<float>(positionToCheck.xVal), static_cast<float>(positionToCheck.yVal) };
+    SDL_FPoint point = {static_cast<float>(positionToCheck.xVal), static_cast<float>(positionToCheck.yVal)};
     UIElementType type_hit = UIElementType::NONE;
     if (SDL_PointInRectFloat(&point, &hotZoneRect))
     {

@@ -1,10 +1,12 @@
 // File: Transfer/src/Utilities/GameSystemConstants.h
 
 #pragma once
+// #ifndef GAME_SYSTEM_CONSTANTS_H
+// #define GAME_SYSTEM_CONSTANTS_H
 
 // FPS target for system
-constexpr int TARGET_FPS = 165;
-// constexpr int TARGET_FPS = 60;
+// constexpr int TARGET_FPS = 165;
+constexpr int TARGET_FPS = 60;
 
 // Target frame delay in ms
 const double FRAME_DELAY_MS = 1000.0 / TARGET_FPS;
@@ -13,16 +15,20 @@ const double FRAME_DELAY_MS = 1000.0 / TARGET_FPS;
 constexpr int FPS_UPDATE_DELTA_MS = 250;
 
 // Time scaling factors to control rendering speed without changing the Physics System behaviors
-const double SLOW_TIME_SCALE_FACTOR = 0.0625; // (1/16)x speed
-const double REGULAR_TIME_SCALE_FACTOR = 1.0f; // 1x speed 
-const double FAST_TIME_SCALE_FACTOR = 2.0f; // 2x speed
+const double SLOW_TIME_SCALE_FACTOR = 0.0625;  // (1/16)x speed
+const double REGULAR_TIME_SCALE_FACTOR = 1.0f; // 1x speed
+const double FAST_TIME_SCALE_FACTOR = 2.0f;    // 2x speed
 
 // Delay between particle formation when holding to spawn
 constexpr int SPAWN_DELAY_MS = 10;
 
 // Vertical and horizontal resolutions
-constexpr int SCREEN_HEIGHT = 1080;
-constexpr int SCREEN_WIDTH = 1920;
+// constexpr int SCREEN_HEIGHT = 1080;
+// constexpr int SCREEN_WIDTH = 1920;
+constexpr int SCREEN_HEIGHT = 720;
+constexpr int SCREEN_WIDTH = 1280;
 
 // Background Star count
 constexpr int STAR_NUM = 200;
+
+// #endif
