@@ -22,9 +22,9 @@ MassSlider::MassSlider()
 
     // Slider range
     maxValue = MAX_MASS;
-    minValue = 0.0;
-    // minValue = -MAX_MASS; // now supports negative values
-    sliderValue = 0.0; // start centered
+    // minValue = 0.0;
+    minValue = -MAX_MASS; // now supports negative values
+    sliderValue = 0.0;    // start centered
 
     // Position knob based on slider value
     knobRect.x = trackRect.x + (sliderValue - minValue) / (maxValue - minValue) * trackRect.w - knobRect.w / 2.0f;

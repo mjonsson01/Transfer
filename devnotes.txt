@@ -58,3 +58,13 @@ need to replace physics spawn time accumulator DTs with the true physics dt.
 really need to add initial velocity vector instantiation
 
 also add black hole class soon :D
+
+
+
+Adding baseline behavior to blow up both macro colliding bodies as long as the heavier is no more than 40% lighter.
+
+
+
+
+Want to rework collision dynamics so that spread doesn't produce that weird crescent shape.
+
