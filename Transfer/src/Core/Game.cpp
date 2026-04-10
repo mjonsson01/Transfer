@@ -4,101 +4,100 @@
 #include "Utilities/SystemPathUtility.h"
 #include <iostream>
 
-
-// Likely change the resolution to be scalable in the future? default 1920x1080 for now. Will be inside the Render system eventually.
+// Likely change the resolution to be scalable in the future? default 1920x1080
+// for now. Will be inside the Render system eventually.
 Game::Game()
-	:  gameState(), UIState(), inputSystem(), physicsSystem(), renderSystem(), audioSystem(), UISystem()
-{
-	// fill in imp here
+    : gameState(), UIState(), inputSystem(), physicsSystem(), renderSystem(),
+      audioSystem(), UISystem() {
+    // fill in imp here
 }
 
 // Handle destruction of any new allocations. None for now, just default.
-Game::~Game()
-{
-	TTF_Quit();
-	SDL_Quit();
+Game::~Game() {
+    TTF_Quit();
+    SDL_Quit();
 }
 
 // Initializes SDL windows, renderer, and starts the main game loop
-void Game::StartGame()
-{
-	// Initialize any other useful gameState variables here.
-	gameState.SetPlaying(true);
+void Game::StartGame() {
+    // Initialize any other useful gameState variables here.
+    gameState.SetPlaying(true);
 
-    // Default to starting in the level scene since other scenes are not implemented yet.
+    // Default to starting in the level scene since other scenes are not
+    // implemented yet.
 
     // NEED TO FIX. THIS WILL BE ADJUSTED IN UPDATES TO SCENE MANAGEMENT TBI
     UIState.setLevelScene(true);
-    UIState.setRenderDebug(true); // default to true for now to help with development
+    UIState.setRenderDebug(
+        true); // default to true for now to help with development
 
-	// Start the main game loop
-	Game::Run();
-    
+    // Start the main game loop
+    Game::Run();
+
     // End the game and clean up resources after exiting the loop
     Game::EndGame();
 }
 // Tears down the 'systems' and cleans up allocated resources.
-void Game::EndGame()
-{
+void Game::EndGame() {
     inputSystem.CleanUp();
     audioSystem.CleanUp();
     physicsSystem.CleanUp();
     UISystem.CleanUp();
     renderSystem.CleanUp();
-
 }
-void Game::Run()
-{	
-	// Initialize the time management variables
-	uint32_t last_physics_update_time = SDL_GetTicks();
-	uint32_t last_render_time = 0;
+void Game::Run() {
+    // Initialize the time management variables
+    uint32_t last_physics_update_time = SDL_GetTicks();
+    uint32_t last_render_time = 0;
     uint32_t now = 0;
     float frame_delta = 0.0f;
     float scaled_frame_delta = 0.0f;
     uint32_t render_start = 0.0f;
     uint32_t render_end = 0.0f;
-	
-	// Timing accumulators
-	float physics_time_accumulator = 0.0f;
-	float fps_time_accumulator = 0.0f;
 
-	// Local FPS variable
-	float current_fps = TARGET_FPS; //initialize to target
+    // Timing accumulators
+    float physics_time_accumulator = 0.0f;
+    float fps_time_accumulator = 0.0f;
 
-	// Frame interpolation alpha (dynamic)
-	float alpha = gameState.getAlpha();
+    // Local FPS variable
+    float current_fps = TARGET_FPS; // initialize to target
+
+    // Frame interpolation alpha (dynamic)
+    float alpha = gameState.getAlpha();
 
     // slowdown cout output pace timer
     uint32_t slowdown_print_timer = 300;
     uint32_t last_slowdown_print_time = SDL_GetTicks();
-    
 
-	while (gameState.IsPlaying()){
+    while (gameState.IsPlaying()) {
 
-		// Poll for SDL Events and Process Input
-		Game::ProcessInput();
-        if (!gameState.IsPlaying()) break; // stop immediately
+        // Poll for SDL Events and Process Input
+        Game::ProcessInput();
+        if (!gameState.IsPlaying())
+            break; // stop immediately
         // Play Audio
         Game::PlayAudio();
 
-        if (SDL_GetTicks() - last_slowdown_print_time > slowdown_print_timer)
-        {
+        if (SDL_GetTicks() - last_slowdown_print_time > slowdown_print_timer) {
             // Add slowed down print statements here
-            // std::cout<<"number of particles"<<gameState.getParticles().size()<<std::endl;
+            // std::cout<<"number of
+            // particles"<<gameState.getParticles().size()<<std::endl;
         }
 
-		// Timekeeping
+        // Timekeeping
         now = SDL_GetTicks();
         frame_delta = (now - last_physics_update_time) / 1000.0f;
         last_physics_update_time = now;
-        
+
         // Deal with SLOWMO or SPEEDUP
-        scaled_frame_delta = frame_delta * gameState.getTimeScaleFactor(); // Use the new time scale factor
+        scaled_frame_delta =
+            frame_delta *
+            gameState.getTimeScaleFactor(); // Use the new time scale factor
         physics_time_accumulator += scaled_frame_delta;
 
-        // Update Physics (remains untouched by time scaling of rendering, maintaining physics accuracy)
-        while (physics_time_accumulator >= PHYSICS_TIME_STEP)
-        {
+        // Update Physics (remains untouched by time scaling of rendering,
+        // maintaining physics accuracy)
+        while (physics_time_accumulator >= PHYSICS_TIME_STEP) {
             Game::UpdatePhysicsFrame();
             physics_time_accumulator -= PHYSICS_TIME_STEP;
         }
@@ -111,66 +110,60 @@ void Game::Run()
         render_end = SDL_GetTicks();
 
         // FPS Calculation
-        Game::UpdateFPS(render_end, last_render_time, fps_time_accumulator, current_fps);
+        Game::UpdateFPS(render_end, last_render_time, fps_time_accumulator,
+                        current_fps);
         last_render_time = render_end;
 
         // Frame limiting (soft limiting)
         Game::LimitFrameRate(render_start, render_end);
     }
-
 }
-
 
 // --------- DISPATCH TO SYSTEM METHODS --------- //
 
-void Game::ProcessInput()
-{
-	// Dispatch to Input System
-	inputSystem.ProcessSystemInputFrame(gameState, UIState);
-    // std::cout<<"instantiate dirty: "<<UIState.getMutableInputState().instantiateDirty<<std::endl;
+void Game::ProcessInput() {
+    // Dispatch to Input System
+    inputSystem.ProcessSystemInputFrame(gameState, UIState);
+    // std::cout<<"instantiate dirty:
+    // "<<UIState.getMutableInputState().instantiateDirty<<std::endl;
     UISystem.UpdateUIElements(gameState, UIState);
 }
 
-void Game::UpdatePhysicsFrame()
-{
-	// Dispatch to Physics System
-	physicsSystem.UpdateSystemFrame(gameState, UIState);
+void Game::UpdatePhysicsFrame() {
+    // Dispatch to Physics System
+    physicsSystem.UpdateSystemFrame(gameState, UIState);
 }
 
-void Game::RenderFrame()
-{
-	// Dispatch to Renderer System -- renders UI as well.
+void Game::RenderFrame() {
+    // Dispatch to Renderer System -- renders UI as well.
     const std::vector<UIElement*> allUIElements = UISystem.getUIElements();
-	renderSystem.RenderFullFrame(gameState, UIState, allUIElements);
+    renderSystem.RenderFullFrame(gameState, UIState, allUIElements);
 }
 
-void Game::PlayAudio()
-{
+void Game::PlayAudio() {
     audioSystem.ProcessSystemAudioFrame(gameState, UIState);
 }
 // --------- UTILITY METHODS FOR FPS --------- //
 
-void Game::UpdateFPS(uint32_t renderEnd, uint32_t lastRender, float& fpsAccumulator, float& currentFPS)
-{
+void Game::UpdateFPS(uint32_t renderEnd, uint32_t lastRender,
+                     float& fpsAccumulator, float& currentFPS) {
     float frameTime = (renderEnd - lastRender) / 1000.0f;
     fpsAccumulator += (renderEnd - lastRender);
 
-    if (fpsAccumulator > FPS_UPDATE_DELTA_MS)
-    {
+    if (fpsAccumulator > FPS_UPDATE_DELTA_MS) {
         frameTime = std::max(frameTime, 0.001f);
         currentFPS = 0.9f * currentFPS + 0.1f * (1.0f / frameTime);
-        float target_fps_max = static_cast<float>(TARGET_FPS)*1.1f;
-        currentFPS = std::min(currentFPS, target_fps_max); // Clamp FPS for stability
+        float target_fps_max = static_cast<float>(TARGET_FPS) * 1.1f;
+        currentFPS =
+            std::min(currentFPS, target_fps_max); // Clamp FPS for stability
         UIState.setFPS(currentFPS);
         fpsAccumulator = 0.0f;
     }
 }
 
-void Game::LimitFrameRate(uint32_t renderStart, uint32_t renderEnd)
-{
+void Game::LimitFrameRate(uint32_t renderStart, uint32_t renderEnd) {
     double frame_duration = static_cast<double>(renderEnd - renderStart);
-    if (frame_duration < FRAME_DELAY_MS)
-    {
+    if (frame_duration < FRAME_DELAY_MS) {
         SDL_Delay(static_cast<uint32_t>(FRAME_DELAY_MS - frame_duration));
     }
 }

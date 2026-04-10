@@ -2,8 +2,7 @@
 
 #pragma once
 
-enum UIElementType : int
-{
+enum UIElementType : int {
     NONE = -1,
     FPS_COUNTER_INDEX = 0,
     MASS_SLIDER_INDEX = 1,

@@ -3,43 +3,36 @@
 #include "UISystem.h"
 
 // Constructor
-UISystem::UISystem()
-    : allUIElements()
-{
+UISystem::UISystem() : allUIElements() {
     // Initialize any UI system state here
-    FPSCounter *fps_counter = new FPSCounter();
+    FPSCounter* fps_counter = new FPSCounter();
     allUIElements.push_back(fps_counter);
-    MassSlider *mass_slider = new MassSlider();
+    MassSlider* mass_slider = new MassSlider();
     allUIElements.push_back(mass_slider);
-    RadiusSlider *radius_slider = new RadiusSlider();
+    RadiusSlider* radius_slider = new RadiusSlider();
     allUIElements.push_back(radius_slider);
 }
 // Destructor
-UISystem::~UISystem()
-{
+UISystem::~UISystem() {
     // Clean up any allocated resources here
 }
 
-void UISystem::UpdateUIElements(GameState &gameState, UIState &UIState)
-{
+void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState) {
     // std::cout<<"UISystem active element: "<<activeElement<<std::endl;
-    InputState &inputsReceived = UIState.getMutableInputState();
+    InputState& inputsReceived = UIState.getMutableInputState();
     // Left mouse button click is the only one UI cares about
-    if (!inputsReceived.isHoldingLeftMouseButton)
-    {
+    if (!inputsReceived.isHoldingLeftMouseButton) {
         activeElement = UIElementType::NONE;
         return;
     }
 
     // If nothing is active yet, try to acquire one
-    if (activeElement == UIElementType::NONE)
-    {
+    if (activeElement == UIElementType::NONE) {
         activeElement = isPositionInUIElementHotZone(inputsReceived);
     }
     // If we have an active UI element → ALWAYS route input to it
     if (activeElement != UIElementType::NONE &&
-        activeElement != UIElementType::FPS_COUNTER_INDEX)
-    {
+        activeElement != UIElementType::FPS_COUNTER_INDEX) {
         updateSpecificElementAndPropagateUpwards(activeElement, inputsReceived);
         inputsReceived.UIInputConsumed = true;
         inputsReceived.instantiateDirty = false;
@@ -49,33 +42,34 @@ void UISystem::UpdateUIElements(GameState &gameState, UIState &UIState)
     // Otherwise → pass to world
     inputsReceived.instantiateDirty = true;
     inputsReceived.instantiatePosition = inputsReceived.mouseCurrPosition;
-    inputsReceived.instantiateDragStartPosition = inputsReceived.mouseDragStartPosition;
+    inputsReceived.instantiateDragStartPosition =
+        inputsReceived.mouseDragStartPosition;
 }
 
-void UISystem::CleanUp()
-{
-    for (auto &element : allUIElements)
-    {
+void UISystem::CleanUp() {
+    for (auto& element : allUIElements) {
         delete element;
     }
     allUIElements.clear();
 }
 
-void UISystem::updateSpecificElementAndPropagateUpwards(UIElementType elementTypeToUpdate, InputState &inputState)
-{
-    UIElement *elementToUpdate = allUIElements[elementTypeToUpdate];
+void UISystem::updateSpecificElementAndPropagateUpwards(
+    UIElementType elementTypeToUpdate, InputState& inputState) {
+    UIElement* elementToUpdate = allUIElements[elementTypeToUpdate];
 
-    // this could be further abstracted into passing the full input state so that the UIelement decides what it updates, but I want to make the ui element as stupid as possible
-    if (elementTypeToUpdate == UIElementType::MASS_SLIDER_INDEX)
-    {
+    // this could be further abstracted into passing the full input state so
+    // that the UIelement decides what it updates, but I want to make the ui
+    // element as stupid as possible
+    if (elementTypeToUpdate == UIElementType::MASS_SLIDER_INDEX) {
         double massValToBeCalculatedAndInjected = 0.0; // initialize
-        elementToUpdate->updateMe(inputState.mouseCurrPosition, massValToBeCalculatedAndInjected);
+        elementToUpdate->updateMe(inputState.mouseCurrPosition,
+                                  massValToBeCalculatedAndInjected);
         inputState.selectedMass = massValToBeCalculatedAndInjected;
     }
-    if (elementTypeToUpdate == UIElementType::RADIUS_SLIDER_INDEX)
-    {
+    if (elementTypeToUpdate == UIElementType::RADIUS_SLIDER_INDEX) {
         double radiusValToBeCalculatedAndInjected = 0.0; // initialize
-        elementToUpdate->updateMe(inputState.mouseCurrPosition, radiusValToBeCalculatedAndInjected);
+        elementToUpdate->updateMe(inputState.mouseCurrPosition,
+                                  radiusValToBeCalculatedAndInjected);
         inputState.selectedRadius = radiusValToBeCalculatedAndInjected;
     }
     // if (elementTypeToUpdate == UIElementType::RADIUS_SLIDER_INDEX)
@@ -83,15 +77,13 @@ void UISystem::updateSpecificElementAndPropagateUpwards(UIElementType elementTyp
     // }
 }
 
-UIElementType UISystem::isPositionInUIElementHotZone(InputState &inputsReceived)
-{
+UIElementType
+UISystem::isPositionInUIElementHotZone(InputState& inputsReceived) {
     UIElementType hotzoneType = UIElementType::NONE; // default result
     Vector2D curr_pos = inputsReceived.mouseCurrPosition;
-    for (auto &element : allUIElements)
-    {
+    for (auto& element : allUIElements) {
         hotzoneType = element->isInDeadZone(curr_pos);
-        if (hotzoneType != UIElementType::NONE)
-        {
+        if (hotzoneType != UIElementType::NONE) {
             break; // stop at the first hit
         }
     }
@@ -124,12 +116,15 @@ UIElementType UISystem::isPositionInUIElementHotZone(InputState &inputsReceived)
 //     UIState.clearUIElements();
 // }
 
-// void UISystem::RenderUIElements(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont)
+// void UISystem::RenderUIElements(SDL_Renderer* renderer, UIState& UIState,
+// TTF_Font* UIFont)
 // {
 //     std::vector<UIElement*> ui_elements = UIState.getUIElements();
-//     if (!UIState.getUIElementsVisible()) return; // Skip rendering if UI elements are hidden
+//     if (!UIState.getUIElementsVisible()) return; // Skip rendering if UI
+//     elements are hidden
 
 //     for (auto& element : ui_elements) {
-//         element->renderElement(renderer, UIState, UIFont); // Pass UIFont if needed
+//         element->renderElement(renderer, UIState, UIFont); // Pass UIFont if
+//         needed
 //     }
 // }

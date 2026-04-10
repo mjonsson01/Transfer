@@ -2,12 +2,10 @@
 
 #include "Core/GameState.h"
 
-GameState::GameState()
-{
+GameState::GameState() {
     // Initialize game state variables if needed
 }
 
-GameState::~GameState()
-{
+GameState::~GameState() {
     // Cleanup if necessary
 }

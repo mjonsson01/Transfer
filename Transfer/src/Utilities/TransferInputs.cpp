@@ -2,17 +2,15 @@
 
 #include "TransferInputs.h"
 
-std::ostream& operator<<(std::ostream& os, const TransferInputs& input)
-{
+std::ostream& operator<<(std::ostream& os, const TransferInputs& input) {
     os << "Active Inputs: ";
 
     bool any = false;
 
-    auto printIf = [&](bool condition, const char* name)
-    {
-        if (condition)
-        {
-            if (any) os << ", ";
+    auto printIf = [&](bool condition, const char* name) {
+        if (condition) {
+            if (any)
+                os << ", ";
             os << name;
             any = true;
         }
@@ -31,7 +29,6 @@ std::ostream& operator<<(std::ostream& os, const TransferInputs& input)
     printIf(input.dPressed, "D");
     printIf(input.spacePressed, "Space");
 
-    
     // Menu / Media
     printIf(input.escPressed, "Esc");
     printIf(input.zeroPressed, "0");
@@ -46,4 +43,3 @@ std::ostream& operator<<(std::ostream& os, const TransferInputs& input)
 
     return os;
 }
-

@@ -10,36 +10,38 @@
 #include "Core/UIState.h"
 #include "Utilities/SystemPathUtility.h"
 
-//Standard Library Imports
-#include <queue>
-#include <string>
+// Standard Library Imports
 #include <filesystem>
 #include <iostream>
-class AudioSystem
-{
-    public:
-        // Constructor and Destructor
-        AudioSystem();
-        ~AudioSystem();
+#include <queue>
+#include <string>
+class AudioSystem {
+  public:
+    // Constructor and Destructor
+    AudioSystem();
+    ~AudioSystem();
 
-    public:
-        // Main method to process audio each frame
-        void ProcessSystemAudioFrame(GameState& gameState, UIState& UIState);
+  public:
+    // Main method to process audio each frame
+    void ProcessSystemAudioFrame(GameState& gameState, UIState& UIState);
 
-        
-        bool LoadTrack(const std::string& musicFilePath); // Loads a new track into the audio system, replacing any existing track
-        void AddAllMusicToPlaylist(const std::string& folderPath);
+    bool LoadTrack(const std::string&
+                       musicFilePath); // Loads a new track into the audio
+                                       // system, replacing any existing track
+    void AddAllMusicToPlaylist(const std::string& folderPath);
 
-        // Clean up helper
-        void CleanUp();
+    // Clean up helper
+    void CleanUp();
 
-    private: 
-        // Add any private helper methods or member variables for audio management here
-        SDL_AudioSpec wavSpec = {};
-        Uint8* wavBuffer = nullptr;
-        Uint32 wavLength = 0;
-        SDL_AudioStream* stream = nullptr;
-        SDL_AudioDeviceID device = 0;
-        bool isQueued = false; // true when wavBuffer has been queued to the stream/device
-        std::queue<std::string> musicPlaylist; // Queue to manage songs to be played
+  private:
+    // Add any private helper methods or member variables for audio management
+    // here
+    SDL_AudioSpec wavSpec = {};
+    Uint8* wavBuffer = nullptr;
+    Uint32 wavLength = 0;
+    SDL_AudioStream* stream = nullptr;
+    SDL_AudioDeviceID device = 0;
+    bool isQueued =
+        false; // true when wavBuffer has been queued to the stream/device
+    std::queue<std::string> musicPlaylist; // Queue to manage songs to be played
 };

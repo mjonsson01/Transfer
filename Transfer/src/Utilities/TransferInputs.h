@@ -11,8 +11,7 @@
 // Standard Library Imports
 #include <iostream>
 
-struct TransferInputs
-{
+struct TransferInputs {
     TransferInputs() = default;
     TransferInputs(const TransferInputs&) = default;
     TransferInputs& operator=(const TransferInputs&) = default;
@@ -23,15 +22,14 @@ struct TransferInputs
     bool dPressed = false;
     bool spacePressed = false;
     bool clearParticlesPressed = false;
-    
+
     // Instantiation controls
     bool leftMousePressed = false;
     bool rightMousePressed = false;
     bool middleMousePressed = false;
-    
-    
+
     // Menu and Media controls
-    bool escPressed = false; // Pause menu
+    bool escPressed = false;  // Pause menu
     bool zeroPressed = false; // Music play/pause
 
     // Modifier Controls
@@ -44,9 +42,21 @@ struct TransferInputs
     bool isDragging = false;
 
     // Helper utilities
-    void resetAllMousePressedVars() { this->leftMousePressed = false; this->rightMousePressed = false; this->middleMousePressed = false;}
-    void resetAllKeyPressedVars() {this->wPressed = false; this->aPressed = false; this->sPressed = false; this->dPressed = false; this->spacePressed = false; this->zeroPressed = false; this->shiftPressed = false;
-    this->altPressed = false;}
+    void resetAllMousePressedVars() {
+        this->leftMousePressed = false;
+        this->rightMousePressed = false;
+        this->middleMousePressed = false;
+    }
+    void resetAllKeyPressedVars() {
+        this->wPressed = false;
+        this->aPressed = false;
+        this->sPressed = false;
+        this->dPressed = false;
+        this->spacePressed = false;
+        this->zeroPressed = false;
+        this->shiftPressed = false;
+        this->altPressed = false;
+    }
 };
 
 std::ostream& operator<<(std::ostream& os, const TransferInputs& input);

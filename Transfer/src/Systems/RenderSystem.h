@@ -4,111 +4,109 @@
 
 // SDL3 Imports
 #include <SDL3/SDL.h>
-#include <SDL3_ttf/SDL_ttf.h>
 #include <SDL3/SDL_render.h>
+#include <SDL3_ttf/SDL_ttf.h>
 
 // Custom Imports
 #include "Core/GameState.h"
 #include "Core/UIState.h"
+#include "Entities/TwinklingStars.h"
 #include "Entities/UIElements/UIElement.h"
 #include "Utilities/Colors.h"
-#include "Entities/TwinklingStars.h"
 #include "Utilities/EngineConstants.h"
 #include "Utilities/GameSystemConstants.h"
 #include "Utilities/SystemPathUtility.h"
 
 // Standard Library Imports
-#include <string>
-#include <iostream>
-#include <unordered_map>
-#include <random>
-#include <numeric>
 #include <algorithm>
 #include <cmath>
+#include <iostream>
+#include <numeric>
+#include <random>
+#include <string>
+#include <unordered_map>
 
 // Circle (Gravitational body) texture cache.
-struct CircleKey
-{
-	int radius;
-	SDL_Color color;
+struct CircleKey {
+    int radius;
+    SDL_Color color;
 
-	bool operator==(const CircleKey &other) const
-	{
-		return radius == other.radius &&
-			   color.r == other.color.r &&
-			   color.g == other.color.g &&
-			   color.b == other.color.b &&
-			   color.a == other.color.a;
-	}
+    bool operator==(const CircleKey& other) const {
+        return radius == other.radius && color.r == other.color.r &&
+               color.g == other.color.g && color.b == other.color.b &&
+               color.a == other.color.a;
+    }
 };
 
 // Hash function for unordered_map
-namespace std
-{
-	template <>
-	struct hash<CircleKey>
-	{
-		size_t operator()(const CircleKey &k) const
-		{
-			return ((hash<int>()(k.radius) ^ (hash<int>()(k.color.r) << 1)) ^ (hash<int>()(k.color.g) << 1)) ^ (hash<int>()(k.color.b) << 1) ^ (hash<int>()(k.color.a) << 1);
-		}
-	};
-}
+namespace std {
+template <> struct hash<CircleKey> {
+    size_t operator()(const CircleKey& k) const {
+        return ((hash<int>()(k.radius) ^ (hash<int>()(k.color.r) << 1)) ^
+                (hash<int>()(k.color.g) << 1)) ^
+               (hash<int>()(k.color.b) << 1) ^ (hash<int>()(k.color.a) << 1);
+    }
+};
+} // namespace std
 
-class RenderSystem
-{
-public:
-	// Constructor and Destructor
-	//  No arguments for now, but will need to pass through resolution and other info later
-	RenderSystem();
-	~RenderSystem(); // make sure to teardown destructor and window
+class RenderSystem {
+  public:
+    // Constructor and Destructor
+    //  No arguments for now, but will need to pass through resolution and other
+    //  info later
+    RenderSystem();
+    ~RenderSystem(); // make sure to teardown destructor and window
 
-	// Main Loop Rendering Function, renders engine state and UI state
-	void RenderFullFrame(GameState &gameState, UIState &UIState, const std::vector<UIElement *> &allUIElements);
+    // Main Loop Rendering Function, renders engine state and UI state
+    void RenderFullFrame(GameState& gameState, UIState& UIState,
+                         const std::vector<UIElement*>& allUIElements);
 
-	// Main Cleanup method (tears down all the SDL components)
-	void CleanUp();
-	// Getters for SDL Components
-	SDL_Renderer *getRenderer() const { return renderer; }
-	TTF_Font *getUIFont() const { return UIFont; }
+    // Main Cleanup method (tears down all the SDL components)
+    void CleanUp();
+    // Getters for SDL Components
+    SDL_Renderer* getRenderer() const { return renderer; }
+    TTF_Font* getUIFont() const { return UIFont; }
 
-private:
-	// SDL Components
-	SDL_Window *window = nullptr;
-	SDL_Renderer *renderer = nullptr;
-	// Font for UI Elements that require text
-	TTF_Font *UIFont = nullptr;
+  private:
+    // SDL Components
+    SDL_Window* window = nullptr;
+    SDL_Renderer* renderer = nullptr;
+    // Font for UI Elements that require text
+    TTF_Font* UIFont = nullptr;
 
-	// Container for background twinkling stars
-	std::vector<TwinklingStar> twinklingStars;
-	// Container for textures of all background twinkling stars
-	std::vector<SDL_Texture *> twinklingStarTextures; // pre-created tiny textures (1-3 px)
+    // Container for background twinkling stars
+    std::vector<TwinklingStar> twinklingStars;
+    // Container for textures of all background twinkling stars
+    std::vector<SDL_Texture*>
+        twinklingStarTextures; // pre-created tiny textures (1-3 px)
 
-private:
-	// Subordinate Rendering Functions
-	void renderBodies(GameState &gameState); // Renders all the gravitational bodies (both Macro and Particle)
+  private:
+    // Subordinate Rendering Functions
+    void renderBodies(GameState& gameState); // Renders all the gravitational
+                                             // bodies (both Macro and Particle)
 
-	// Renders Input Artifacts
-	void renderInputArtifacts(GameState &gameState);
+    // Renders Input Artifacts
+    void renderInputArtifacts(GameState& gameState);
 
-	// Renders UI Elements
-	void renderUIElements(UIState &UIState, std::vector<UIElement *> allUIElements);
+    // Renders UI Elements
+    void renderUIElements(UIState& UIState,
+                          std::vector<UIElement*> allUIElements);
 
-	// Utility Rendering Helper Functions
-	SDL_Color getColorForMass(double mass);
+    // Utility Rendering Helper Functions
+    SDL_Color getColorForMass(double mass);
 
-	// Store for circle textures
-	std::unordered_map<CircleKey, SDL_Texture *> circleTextureCache;
-	// Circle textures helpers
-	SDL_Texture *getCircleTexture(int radius, SDL_Color color);
-	SDL_Texture *createCircleTexture(int radius, SDL_Color color);
+    // Store for circle textures
+    std::unordered_map<CircleKey, SDL_Texture*> circleTextureCache;
+    // Circle textures helpers
+    SDL_Texture* getCircleTexture(int radius, SDL_Color color);
+    SDL_Texture* createCircleTexture(int radius, SDL_Color color);
 
-	// Texture cleanup helper
-	void clearCachedCircleTextures();
+    // Texture cleanup helper
+    void clearCachedCircleTextures();
 
-	// Single Call GenerateStar pattern
-	void createStarField(int numStars);
-	void createStarTextures();
-	void updateStars();
-	void renderStars();
+    // Single Call GenerateStar pattern
+    void createStarField(int numStars);
+    void createStarTextures();
+    void updateStars();
+    void renderStars();
 };
