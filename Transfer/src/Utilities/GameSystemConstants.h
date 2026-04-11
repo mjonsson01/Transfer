@@ -16,10 +16,10 @@ constexpr int FPS_UPDATE_DELTA_MS = 250;
 
 // Time scaling factors to control rendering speed without changing the Physics
 // System behaviors
-const double SLOW_TIME_SCALE_FACTOR = 0.0625; // (1/16)x speed
-// const double REGULAR_TIME_SCALE_FACTOR = 0.5f; // for debug
-const double REGULAR_TIME_SCALE_FACTOR = 1.0f; // 1x speed
-const double FAST_TIME_SCALE_FACTOR = 2.0f;    // 2x speed
+const double SLOW_TIME_SCALE_FACTOR = 0.0625;   // (1/16)x speed
+const double REGULAR_TIME_SCALE_FACTOR = 0.25f; // for debug
+// const double REGULAR_TIME_SCALE_FACTOR = 1.0f; // 1x speed
+const double FAST_TIME_SCALE_FACTOR = 2.0f; // 2x speed
 
 // Delay between particle formation when holding to spawn
 constexpr int SPAWN_DELAY_MS = 10;

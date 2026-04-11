@@ -20,14 +20,16 @@
 
 // Owns Logic of UI Components and stores the UIElements while dispatching
 // information to the GameState and UIState
-class UISystem {
+class UISystem
+{
   public:
     UISystem();
     ~UISystem();
     void CleanUp();
     void UpdateUIElements(GameState& gameState, UIState& UIState);
     std::vector<UIElement*>& getUIElementsMutable() { return allUIElements; }
-    const std::vector<UIElement*>& getUIElements() const {
+    const std::vector<UIElement*>& getUIElements() const
+    {
         return allUIElements;
     }
     UIElementType isPositionInUIElementHotZone(InputState& inputsReceived);

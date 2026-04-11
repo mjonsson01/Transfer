@@ -27,11 +27,13 @@
 #include <unordered_map>
 
 // Circle (Gravitational body) texture cache.
-struct CircleKey {
+struct CircleKey
+{
     int radius;
     SDL_Color color;
 
-    bool operator==(const CircleKey& other) const {
+    bool operator==(const CircleKey& other) const
+    {
         return radius == other.radius && color.r == other.color.r &&
                color.g == other.color.g && color.b == other.color.b &&
                color.a == other.color.a;
@@ -39,9 +41,12 @@ struct CircleKey {
 };
 
 // Hash function for unordered_map
-namespace std {
-template <> struct hash<CircleKey> {
-    size_t operator()(const CircleKey& k) const {
+namespace std
+{
+template <> struct hash<CircleKey>
+{
+    size_t operator()(const CircleKey& k) const
+    {
         return ((hash<int>()(k.radius) ^ (hash<int>()(k.color.r) << 1)) ^
                 (hash<int>()(k.color.g) << 1)) ^
                (hash<int>()(k.color.b) << 1) ^ (hash<int>()(k.color.a) << 1);
@@ -49,7 +54,8 @@ template <> struct hash<CircleKey> {
 };
 } // namespace std
 
-class RenderSystem {
+class RenderSystem
+{
   public:
     // Constructor and Destructor
     //  No arguments for now, but will need to pass through resolution and other

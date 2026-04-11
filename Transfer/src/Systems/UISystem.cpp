@@ -3,7 +3,8 @@
 #include "UISystem.h"
 
 // Constructor
-UISystem::UISystem() : allUIElements() {
+UISystem::UISystem() : allUIElements()
+{
     // Initialize any UI system state here
     FPSCounter* fps_counter = new FPSCounter();
     allUIElements.push_back(fps_counter);
@@ -13,26 +14,31 @@ UISystem::UISystem() : allUIElements() {
     allUIElements.push_back(radius_slider);
 }
 // Destructor
-UISystem::~UISystem() {
+UISystem::~UISystem()
+{
     // Clean up any allocated resources here
 }
 
-void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState) {
+void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState)
+{
     // std::cout<<"UISystem active element: "<<activeElement<<std::endl;
     InputState& inputsReceived = UIState.getMutableInputState();
     // Left mouse button click is the only one UI cares about
-    if (!inputsReceived.isHoldingLeftMouseButton) {
+    if (!inputsReceived.isHoldingLeftMouseButton)
+    {
         activeElement = UIElementType::NONE;
         return;
     }
 
     // If nothing is active yet, try to acquire one
-    if (activeElement == UIElementType::NONE) {
+    if (activeElement == UIElementType::NONE)
+    {
         activeElement = isPositionInUIElementHotZone(inputsReceived);
     }
     // If we have an active UI element → ALWAYS route input to it
     if (activeElement != UIElementType::NONE &&
-        activeElement != UIElementType::FPS_COUNTER_INDEX) {
+        activeElement != UIElementType::FPS_COUNTER_INDEX)
+    {
         updateSpecificElementAndPropagateUpwards(activeElement, inputsReceived);
         inputsReceived.UIInputConsumed = true;
         inputsReceived.instantiateDirty = false;
@@ -46,27 +52,32 @@ void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState) {
         inputsReceived.mouseDragStartPosition;
 }
 
-void UISystem::CleanUp() {
-    for (auto& element : allUIElements) {
+void UISystem::CleanUp()
+{
+    for (auto& element : allUIElements)
+    {
         delete element;
     }
     allUIElements.clear();
 }
 
 void UISystem::updateSpecificElementAndPropagateUpwards(
-    UIElementType elementTypeToUpdate, InputState& inputState) {
+    UIElementType elementTypeToUpdate, InputState& inputState)
+{
     UIElement* elementToUpdate = allUIElements[elementTypeToUpdate];
 
     // this could be further abstracted into passing the full input state so
     // that the UIelement decides what it updates, but I want to make the ui
     // element as stupid as possible
-    if (elementTypeToUpdate == UIElementType::MASS_SLIDER_INDEX) {
+    if (elementTypeToUpdate == UIElementType::MASS_SLIDER_INDEX)
+    {
         double massValToBeCalculatedAndInjected = 0.0; // initialize
         elementToUpdate->updateMe(inputState.mouseCurrPosition,
                                   massValToBeCalculatedAndInjected);
         inputState.selectedMass = massValToBeCalculatedAndInjected;
     }
-    if (elementTypeToUpdate == UIElementType::RADIUS_SLIDER_INDEX) {
+    if (elementTypeToUpdate == UIElementType::RADIUS_SLIDER_INDEX)
+    {
         double radiusValToBeCalculatedAndInjected = 0.0; // initialize
         elementToUpdate->updateMe(inputState.mouseCurrPosition,
                                   radiusValToBeCalculatedAndInjected);
@@ -77,13 +88,15 @@ void UISystem::updateSpecificElementAndPropagateUpwards(
     // }
 }
 
-UIElementType
-UISystem::isPositionInUIElementHotZone(InputState& inputsReceived) {
+UIElementType UISystem::isPositionInUIElementHotZone(InputState& inputsReceived)
+{
     UIElementType hotzoneType = UIElementType::NONE; // default result
     Vector2D curr_pos = inputsReceived.mouseCurrPosition;
-    for (auto& element : allUIElements) {
+    for (auto& element : allUIElements)
+    {
         hotzoneType = element->isInDeadZone(curr_pos);
-        if (hotzoneType != UIElementType::NONE) {
+        if (hotzoneType != UIElementType::NONE)
+        {
             break; // stop at the first hit
         }
     }

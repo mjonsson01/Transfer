@@ -4,7 +4,8 @@
 
 #include "Entities/MathStructures.h"
 
-struct InputState {
+struct InputState
+{
     // Persistent flags and details
     Vector2D mouseCurrPosition = {0.0, 0.0}; // set by from event input router
     Vector2D mouseDragStartPosition = {0.0, 0.0};
@@ -58,6 +59,7 @@ struct InputState {
     bool isCreatingShatterable = false;
     bool isCreatingAccretable = false;
     bool isCreatingCollidable = false;
+    bool isCreatingBounce = false;
 
     // Managed by player input
     bool clearAll = false; // Toggled when screen wipe is requested
@@ -66,7 +68,8 @@ struct InputState {
                // System integration is completely paused
     // bool isPaused = false;
 
-    InputState& resetTransientFlags() {
+    InputState& resetTransientFlags()
+    {
         instantiateDirty =
             false; // Flag for body instantiation/rendering required
 
@@ -95,13 +98,15 @@ struct InputState {
 
     // Toggle the pausing of the integrator while still rendering background
     // elements
-    InputState& togglePhysicsPause() {
+    InputState& togglePhysicsPause()
+    {
         isPhysicsPaused = !isPhysicsPaused;
         return *this;
     }
 
     // Wipe all the bodies from the screen and internal Game State
-    InputState& clearAllBodies() {
+    InputState& clearAllBodies()
+    {
         clearAll = true;
         return *this;
     }

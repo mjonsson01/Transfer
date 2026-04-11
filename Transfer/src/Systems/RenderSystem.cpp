@@ -3,7 +3,8 @@
 #include "Systems/RenderSystem.h"
 
 // Constructor: Initializes SDL Window and Renderer
-RenderSystem::RenderSystem() {
+RenderSystem::RenderSystem()
+{
     // Add audio later
     SDL_InitSubSystem(SDL_INIT_VIDEO);
     TTF_Init();
@@ -19,7 +20,8 @@ RenderSystem::RenderSystem() {
     // Assign renderer pointer to instance. No specific driver, so nullptr.
     renderer = SDL_CreateRenderer(window, nullptr);
     SDL_SetRenderVSync(renderer, 2);
-    if (TTF_Init() == false) {
+    if (TTF_Init() == false)
+    {
         SDL_Log("Failed to initialize SDL_ttf: %s", SDL_GetError());
         return;
     }
@@ -27,7 +29,8 @@ RenderSystem::RenderSystem() {
         Utilities::GetResourcePath("Fonts/SpaceMono-Regular.ttf");
 
     UIFont = TTF_OpenFont(fontPath.c_str(), 18);
-    if (!UIFont) {
+    if (!UIFont)
+    {
         SDL_Log("Failed to load font: %s", SDL_GetError());
         return;
     }
@@ -36,18 +39,22 @@ RenderSystem::RenderSystem() {
 }
 
 // Destructor: Cleans up SDL Window and Renderer
-RenderSystem::~RenderSystem() {
+RenderSystem::~RenderSystem()
+{
     // TTF_Quit() and SDL_QUIT() handled at the Game level
 }
 
 // --------- CLEANUP METHOD --------- //
-void RenderSystem::CleanUp() {
+void RenderSystem::CleanUp()
+{
     clearCachedCircleTextures();
-    if (renderer) {
+    if (renderer)
+    {
         SDL_DestroyRenderer(renderer);
         renderer = nullptr;
     }
-    if (window) {
+    if (window)
+    {
         SDL_DestroyWindow(window);
         window = nullptr;
     }
@@ -55,9 +62,9 @@ void RenderSystem::CleanUp() {
 
 // --------- RENDER FULL FRAME METHOD --------- //
 
-void RenderSystem::RenderFullFrame(
-    GameState& gameState, UIState& UIState,
-    const std::vector<UIElement*>& allUIElements) {
+void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState,
+                                   const std::vector<UIElement*>& allUIElements)
+{
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // black background
     SDL_RenderClear(renderer);
 
@@ -75,10 +82,12 @@ void RenderSystem::RenderFullFrame(
 }
 
 // --------- RENDER GRAVITATIONAL BODIES METHOD --------- //
-void RenderSystem::renderBodies(GameState& gameState) {
+void RenderSystem::renderBodies(GameState& gameState)
+{
     float alpha = gameState.getAlpha();
     // Render Particles
-    for (auto& particle : gameState.getParticles()) {
+    for (auto& particle : gameState.getParticles())
+    {
         SDL_Color color = getColorForMass(particle.mass);
         SDL_Texture* tex =
             getCircleTexture(static_cast<int>(particle.radius), color);
@@ -88,12 +97,15 @@ void RenderSystem::renderBodies(GameState& gameState) {
         // Remove for now. Figure out dynamical fix later. Leave interpolation
         // on for slow mo.
         float render_x, render_y;
-        if (particle.radius <= 1.0 && gameState.getToggleSlow() == false) {
+        if (particle.radius <= 1.0 && gameState.getToggleSlow() == false)
+        {
             render_x = particle.position.xVal;
             render_y = particle.position.yVal;
             render_x = std::round(render_x);
             render_y = std::round(render_y);
-        } else {
+        }
+        else
+        {
             render_x = previous_position.xVal * (1.0f - alpha) +
                        current_position.xVal * alpha;
             render_y = previous_position.yVal * (1.0f - alpha) +
@@ -106,7 +118,8 @@ void RenderSystem::renderBodies(GameState& gameState) {
     }
 
     // Render Macro Bodies
-    for (auto& body : gameState.getMacroBodies()) {
+    for (auto& body : gameState.getMacroBodies())
+    {
         SDL_Color color = getColorForMass(body.mass);
         SDL_Texture* tex =
             getCircleTexture(static_cast<int>(body.radius), color);
@@ -130,11 +143,13 @@ void RenderSystem::renderInputArtifacts(GameState& gameState) {}
 // --------- RENDER UI ELEMENTS METHOD --------- //
 
 void RenderSystem::renderUIElements(UIState& UIState,
-                                    std::vector<UIElement*> allUIElements) {
+                                    std::vector<UIElement*> allUIElements)
+{
     if (!UIState.getAllUIVisibility())
         return;
 
-    for (auto& element : allUIElements) {
+    for (auto& element : allUIElements)
+    {
         element->renderMe(renderer, UIState, UIFont);
     }
 }
@@ -163,25 +178,33 @@ SDL_Color RenderSystem::getColorForMass(double mass)
     double logMax = std::log10(MAX_MASS + 1.0);
     double t = std::clamp(logMass / logMax, 0.0, 1.0);
     Uint8 opacity = 255;
-    if (mass == 0.0) {
-        opacity = 0;
+    if (mass == 0.0)
+    {
+        opacity = 255;
     }
     // 2. Multi-stop gradient (Blue -> Cyan -> Green -> Yellow -> Red)
     Uint8 r, g, b;
 
-    if (t < 0.25) { // Blue to Cyan
+    if (t < 0.25)
+    { // Blue to Cyan
         r = 0;
         g = static_cast<Uint8>(t * 4.0 * 255);
         b = 255;
-    } else if (t < 0.5) { // Cyan to Green
+    }
+    else if (t < 0.5)
+    { // Cyan to Green
         r = 0;
         g = 255;
         b = static_cast<Uint8>((0.5 - t) * 4.0 * 255);
-    } else if (t < 0.75) { // Green to Yellow
+    }
+    else if (t < 0.75)
+    { // Green to Yellow
         r = static_cast<Uint8>((t - 0.5) * 4.0 * 255);
         g = 255;
         b = 0;
-    } else { // Yellow to Red
+    }
+    else
+    { // Yellow to Red
         r = 255;
         g = static_cast<Uint8>((1.0 - t) * 4.0 * 255);
         b = 0;
@@ -236,15 +259,18 @@ SDL_Color RenderSystem::getColorForMass(double mass)
 
 // --------- CIRCLE TEXTURE CACHE METHODS --------- //
 // Helper to correctly destroy the circle texture cache.
-void RenderSystem::clearCachedCircleTextures() {
-    for (auto& pair : circleTextureCache) {
+void RenderSystem::clearCachedCircleTextures()
+{
+    for (auto& pair : circleTextureCache)
+    {
         SDL_DestroyTexture(pair.second);
     }
     circleTextureCache.clear();
 }
 
 // Helper to get the texture for a given radius/color pair
-SDL_Texture* RenderSystem::getCircleTexture(int radius, SDL_Color color) {
+SDL_Texture* RenderSystem::getCircleTexture(int radius, SDL_Color color)
+{
     CircleKey key{radius, color};
 
     auto it = circleTextureCache.find(key);
@@ -257,7 +283,8 @@ SDL_Texture* RenderSystem::getCircleTexture(int radius, SDL_Color color) {
 }
 
 // Helper to create a circle (grav body) texture and places in the cache.
-SDL_Texture* RenderSystem::createCircleTexture(int radius, SDL_Color color) {
+SDL_Texture* RenderSystem::createCircleTexture(int radius, SDL_Color color)
+{
     int diameter = radius * 2;
     SDL_Texture* tex =
         SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888,
@@ -272,8 +299,10 @@ SDL_Texture* RenderSystem::createCircleTexture(int radius, SDL_Color color) {
 
     // Simple naive n^2 fill circle -- fast enough since only executed once. May
     // further optimize to Bresenham's circle algorithm later
-    for (int w = 0; w < diameter; w++) {
-        for (int h = 0; h < diameter; h++) {
+    for (int w = 0; w < diameter; w++)
+    {
+        for (int h = 0; h < diameter; h++)
+        {
             int dx = radius - w;
             int dy = radius - h;
             if ((dx * dx + dy * dy) <= (radius * radius))
@@ -286,14 +315,16 @@ SDL_Texture* RenderSystem::createCircleTexture(int radius, SDL_Color color) {
 
 // --------- TWINKLING STAR METHODS --------- //
 
-void RenderSystem::createStarField(int numStars) {
+void RenderSystem::createStarField(int numStars)
+{
     std::mt19937 rng(std::random_device{}());
     std::uniform_real_distribution<float> alphaDist(0.3f, 1.0f);
     std::uniform_real_distribution<float> speedDist(1.0f, 3.0f);
     std::uniform_int_distribution<int> xDist(0, SCREEN_WIDTH);
     std::uniform_int_distribution<int> yDist(0, SCREEN_HEIGHT);
 
-    for (int i = 0; i < numStars; ++i) {
+    for (int i = 0; i < numStars; ++i)
+    {
         SDL_Texture* tex =
             twinklingStarTextures[rand() %
                                   twinklingStarTextures.size()]; // pick texture
@@ -312,28 +343,34 @@ void RenderSystem::createStarField(int numStars) {
     }
 }
 
-void RenderSystem::updateStars() {
+void RenderSystem::updateStars()
+{
     float time = SDL_GetTicks() / 1000.0f; // seconds
-    for (auto& star : twinklingStars) {
+    for (auto& star : twinklingStars)
+    {
         star.currentAlpha =
             star.baseAlpha + 0.3f * sinf(time * star.twinkleSpeed);
         star.currentAlpha = std::clamp(star.currentAlpha, 0.0f, 1.0f);
     }
 }
 
-void RenderSystem::renderStars() {
-    for (auto& star : twinklingStars) {
+void RenderSystem::renderStars()
+{
+    for (auto& star : twinklingStars)
+    {
         Uint8 alpha = static_cast<Uint8>(star.currentAlpha * 255);
         SDL_SetTextureAlphaMod(star.texture, alpha);
         SDL_RenderTexture(renderer, star.texture, nullptr, &star.dstRect);
     }
 }
 
-void RenderSystem::createStarTextures() {
+void RenderSystem::createStarTextures()
+{
     const int maxStarRadius = 3;
     const int minStarRadius = 1;
 
-    for (int r = minStarRadius; r <= maxStarRadius; ++r) {
+    for (int r = minStarRadius; r <= maxStarRadius; ++r)
+    {
         SDL_Color color = {255, 255, 255, 255};
         SDL_Texture* tex = createCircleTexture(r, color);
         twinklingStarTextures.push_back(tex);

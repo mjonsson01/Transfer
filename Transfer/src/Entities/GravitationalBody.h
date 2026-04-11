@@ -10,7 +10,8 @@
 #include <iostream>
 #include <vector>
 
-struct GravitationalBody {
+struct GravitationalBody
+{
     // State data members
     Vector2D position = {
         0.0, 0.0}; // Current position vector (measured from upper left)
@@ -63,29 +64,41 @@ struct GravitationalBody {
 // --------- I/O OPERATOR OVERLOAD --------- //
 // Print overloader operator to print full information of a given gravitational
 // body.
-inline std::ostream& operator<<(std::ostream& os, const GravitationalBody& b) {
+inline std::ostream& operator<<(std::ostream& os, const GravitationalBody& b)
+{
     os << "GravitationalBody{"
        << "\n --- State: ---"
        << "\nposition = " << b.position
        << "\nprevPosition = " << b.previousPosition
        << "\nvelocity = " << b.velocity << "\nnetForce = " << b.netForce
        << "\nprevForce = " << b.prevForce << "\nmass = " << b.mass
-       << "\nradius = " << b.radius << "\n --- Type Classification: ---"
+       << "\nradius = " << b.radius << "\ntemperature = " << b.temperature
+
+       << "\n --- Type Classification: ---"
        << "\nisMacro = " << std::boolalpha << b.isMacro
        << "\nisParticle = " << std::boolalpha << b.isParticle
+
        << "\n --- Subtype Classification: ---"
        << "\nisPlanet = " << std::boolalpha << b.isPlanet
        << "\nisMoon = " << std::boolalpha << b.isMoon
        << "\nisGravStar = " << std::boolalpha << b.isGravStar
        << "\nisDust = " << std::boolalpha << b.isDust
        << "\nisFragment = " << std::boolalpha << b.isFragment
-       << "\nisGas = " << std::boolalpha << b.isGas << "\n --- Attributes: ---"
+       << "\nisGas = " << std::boolalpha << b.isGas
+
+       << "\n --- Attributes: ---"
        << "\nisStatic = " << std::boolalpha << b.isStatic
        << "\nisShatterable = " << std::boolalpha << b.isShatterable
        << "\nisAccretable = " << std::boolalpha << b.isAccretable
        << "\nisCollidable = " << std::boolalpha << b.isCollidable
+       << "\nisMacroGhost = " << std::boolalpha << b.isMacroGhost
+       << "\nisBounce = " << std::boolalpha << b.isBounce
+
        << "\n --- Status: ---"
+       << "\nisTransient = " << std::boolalpha << b.isTransient
+       << "\nlifetime = " << b.lifetime
        << "\nisMarkedForDeletion = " << std::boolalpha << b.isMarkedForDeletion
+
        << "\n}";
     return os;
 }
