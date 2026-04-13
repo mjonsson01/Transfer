@@ -6,7 +6,7 @@
 constexpr float PHYSICS_TIME_STEP = 1.0f / 120.0f; // 120Hz physics update rate
 
 // Newtonian Gravitational constant (scaled)
-static const double GRAVITATIONAL_CONSTANT = 6.67430e-8; // in m^3 kg^-1 s^-2
+static const double GRAVITATIONAL_CONSTANT = 6.67430e-9; // in m^3 kg^-1 s^-2
 
 static const double MAX_MASS = 1e15;
 
@@ -29,4 +29,4 @@ static const double EPSILON = 1e-30;
 static const int MAX_BODY_TIMES_PARTICLE_ALLOWED = 50000; // TBI
 
 static const double ELASTIC_LOSS_FACTOR =
-    0.85; // 85% of Velocity retained after elastic collision
+    0.75; // 85% of Velocity retained after elastic collision

@@ -9,77 +9,88 @@
 // Standard Library Imports
 #include <vector>
 
-class GameState {
-public:
-  // Constructor and Destructor
-  GameState();
-  ~GameState();
+class GameState
+{
+  public:
+    // Constructor and Destructor
+    GameState();
+    ~GameState();
 
-public:
-  // Getters and Setters for Game State
-  bool IsPlaying() const { return isPlaying; }
-  void SetPlaying(bool playing) { isPlaying = playing; }
+  public:
+    // Getters and Setters for Game State
+    bool IsPlaying() const { return isPlaying; }
+    void SetPlaying(bool playing) { isPlaying = playing; }
 
-  bool getIsShuttingDownAudioSystem() const {
-    return isShuttingDownAudioSystem;
-  }
-  void setIsShuttingDownAudioSystem(bool shutdown) {
-    isShuttingDownAudioSystem = shutdown;
-  }
+    bool getIsShuttingDownAudioSystem() const
+    {
+        return isShuttingDownAudioSystem;
+    }
+    void setIsShuttingDownAudioSystem(bool shutdown)
+    {
+        isShuttingDownAudioSystem = shutdown;
+    }
 
-  // Getters for Particles with a mutable and nonmutable version to respect
-  // System hierarchies
-  const std::vector<GravitationalBody>& getParticles() const {
-    return particles;
-  }
-  std::vector<GravitationalBody>& getParticlesMutable() { return particles; }
+    // Getters for Particles with a mutable and nonmutable version to respect
+    // System hierarchies
+    const std::vector<GravitationalBody>& getParticles() const
+    {
+        return particles;
+    }
+    std::vector<GravitationalBody>& getParticlesMutable() { return particles; }
 
-  // Getters for Bodies with a mutable and nonmutable version to respect System
-  // hierarchies
-  const std::vector<GravitationalBody>& getMacroBodies() const {
-    return macroBodies;
-  }
-  std::vector<GravitationalBody>& getMacroBodiesMutable() {
-    return macroBodies;
-  }
+    // Getters for Bodies with a mutable and nonmutable version to respect
+    // System hierarchies
+    const std::vector<GravitationalBody>& getMacroBodies() const
+    {
+        return macroBodies;
+    }
+    std::vector<GravitationalBody>& getMacroBodiesMutable()
+    {
+        return macroBodies;
+    }
 
-  // Getter and setter for the alpha rendering variable
-  float getAlpha() const { return alpha; }
-  void setAlpha(float alphaIn) { alpha = alphaIn; }
+    // Getter and setter for the alpha rendering variable
+    float getAlpha() const { return alpha; }
+    void setAlpha(float alphaIn) { alpha = alphaIn; }
 
-  // Getter for the current time scale factor
-  float getTimeScaleFactor() const {
-    if (toggleSlow && !toggleFast)
-      return SLOW_TIME_SCALE_FACTOR;
-    else if (!toggleSlow && toggleFast)
-      return FAST_TIME_SCALE_FACTOR;
-    else
-      return REGULAR_TIME_SCALE_FACTOR;
-  }
+    // Getter for the current time scale factor
+    float getTimeScaleFactor() const
+    {
+        if (toggleSlow && !toggleFast)
+            return SLOW_TIME_SCALE_FACTOR;
+        else if (!toggleSlow && toggleFast)
+            return FAST_TIME_SCALE_FACTOR;
+        else
+            return REGULAR_TIME_SCALE_FACTOR;
+    }
 
-  bool getToggleSlow() const { return toggleSlow; }
-  void invertToggleSlow() { toggleSlow = !toggleSlow; }
+    bool getToggleSlow() const { return toggleSlow; }
+    void invertToggleSlow() { toggleSlow = !toggleSlow; }
 
-  bool getToggleFast() const { return toggleFast; }
-  void invertToggleFast() { toggleFast = !toggleFast; }
+    bool getToggleFast() const { return toggleFast; }
+    void invertToggleFast() { toggleFast = !toggleFast; }
 
-  bool getPlayMusic() const { return playMusic; }
-  void invertPlayMusic() { playMusic = !playMusic; }
+    bool getPlayMusic() const { return playMusic; }
+    void invertPlayMusic() { playMusic = !playMusic; }
 
-private:
-  // State variables
-  bool isPlaying = false;
-  bool playMusic = false;
-  bool isShuttingDownAudioSystem = false;
+    void incrementMaxIDInstantiated() { maxIDInstantiated += 1; }
+    int getMaxIDInstantiated() const { return maxIDInstantiated; }
 
-  // Frame helper vars
-  float alpha = 0.0f;
+  private:
+    // State variables
+    bool isPlaying = false;
+    bool playMusic = false;
+    bool isShuttingDownAudioSystem = false;
 
-  bool toggleSlow = false; // default to false for regular speed
-  bool toggleFast = false; // default to false for regular speed
+    // Frame helper vars
+    float alpha = 0.0f;
 
-  // Database for all the Macro Bodies
-  std::vector<GravitationalBody> macroBodies;
-  // Database for all the Particle Bodies
-  std::vector<GravitationalBody> particles;
+    bool toggleSlow = false; // default to false for regular speed
+    bool toggleFast = false; // default to false for regular speed
+
+    // Database for all the Macro Bodies
+    std::vector<GravitationalBody> macroBodies;
+    int maxIDInstantiated = 0;
+    // Database for all the Particle Bodies
+    std::vector<GravitationalBody> particles;
 };

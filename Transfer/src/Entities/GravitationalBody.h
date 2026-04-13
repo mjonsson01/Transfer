@@ -54,11 +54,22 @@ struct GravitationalBody
     bool isMacroGhost = false;  // makes the body a ghost to macro bodies, but
                                 // does not ghost for micro particles.
 
+    bool visible = true; // particles and macros should be visible by default
+                         // but if instantiated specifically for collision
+                         // purposes, maybe toggle visibility off
     // Control flag to send to cleanup function
     bool isTransient =
         false; // for bodies that are bounce artifacts of collisions
     uint32_t lifetime = 0;
     bool isMarkedForDeletion = false;
+
+    int macroIdentifier =
+        -1; // Defaults to minus one on construction unless
+            // explicitly being instantiated with a parent that might
+            // disintegrate. so create macro body should
+            // pass an iterating id based on global state. Only macro
+            // bodies will have an id. Can't just be the number of macro bodies
+            // because then duplicates, so just select +1 on each instantiation.
 };
 
 // --------- I/O OPERATOR OVERLOAD --------- //

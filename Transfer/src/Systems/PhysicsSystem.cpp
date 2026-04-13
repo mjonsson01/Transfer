@@ -94,19 +94,32 @@ void PhysicsSystem::UpdateSystemFrame(GameState& gameState, UIState& UIState)
         {
             if (body.lifetime > 0)
             {
+                // unfortunate magic numbers
                 --body.lifetime; // decrement lifetime
-                body.radius *= 1.001;
+                body.mass *= 0.97;
+                body.radius *= 0.995;
+                body.velocity *= 0.98;
             }
 
             if (body.lifetime == 0)
             {
+                // std::cout << body.mass / MAX_MASS << std::endl;
                 body.isMarkedForDeletion = true; // flag for removal
+                // body.mass = 0;
+                // body.isCollidable = false;
             }
         }
     }
     // Clean up the marked for deletion particles and macro bodies
     cleanupParticles(gameState);
     cleanupMacroBodies(gameState);
+
+    // auto& particles = gameState.getParticlesMutable();
+    // if (particles.size() > 0)
+    //     std::cout << particles[0].velocity << std::endl;
+    // auto& macro_bodiesPrint = gameState.getMacroBodiesMutable();
+    // if (macro_bodiesPrint.size() > 1)
+    //     std::cout << macro_bodiesPrint[1].netForce << std::endl;
 }
 
 // --------- CLEANUP METHOD --------- //
@@ -173,10 +186,6 @@ void PhysicsSystem::updateGravityForSystem(GameState& gameState)
     {
         for (size_t j = i + 1; j < num_macro_bodies; j++)
         {
-            if (macro_bodies[i].isMacroGhost || macro_bodies[j].isMacroGhost)
-            {
-                return;
-            }
             calculateGravity(macro_bodies[i], macro_bodies[j]);
         }
     }
@@ -185,6 +194,11 @@ void PhysicsSystem::updateGravityForSystem(GameState& gameState)
     {
         for (size_t j = 0; j < num_macro_bodies; j++)
         {
+            // if (particles[i].macroIdentifier ==
+            // macro_bodies[j].macroIdentifier)
+            // {
+            //     continue;
+            // }
             calculateGravity(particles[i], macro_bodies[j]);
         }
     }
@@ -193,10 +207,20 @@ void PhysicsSystem::updateGravityForSystem(GameState& gameState)
 void PhysicsSystem::calculateGravity(GravitationalBody& body1,
                                      GravitationalBody& body2)
 {
-    if (body1.mass == 0 || body2.mass == 0)
+    if (firstWithinEpsilonOfSecond(body1.mass, 0.0) ||
+        firstWithinEpsilonOfSecond(body2.mass, 0.0))
         return;
     static const double G = GRAVITATIONAL_CONSTANT;
 
+    if (body1.radius == 0 ||
+        body2.radius ==
+            0) // this one might be okay because its cast to int? not sure here
+        return;
+    double proxyScale = 1.0;
+    if (body1.macroIdentifier == body2.macroIdentifier)
+    {
+        proxyScale = 0.10;
+    }
     // Define softening epsilon
     double epsilon =
         (body1.radius + body2.radius) / 2.0; // Simple average radius
@@ -214,14 +238,18 @@ void PhysicsSystem::calculateGravity(GravitationalBody& body1,
 
     // 4. Calculate Coefficient (F = direction vector * G * m1 * m2 /
     // Denominator)
-    double coefficient = (G * body1.mass * body2.mass) / denominator_3;
+    double coefficient =
+        proxyScale * (G * body1.mass * body2.mass) / denominator_3;
 
     // Force vector is C * direction_vector (r)
     Vector2D force = direction_vector * coefficient;
 
     // 6. Apply Forces (Newton's Third Law)
-    body1.netForce += force;
-    body2.netForce -= force;
+    if (!body1.isStatic)
+        body1.netForce += force;
+
+    if (!body2.isStatic)
+        body2.netForce -= force;
 }
 
 // --------- INTEGRATION METHODS --------- //
@@ -235,23 +263,23 @@ void PhysicsSystem::integrateForwardsPhase1(GameState& gameState)
     // Phase 1 integrate particles
     for (auto& particle : particles)
     {
-        if (abs(particle.mass) <= EPSILON)
-            continue;
-        Vector2D new_acceleration = particle.isStatic
-                                        ? Vector2D(0.0, 0.0)
-                                        : particle.netForce / particle.mass;
-        // Calculate current acceleration (a_t)
-        // check for 0 mass?
+        bool hasMass = abs(particle.mass) > EPSILON;
 
-        // Step 1. Kick 1: Update velocity by half the acceleration over one
-        // PHYSICS TIME STEP (dt)
-        particle.velocity += new_acceleration * (PHYSICS_TIME_STEP / 2.0);
+        Vector2D acceleration(0.0, 0.0);
 
-        // Step 2. Drift: Update position using the half-step velocity
+        if (!particle.isStatic && hasMass)
+        {
+            acceleration = particle.netForce / particle.mass;
+
+            // Kick 1 (only if mass exists)
+            particle.velocity += acceleration * (PHYSICS_TIME_STEP / 2.0);
+        }
+
+        // Drift (ALWAYS happens)
         particle.previousPosition = particle.position;
         particle.position += particle.velocity * PHYSICS_TIME_STEP;
 
-        // Reset netForce for the next step's force accumulation
+        // Reset force
         particle.netForce = Vector2D(0.0, 0.0);
     }
 
@@ -260,8 +288,7 @@ void PhysicsSystem::integrateForwardsPhase1(GameState& gameState)
     {
         if (body.isStatic)
         {
-            // kinematic half-step (no force usage)
-            body.velocity += Vector2D(0.0, 0.0);
+            // do nothing
         }
         else
         {
@@ -289,18 +316,19 @@ void PhysicsSystem::integrateForwardsPhase2(GameState& gameState)
     // Phase 2 integrate particles
     for (auto& particle : particles)
     {
-        if (abs(particle.mass) <= EPSILON)
+        if (particle.isStatic)
             continue;
 
-        // Calculate new acceleration (a_t + dt) using the newly calculated
-        // netForce
-        Vector2D new_acceleration = particle.netForce / particle.mass;
+        if (abs(particle.mass) > EPSILON)
+        {
+            Vector2D acceleration = particle.netForce / particle.mass;
 
-        // Step 3. Kick 2: Update velocity by half the acceleration over one
-        // PHYSICS TIME STEP (dt)
-        particle.velocity += new_acceleration * (PHYSICS_TIME_STEP / 2.0);
+            // Kick 2
+            particle.velocity += acceleration * (PHYSICS_TIME_STEP / 2.0);
+        }
+
+        // else: zero-mass → no acceleration, velocity unchanged
     }
-
     // Phase 2 integrate macro bodies
     for (auto& body : macro_bodies)
     {
@@ -382,8 +410,9 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
             // if both are bounce, elastic collide
             if (pair.light->isBounce && pair.heavy->isBounce)
             {
-                std::cout << "Collision Branch Hit: 5" << std::endl;
+                // std::cout << "Collision Branch Hit: 5" << std::endl;
                 handleElasticCollisions(*pair.light, *pair.heavy);
+                continue;
             }
 
             // check if going fast enough to blow up
@@ -400,11 +429,13 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
                     {
                         // std::cout << "Collision Branch Hit: 6" << std::endl;
                         substituteWithParticles(*pair.light, gameState);
+                        continue;
                     }
                     else
                     {
                         // std::cout << "Collision Branch Hit: 7" << std::endl;
                         handleElasticCollisions(*pair.light, *pair.heavy);
+                        continue;
                     }
                 }
                 else if (pair.light->isBounce)
@@ -413,11 +444,13 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
                     {
                         // std::cout << "Collision Branch Hit: 8" << std::endl;
                         substituteWithParticles(*pair.heavy, gameState);
+                        continue;
                     }
                     else
                     {
                         // std::cout << "Collision Branch Hit: 9" << std::endl;
                         handleElasticCollisions(*pair.light, *pair.heavy);
+                        continue;
                     }
                 }
                 else // neither are of bounce type
@@ -428,11 +461,13 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
                         // std::cout << "Collision Branch Hit: 10" << std::endl;
                         handleDynamicExplosionCollision(*pair.light,
                                                         *pair.heavy, gameState);
+                        continue;
                     }
                     else // just blow the smaller one into bits
                     {
                         // std::cout << "Collision Branch Hit: 11" << std::endl;
                         substituteWithParticles(*pair.light, gameState);
+                        continue;
                     }
                 }
             }
@@ -442,9 +477,9 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
             {
                 if (pair.ratio >= MIN_BODY_BODY_ACCRETION_THRESHOLD_RATIO)
                 {
-                    // std::cout << "Collision Branch Hit: 12" << std::endl;
                     if (pair.light->isAccretable)
                     {
+                        std::cout << "Collision Branch Hit: 12" << std::endl;
                         handleAccretion(*pair.light, *pair.heavy);
                     }
                 }
@@ -456,6 +491,7 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
             }
         }
     }
+
     auto& particles = gameState.getParticlesMutable();
     for (auto& particle : particles)
     {
@@ -471,6 +507,10 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
         }
         for (auto& macro_body : macro_bodies)
         {
+            if (particle.macroIdentifier == macro_body.macroIdentifier)
+            {
+                continue;
+            };
             if (macro_body.isMarkedForDeletion)
             {
                 // std::cout << "Collision Branch Hit: 16" << std::endl;
@@ -489,12 +529,13 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
                 {
                     // std::cout << "Collision Branch Hit: 18" << std::endl;
                     handleElasticCollisions(particle, macro_body);
+                    continue;
                 }
                 else
                 {
-                    // std::cout << "Collision Branch Hit: 19" << std::endl;
                     if (particle.isAccretable)
                     {
+                        // std::cout << "Collision Branch Hit: 19" << std::endl;
                         handleAccretion(particle, macro_body);
                         break; // don't accrete the same particle twice
                     }
@@ -509,43 +550,50 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
     }
 }
 
+// newest elastic collision
+
 void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody,
                                             GravitationalBody& largerBody)
 {
-
-    if (smallerBody.isMacroGhost && largerBody.isMacroGhost)
+    if (smallerBody.macroIdentifier == largerBody.macroIdentifier)
     {
-        std::cout << "hello";
+        return;
+    }
+    if (smallerBody.isStatic && largerBody.isStatic)
+    {
+        return;
+    }
+    if (smallerBody.isStatic xor largerBody.isStatic)
+    {
+        GravitationalBody& dyn =
+            smallerBody.isStatic ? largerBody : smallerBody;
+        GravitationalBody& stat =
+            smallerBody.isStatic ? smallerBody : largerBody;
+
+        Vector2D n = (dyn.position - stat.position).normalize();
+        double v_n = dyn.velocity.dot(n);
+
+        if (v_n < 0.0)
+        {
+            dyn.velocity -= n * (1.0 + ELASTIC_LOSS_FACTOR) * v_n;
+        }
+        return;
+    }
+
+    if (firstWithinEpsilonOfSecond(smallerBody.mass, 0.0) ||
+        firstWithinEpsilonOfSecond(largerBody.mass, 0.0))
+    {
         return;
     }
 
     Vector2D r_vector = largerBody.position - smallerBody.position;
     double distance = r_vector.magnitude();
 
-    if (distance == 0)
-        return;
-
-    if (smallerBody.isBounce || largerBody.isBounce)
+    if (firstWithinEpsilonOfSecond(distance, 0.0))
     {
-        GravitationalBody& bounceBody =
-            smallerBody.isBounce ? smallerBody : largerBody;
-        GravitationalBody& other =
-            smallerBody.isBounce ? largerBody : smallerBody;
-
-        Vector2D normal = (other.position - bounceBody.position).normalize();
-        double v_dot_n = other.velocity.dot(normal);
-
-        if (v_dot_n < 0) // only reflect if moving inward
-        {
-            other.velocity -= normal * (2.0 * v_dot_n) * 0.5;
-        }
-
         return;
     }
 
-    // Skip massless bodies only if neither is a bounce body
-    if (smallerBody.mass == 0 || largerBody.mass == 0)
-        return;
     Vector2D normal_vector = r_vector / distance; // collision normal
     Vector2D v_smaller = smallerBody.velocity;
     Vector2D v_larger = largerBody.velocity;
@@ -562,221 +610,16 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody,
         (v_larger_n * (m_larger - m_smaller) + 2 * m_smaller * v_smaller_n) /
         (m_smaller + m_larger);
 
-    // Change in normal components
     Vector2D v_smaller_change =
         normal_vector * (v_smaller_n_new - v_smaller_n) * ELASTIC_LOSS_FACTOR;
     Vector2D v_larger_change =
         normal_vector * (v_larger_n_new - v_larger_n) * ELASTIC_LOSS_FACTOR;
 
     // Apply
-    // smallerBody.velocity = v_smaller + v_smaller_change;
-    // largerBody.velocity = v_larger + v_larger_change;
-    if (!smallerBody.isStatic)
-        smallerBody.velocity = v_smaller + v_smaller_change;
-
-    if (!largerBody.isStatic)
-        largerBody.velocity = v_larger + v_larger_change;
-
-    // double overlap = smallerBody.radius + largerBody.radius - distance;
-
-    // // Positional correction to disperse overlapping bodies
-    // if (abs(overlap) > 0 && !largerBody.isMacroGhost)
-    // {
-    //     // Small slop to avoid micro jitter
-    //     const double slop = 0.01;
-    //     const double percent = 0.8; // correction strength
-
-    //     double correction_mag = std::max(overlap - slop, 0.0) * percent;
-    //     Vector2D correction = normal_vector * correction_mag;
-
-    //     double totalMass = smallerBody.mass + largerBody.mass;
-
-    //     // smallerBody.position -= correction * (largerBody.mass /
-    //     // totalMass); largerBody.position += correction *
-    //     // (smallerBody.mass / totalMass);
-    //     if (!smallerBody.isStatic && !largerBody.isStatic)
-    //     {
-    //         smallerBody.position -= correction * (largerBody.mass /
-    //         totalMass); largerBody.position += correction * (smallerBody.mass
-    //         / totalMass);
-    //     }
-    //     else if (smallerBody.isStatic && !largerBody.isStatic)
-    //     {
-    //         largerBody.position += normal_vector * correction_mag;
-    //     }
-    //     else if (!smallerBody.isStatic && largerBody.isStatic)
-    //     {
-    //         smallerBody.position -= normal_vector * correction_mag;
-    //     }
-    //     // both static → do nothing
-
-    //     // Prevent fake velocity from Verlet-style position jumps
-    //     smallerBody.previousPosition = smallerBody.position;
-    //     largerBody.previousPosition = largerBody.position;
+    smallerBody.velocity = v_smaller + v_smaller_change;
+    largerBody.velocity = v_larger + v_larger_change;
 }
 
-// void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody,
-//                                             GravitationalBody& largerBody)
-// {
-// if (smallerBody.isMacroGhost && largerBody.isMacroGhost)
-//     return;
-
-// Vector2D r_vector = largerBody.position - smallerBody.position;
-// double distance = r_vector.magnitude();
-
-// if (distance <= 1e-8)
-//     return;
-
-// // --- NEW: DEEP PENETRATION FILTER ---
-// // If one body is a ghost, check if the other is deep inside it.
-// // If it's more than 5% inside the radius, we ignore the collision.
-// if (largerBody.isMacroGhost)
-// {
-//     double penetration_depth = largerBody.radius - distance;
-//     if (penetration_depth > (largerBody.radius * 0.05))
-//     {
-//         return; // Too deep inside; ignore to prevent "blasting"
-//     }
-// }
-// if (smallerBody.isMacroGhost)
-// {
-//     double penetration_depth = smallerBody.radius - distance;
-//     if (penetration_depth > (smallerBody.radius * 0.05))
-//     {
-//         return;
-//     }
-// }
-
-// Vector2D normal_vector = r_vector / distance;
-
-// // --- VELOCITY REFLECTION ---
-// // We use a relative velocity check to ensure they are actually moving
-// // TOWARD each other.
-// Vector2D relative_v = largerBody.velocity - smallerBody.velocity;
-// double vel_along_normal = relative_v.dot(normal_vector);
-
-// // Only resolve if they are moving towards each other (vel_along_normal <
-// 0) if (vel_along_normal < 0)
-// {
-//     double m_smaller = smallerBody.mass;
-//     double m_larger = largerBody.mass;
-
-//     // If one is a ghost/massless, treat as a bounce off a fixed-mass
-//     wall if (m_smaller <= EPSILON || m_larger <= EPSILON)
-//     {
-//         if (!smallerBody.isStatic && !smallerBody.isMacroGhost)
-//             smallerBody.velocity +=
-//                 normal_vector * (2.0 * std::abs(vel_along_normal));
-//         if (!largerBody.isStatic && !largerBody.isMacroGhost)
-//             largerBody.velocity -=
-//                 normal_vector * (2.0 * std::abs(vel_along_normal));
-//     }
-//     else
-//     {
-//         // Standard Elastic Formula
-//         double v_smaller_n = smallerBody.velocity.dot(normal_vector);
-//         double v_larger_n = largerBody.velocity.dot(normal_vector);
-
-//         double v_smaller_n_new = (v_smaller_n * (m_smaller - m_larger) +
-//                                   2 * m_larger * v_larger_n) /
-//                                  (m_smaller + m_larger);
-//         double v_larger_n_new = (v_larger_n * (m_larger - m_smaller) +
-//                                  2 * m_smaller * v_smaller_n) /
-//                                 (m_smaller + m_larger);
-
-//         if (!smallerBody.isStatic)
-//             smallerBody.velocity += normal_vector *
-//                                     (v_smaller_n_new - v_smaller_n) *
-//                                     ELASTIC_LOSS_FACTOR;
-//         if (!largerBody.isStatic)
-//             largerBody.velocity += normal_vector *
-//                                    (v_larger_n_new - v_larger_n) *
-//                                    ELASTIC_LOSS_FACTOR;
-//     }
-// }
-// void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody,
-//                                             GravitationalBody& largerBody)
-// {
-//     //  TODO REIMPLEMNENT WHOLE ELASTIC COLLISION
-//     // ... (Your existing ghost-ghost and distance checks) ...
-//     constexpr double JITTER_STRENGTH = 0.05;
-//     constexpr double GHOST_ELASTIC_LOSS_FACTOR = 0.25;
-//     Vector2D r_vector = largerBody.position - smallerBody.position;
-//     double distance = r_vector.magnitude();
-
-//     // The 5% Deep Penetration Filter (from previous step)
-//     if (largerBody.isMacroGhost &&
-//         (largerBody.radius - distance) > (largerBody.radius * 0.05))
-//         return;
-//     if (smallerBody.isMacroGhost &&
-//         (smallerBody.radius - distance) > (smallerBody.radius * 0.05))
-//         return;
-
-//     // --- 1. JITTERED NORMAL ---
-//     Vector2D normal_vector = r_vector / distance;
-
-//     if (largerBody.isMacroGhost || smallerBody.isMacroGhost)
-//     {
-//         // Add a small random offset to the normal to break the "perfect
-//         // circle" explosion
-//         double rx = ((double)rand() / RAND_MAX * 2.0 - 1.0) *
-//         JITTER_STRENGTH; double ry = ((double)rand() / RAND_MAX * 2.0 - 1.0)
-//         * JITTER_STRENGTH; normal_vector = (normal_vector + Vector2D(rx,
-//         ry)).normalize();
-//     }
-
-//     Vector2D relative_v = largerBody.velocity - smallerBody.velocity;
-//     double vel_along_normal = relative_v.dot(normal_vector);
-
-//     if (vel_along_normal < 0)
-//     {
-//         // --- 2. WEAKENED ELASTIC RESPONSE (ENERGY DRAIN) ---
-//         // Use a much smaller factor if a ghost is involved to kill the
-//         // shockwave
-//         double current_loss =
-//             (largerBody.isMacroGhost || smallerBody.isMacroGhost)
-//                 ? GHOST_ELASTIC_LOSS_FACTOR
-//                 : ELASTIC_LOSS_FACTOR;
-
-//         double m_smaller = smallerBody.mass;
-//         double m_larger = largerBody.mass;
-
-//         if (m_smaller <= EPSILON || m_larger <= EPSILON)
-//         {
-//             // Apply dampened reflection
-//             if (!smallerBody.isStatic && !smallerBody.isMacroGhost)
-//                 smallerBody.velocity +=
-//                     normal_vector *
-//                     (std::abs(vel_along_normal) * (1.0 + current_loss));
-//             if (!largerBody.isStatic && !largerBody.isMacroGhost)
-//                 largerBody.velocity -=
-//                     normal_vector *
-//                     (std::abs(vel_along_normal) * (1.0 + current_loss));
-//         }
-//         else
-//         {
-//             // Standard Elastic math with variable loss
-//             double v_smaller_n = smallerBody.velocity.dot(normal_vector);
-//             double v_larger_n = largerBody.velocity.dot(normal_vector);
-
-//             double v_smaller_n_new = (v_smaller_n * (m_smaller - m_larger) +
-//                                       2 * m_larger * v_larger_n) /
-//                                      (m_smaller + m_larger);
-//             double v_larger_n_new = (v_larger_n * (m_larger - m_smaller) +
-//                                      2 * m_smaller * v_smaller_n) /
-//                                     (m_smaller + m_larger);
-
-//             if (!smallerBody.isStatic)
-//                 smallerBody.velocity += normal_vector *
-//                                         (v_smaller_n_new - v_smaller_n) *
-//                                         current_loss;
-//             if (!largerBody.isStatic)
-//                 largerBody.velocity += normal_vector *
-//                                        (v_larger_n_new - v_larger_n) *
-//                                        current_loss;
-//         }
-//     }
-// }
 void PhysicsSystem::handleDynamicExplosionCollision(
     GravitationalBody& macroBody1, GravitationalBody& macroBody2,
     GameState& gameState)
@@ -788,14 +631,19 @@ void PhysicsSystem::handleDynamicExplosionCollision(
     // instantiate collision proxy for both bodies. Consider a shrinking
     // proxy?Add later?
     double distance = (macroBody1.position - macroBody2.position).magnitude();
-    int proxyBody1LifeTime =
-        1 * TARGET_FPS * distance / macroBody1.velocity.magnitude();
-    int proxyBody2LifeTime =
-        1 * TARGET_FPS * distance / macroBody2.velocity.magnitude();
+    int proxyBody1LifeTime = randomDouble(0.5, 1.5) * TARGET_FPS * distance /
+                             macroBody1.velocity.magnitude();
+
+    int proxyBody2LifeTime = randomDouble(0.5, 1.5) * TARGET_FPS * distance /
+                             macroBody2.velocity.magnitude();
+
+    // shattered bodies will contain child particles with
+    // the same id. Then a skipout of the logic if id
+    // matches macro (in elastic collsion)
     GravitationalBody proxyForMB1;
     populateCollisionProxyFromMacroBody(macroBody1, proxyForMB1);
     proxyForMB1.lifetime = proxyBody1LifeTime;
-    // proxyForMB1.lifetime = 0;
+    // proxyForMB1.lifetime = 1000;
     GravitationalBody proxyForMB2;
     populateCollisionProxyFromMacroBody(macroBody2, proxyForMB2);
     proxyForMB2.lifetime = proxyBody2LifeTime;
@@ -824,53 +672,54 @@ void PhysicsSystem::handleAccretion(GravitationalBody& particle,
 void PhysicsSystem::createMacroBody(GameState& gameState,
                                     InputState& inputState)
 {
+    gameState.incrementMaxIDInstantiated();
+    int newMacroBodyID = gameState.getMaxIDInstantiated();
+
     GravitationalBody body;
     body.mass = inputState.selectedMass;
     body.radius = inputState.selectedRadius;
     body.position = inputState.mouseCurrPosition;
     body.previousPosition = body.position;
     // TODO PASS FLAGS HERE
-    body.isBounce = false;
     body.isPlanet = true;
     body.isMacro = true;
     body.isShatterable = true;
     body.isCollidable = true;
     body.isStatic = inputState.isCreatingStatic;
+    body.macroIdentifier = newMacroBodyID;
     // --- NEW LOGIC: Nudge fragments out of the new body's radius ---
-    // auto& particles = gameState.getParticlesMutable();
-    // double nudge_factor =
-    //     1.01; // Nudge fragments out by 1% more than the radius
+    auto& particles = gameState.getParticlesMutable();
+    double nudge_factor =
+        1.01; // Nudge fragments out by 1% more than the radius
 
-    // for (auto& particle : particles)
-    // {
-    //     Vector2D displacement = particle.position - body.position;
-    //     double dist = displacement.magnitude();
-    //     double min_dist = body.radius + particle.radius;
+    for (auto& particle : particles)
+    {
+        Vector2D displacement = particle.position - body.position;
+        double dist = displacement.magnitude();
+        double min_dist = body.radius + particle.radius;
 
-    //     if (dist < min_dist)
-    //     {
-    //         // Calculate the required outward displacement
-    //         // We want the new distance to be min_dist * nudge_factor
-    //         double required_separation = (min_dist * nudge_factor) -
-    //         dist;
+        if (dist < min_dist)
+        {
+            // Calculate the required outward displacement
+            // We want the new distance to be min_dist * nudge_factor
+            double required_separation = (min_dist * nudge_factor) - dist;
 
-    //         // Normalize the displacement vector (safety check for
-    //         // dist=0, though unlikely here)
-    //         Vector2D direction =
-    //             (dist == 0) ? Vector2D(1.0, 0.0) : displacement /
-    //             dist;
+            // Normalize the displacement vector (safety check for
+            // dist=0, though unlikely here)
+            Vector2D direction =
+                (dist == 0) ? Vector2D(1.0, 0.0) : displacement / dist;
 
-    //         // Apply the positional nudge
-    //         particle.position += direction * required_separation;
+            // Apply the positional nudge
+            particle.position += direction * required_separation;
 
-    //         // Crucial for stability in Verlet integration:
-    //         // Set prevPosition to the new position to prevent the
-    //         next
-    //         // frame's velocity calculation from being massive and
-    //         // inaccurate.
-    //         particle.previousPosition = particle.position;
-    //     }
-    // }
+            // Crucial for stability in Verlet integration:
+            // Set prevPosition to the new position to prevent the
+            // next
+            // frame's velocity calculation from being massive and
+            // inaccurate.
+            particle.previousPosition = particle.position;
+        }
+    }
 
     gameState.getMacroBodiesMutable().push_back(body);
 }
@@ -995,9 +844,12 @@ void PhysicsSystem::substituteWithParticles(GravitationalBody& originalBody,
         p.isFragment = true;
         p.isAccretable = true;
         p.isCollidable = true;
+        p.macroIdentifier = originalBody.macroIdentifier;
 
         // inherit velocity exactly
-        p.velocity = originalVelocity;
+        // p.velocity = originalVelocity;
+        p.velocity = originalVelocity * randomDouble(0.95, 1.05);
+        // p.velocity = originalVelocity * randomDouble(0.5, 0.85);
 
         gameState.getParticlesMutable().push_back(p);
     }
@@ -1019,9 +871,9 @@ void PhysicsSystem::populateCollisionProxyFromMacroBody(
     // proxy body lifetime should be the amount of time it is predicted
     // to take to reach the collision center. needs to be instantiated
     // at the collision level.
-    proxyBody.mass = originalMacroBody.mass; // maybe still use original mass?
-    proxyBody.radius = originalMacroBody.radius * 1.0;
-    proxyBody.velocity = originalMacroBody.velocity * 0.9;
+    proxyBody.mass = 1.0 * originalMacroBody.mass;
+    proxyBody.radius = originalMacroBody.radius * 0.9;
+    proxyBody.velocity = originalMacroBody.velocity * 1.0;
     proxyBody.isStatic = true;
     proxyBody.isBounce = true;
     proxyBody.isShatterable = false;
@@ -1029,7 +881,8 @@ void PhysicsSystem::populateCollisionProxyFromMacroBody(
     proxyBody.isTransient = true;
     proxyBody.netForce = {0.0, 0.0};
     proxyBody.prevForce = {0.0, 0.0};
-    std::cout << proxyBody << std::endl;
+    proxyBody.visible = false;
+    // std::cout << proxyBody << std::endl;
 }
 // --------- CLEANUP GRAVITATIONAL BODIES METHODS --------- //
 

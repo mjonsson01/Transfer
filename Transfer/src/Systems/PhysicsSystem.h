@@ -22,7 +22,7 @@
 struct SpawnLimiter
 {
     double accumulator = 0.0;
-    double delay = 0.15; //
+    double delay = 0.25; //
 
     bool canSpawn(double deltaTime)
     {

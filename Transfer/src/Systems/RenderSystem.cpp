@@ -88,6 +88,10 @@ void RenderSystem::renderBodies(GameState& gameState)
     // Render Particles
     for (auto& particle : gameState.getParticles())
     {
+        if (!particle.visible)
+        {
+            continue; // don't render invisible particles
+        }
         SDL_Color color = getColorForMass(particle.mass);
         SDL_Texture* tex =
             getCircleTexture(static_cast<int>(particle.radius), color);
@@ -120,6 +124,10 @@ void RenderSystem::renderBodies(GameState& gameState)
     // Render Macro Bodies
     for (auto& body : gameState.getMacroBodies())
     {
+        if (!body.visible)
+        {
+            continue;
+        }
         SDL_Color color = getColorForMass(body.mass);
         SDL_Texture* tex =
             getCircleTexture(static_cast<int>(body.radius), color);
@@ -178,10 +186,6 @@ SDL_Color RenderSystem::getColorForMass(double mass)
     double logMax = std::log10(MAX_MASS + 1.0);
     double t = std::clamp(logMass / logMax, 0.0, 1.0);
     Uint8 opacity = 255;
-    if (mass == 0.0)
-    {
-        opacity = 255;
-    }
     // 2. Multi-stop gradient (Blue -> Cyan -> Green -> Yellow -> Red)
     Uint8 r, g, b;
 

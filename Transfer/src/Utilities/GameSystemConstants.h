@@ -16,10 +16,10 @@ constexpr int FPS_UPDATE_DELTA_MS = 250;
 
 // Time scaling factors to control rendering speed without changing the Physics
 // System behaviors
-const double SLOW_TIME_SCALE_FACTOR = 0.0625;   // (1/16)x speed
-const double REGULAR_TIME_SCALE_FACTOR = 0.25f; // for debug
-// const double REGULAR_TIME_SCALE_FACTOR = 1.0f; // 1x speed
-const double FAST_TIME_SCALE_FACTOR = 2.0f; // 2x speed
+const double SLOW_TIME_SCALE_FACTOR = 0.0625; // (1/16)x speed
+// const double REGULAR_TIME_SCALE_FACTOR = 0.25f; // for debug
+const double REGULAR_TIME_SCALE_FACTOR = 1.0f; // 1x speed
+const double FAST_TIME_SCALE_FACTOR = 2.0f;    // 2x speed
 
 // Delay between particle formation when holding to spawn
 constexpr int SPAWN_DELAY_MS = 10;
@@ -27,8 +27,8 @@ constexpr int SPAWN_DELAY_MS = 10;
 // Vertical and horizontal resolutions
 // constexpr int SCREEN_HEIGHT = 1080;
 // constexpr int SCREEN_WIDTH = 1920;
-constexpr int SCREEN_HEIGHT = 720;
-constexpr int SCREEN_WIDTH = 1280;
+constexpr int SCREEN_HEIGHT = 1080;
+constexpr int SCREEN_WIDTH = 1920;
 
 // Background Star count
 constexpr int STAR_NUM = 200;
