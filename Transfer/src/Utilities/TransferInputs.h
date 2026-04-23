@@ -28,6 +28,7 @@ struct TransferInputs
     bool leftMousePressed = false;
     bool rightMousePressed = false;
     bool middleMousePressed = false;
+    bool leftMouseJustReleased = false;
 
     // Menu and Media controls
     bool escPressed = false;  // Pause menu
@@ -48,6 +49,7 @@ struct TransferInputs
         this->leftMousePressed = false;
         this->rightMousePressed = false;
         this->middleMousePressed = false;
+        this->leftMouseJustReleased = false;
     }
     void resetAllKeyPressedVars()
     {

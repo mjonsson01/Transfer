@@ -12,143 +12,6 @@ InputSystem::~InputSystem() {}
 
 // --------- SYSTEM-LEVEL METHOD --------- //
 
-// void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState)
-// {
-//     // Process input events and update the Game State, UI State, and internal input gameState accordingly
-//     SDL_Event event;
-//     while (SDL_PollEvent(&event)) {
-//         auto& updated_input_state = UIState.getMutableInputState();
-//         auto& current_input_state = UIState.getInputState();
-
-//         switch (event.type)
-//         {
-//             // Handle different event types here
-//             case SDL_EVENT_QUIT:
-//                 gameState.SetPlaying(false);
-//                 gameState.setIsShuttingDownAudioSystem(true);
-//                 break;
-//             case SDL_EVENT_MOUSE_MOTION:
-//             {
-//                 updated_input_state.mouseCurrPosition = {event.motion.x, event.motion.y};
-//                 // If dragging the mass knob, update the drag end position and knob location
-//                 // if (updated_input_state.isDraggingMassKnob) {
-//                 //     updated_input_state.mouseDragEndPosition = {event.motion.x, event.motion.y};
-//                 //     UIState.setMassKnobRectPosition(updated_input_state.mouseDragEndPosition);
-//                 // }
-//                 break;
-//             }
-//             case SDL_EVENT_MOUSE_BUTTON_DOWN:
-//             {
-
-//                 // if held down and dragging inside the space of the knob rectangle location, capture the motion
-//                 // and pull the knob rect along with it.
-
-//                 // if (UIState.inRect(UIState.getMassKnobRect()))
-//                 // {
-//                 //     std::cout << "Dragging mass knob!" << std::endl;
-//                 //     updated_input_state.isDraggingMassKnob = true;
-//                 //     updated_input_state.mouseDragStartPosition = {event.motion.x, event.motion.y};
-//                 //     UIState.setMassKnobRectPosition(updated_input_state.mouseDragStartPosition);
-//                 //     break; // need to update position
-//                 // }
-//                 if (event.button.button == SDL_BUTTON_LEFT)
-//                 {
-//                     updated_input_state.isHoldingLeftMouseButton = true;
-//                     updated_input_state.dirty = true;
-//                     updated_input_state.isCreatingMacro = true;
-//                     updated_input_state.selectedMass = MAX_MASS/10.0;
-//                     updated_input_state.selectedRadius = 50.0;
-//                     break;
-//                 }
-//                 if (event.button.button == SDL_BUTTON_RIGHT)
-//                 {
-//                     updated_input_state.isHoldingRightMouseButton = true;
-//                     break;
-//                 }
-
-//             }
-//             case SDL_EVENT_MOUSE_BUTTON_UP:
-//             {
-//                 auto& updated_input_state = UIState.getMutableInputState();
-//                 updated_input_state.isHoldingRightMouseButton = false;
-//                 updated_input_state.isHoldingLeftMouseButton = false;
-//                 // updated_input_state.isDraggingMassKnob = false;
-//                 updated_input_state.spawnAccumulator = 0.0;
-//                 break;
-//             }
-//             case SDL_EVENT_KEY_DOWN:
-//                 if (event.key.scancode == SDL_SCANCODE_SPACE)
-//                 {
-//                     auto& updated_input_state = UIState.getMutableInputState();
-//                     updated_input_state.dirty = true;
-//                     updated_input_state.isCreatingMacro = true;
-//                     updated_input_state.isCreatingStatic = true;
-//                     updated_input_state.selectedMass = MAX_MASS;
-//                     updated_input_state.selectedRadius = 50.0;
-//                     break;
-//                 }
-//                 else if (event.key.scancode == SDL_SCANCODE_TAB)
-//                 {
-//                     gameState.invertToggleSlow();
-//                 }
-//                 else if (event.key.scancode == SDL_SCANCODE_P)
-//                 {
-//                     UIState.getMutableInputState().togglePhysicsPause();
-//                 }
-//                 else if (event.key.scancode == SDL_SCANCODE_BACKSPACE || event.key.scancode == SDL_SCANCODE_DELETE)
-//                 {
-//                     UIState.getMutableInputState().clearAllBodies();
-//                 }
-//                 else if (event.key.scancode == SDL_SCANCODE_0)
-//                 {
-//                     gameState.invertPlayMusic();
-//                     // std::cout<<"0 hit"<<std::endl;
-//                 }
-//                 else if (event.key.scancode == SDL_SCANCODE_MINUS)
-//                 {
-//                     UIState.invertUIElementsVisibility();
-//                 }
-//                 else if (event.key.scancode == SDL_SCANCODE_EQUALS)
-//                 {
-//                     gameState.invertToggleFast();
-//                 }
-//                 else if (event.key.scancode == SDL_SCANCODE_T)
-//                 {
-//                     auto& updated_input_state = UIState.getMutableInputState();
-//                     updated_input_state.dirty = true;
-//                     updated_input_state.isCreatingParticleCluster = true ;
-//                     updated_input_state.selectedMass = MAX_MASS;
-//                     updated_input_state.selectedRadius = 100.0;
-//                     break;
-//                 }
-
-//         }
-
-//     }
-
-//     auto& updated_input_state = UIState.getMutableInputState();
-//     if (updated_input_state.isHoldingRightMouseButton)
-//     {
-//         updated_input_state.spawnAccumulator += FRAME_DELAY_MS;
-
-//         while (updated_input_state.spawnAccumulator >= SPAWN_DELAY_MS)
-//         {
-//             updated_input_state.spawnAccumulator -= SPAWN_DELAY_MS;
-
-//             updated_input_state.dirty = true;
-//             updated_input_state.isCreatingParticle = true;
-//             updated_input_state.selectedMass = MAX_MASS/100000.0;
-//             updated_input_state.selectedRadius = 1.0;
-//         }
-//     }
-//     else
-//     {
-//         updated_input_state.spawnAccumulator = 0.0;
-//     }
-
-//     // Additional input handling logic to be implemented later
-// }
-
 void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState)
 {
     SDL_Event event;
@@ -235,6 +98,7 @@ void InputSystem::routeSDL_EventInputInGame(SDL_Event* e)
         {
         case SDL_BUTTON_LEFT:
             transferInputs.leftMousePressed = false;
+            transferInputs.leftMouseJustReleased = true;
             break;
         case SDL_BUTTON_RIGHT:
             transferInputs.rightMousePressed = false;
@@ -347,14 +211,16 @@ void InputSystem::translateAndPassTransferInputsOff(UIState& UIState)
     updated_input_state.isHoldingRightMouseButton = transferInputs.rightMousePressed;
     updated_input_state.isHoldingMiddleMouseButton = transferInputs.rightMousePressed;
 
-    if (transferInputs.leftMousePressed && transferInputs.shiftPressed)
+    if (transferInputs.leftMouseJustReleased)
     {
+        if (transferInputs.shiftPressed)
+        {
+            updated_input_state.isCreatingWithInitialVelocity = true;
+        }
         updated_input_state.isCreatingMacro = true;
-        updated_input_state.isCreatingMacroGhost = true;
-    }
-    if (transferInputs.leftMousePressed)
-    {
-        updated_input_state.isCreatingMacro = true;
+        updated_input_state.isCreatingCollidable = false;
+        // reset after instantiation
+        transferInputs.leftMouseJustReleased = false;
     }
 }
 

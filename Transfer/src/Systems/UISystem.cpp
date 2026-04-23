@@ -26,6 +26,16 @@ void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState)
     // Left mouse button click is the only one UI cares about
     if (!inputsReceived.isHoldingLeftMouseButton)
     {
+        if (activeElement != UIElementType::NONE)
+        {
+            inputsReceived.UIInputConsumed = true;
+            inputsReceived.resetTransientFlags();
+        }
+        else
+        {
+            inputsReceived.UIInputConsumed = false;
+        }
+
         activeElement = UIElementType::NONE;
         return;
     }
@@ -40,14 +50,12 @@ void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState)
     {
         updateSpecificElementAndPropagateUpwards(activeElement, inputsReceived);
         inputsReceived.UIInputConsumed = true;
-        inputsReceived.instantiateDirty = false;
+        inputsReceived.resetTransientFlags();
         return;
     }
 
     // Otherwise → pass to world
-    inputsReceived.instantiateDirty = true;
-    inputsReceived.instantiatePosition = inputsReceived.mouseCurrPosition;
-    inputsReceived.instantiateDragStartPosition = inputsReceived.mouseDragStartPosition;
+    inputsReceived.UIInputConsumed = false;
 }
 
 void UISystem::CleanUp()

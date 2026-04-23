@@ -13,10 +13,6 @@ struct InputState
     // Physics locations if instantiateDirty gets thrown. If the event is not
     // consumed by a UI event, then instantiate dirty will be set by the
     // UIState.
-    Vector2D instantiatePosition = {0.0, 0.0}; // derived from event input router, set by UISystem if determined
-                                               // that click event did not interact with a UI element.
-    Vector2D instantiateDragStartPosition = {0.0, 0.0}; // only possible in game or level editor, derived from transfer
-                                                        // inputs / editor inputs and set in the Input System
 
     bool isDragging = false;                 // set in Input System
     bool isHoldingRightMouseButton = false;  // set by transfer inputs
@@ -27,11 +23,6 @@ struct InputState
     double selectedRadius = 0.0; // spit back up from UI element to UISystem to UIState
 
     bool UIInputConsumed = false; // Does not get reset as a transient flag
-
-    // Transient Flags reset at end of processing an event
-    bool instantiateDirty = false; // Flag for body instantiation/rendering required. If dirty is
-                                   // set to true, instantiate at the instantiate position then flip
-                                   // back to false.
 
     // Creation type flags
     bool isCreatingMacro = false;
@@ -54,6 +45,7 @@ struct InputState
     bool isCreatingCollidable = false;
     bool isCreatingBounce = false;
     bool isCreatingMacroGhost = false;
+    bool isCreatingWithInitialVelocity = false;
 
     // Managed by player input
     bool clearAll = false;        // Toggled when screen wipe is requested
@@ -63,8 +55,6 @@ struct InputState
 
     InputState& resetTransientFlags()
     {
-        instantiateDirty = false; // Flag for body instantiation/rendering required
-
         // Creation type flags
         isCreatingMacro = false;
         isCreatingParticle = false;
@@ -85,6 +75,7 @@ struct InputState
         isCreatingAccretable = false;
         isCreatingCollidable = false;
         isCreatingMacroGhost = false;
+        isCreatingWithInitialVelocity = false;
 
         return *this;
     }

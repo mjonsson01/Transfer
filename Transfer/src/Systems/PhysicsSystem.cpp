@@ -129,29 +129,19 @@ void PhysicsSystem::CleanUp()
 void PhysicsSystem::updateGravBodyInstantiations(GameState& gameState, UIState& UIState)
 {
     InputState& input_state = UIState.getMutableInputState();
-    if (input_state.instantiateDirty)
+    if (!input_state.UIInputConsumed)
     {
-        if (input_state.isCreatingMacro && macroLimiter.canSpawn(1 / UIState.getFPS()))
+        if (input_state.isCreatingMacro)
         {
             createMacroBody(gameState, input_state);
-            input_state.resetTransientFlags();
-        }
-        else if (input_state.isCreatingParticle && particleLimiter.canSpawn(1 / UIState.getFPS()))
-        {
-            createParticle(gameState, input_state);
-            input_state.resetTransientFlags();
-        }
-        else if (input_state.isCreatingParticleCluster && clusterLimiter.canSpawn(1 / UIState.getFPS()))
-        {
-            createParticleCluster(gameState, input_state);
             input_state.resetTransientFlags();
         }
     }
     else
     {
-        macroLimiter.reset();
-        particleLimiter.reset();
-        clusterLimiter.reset();
+        // macroLimiter.reset();
+        // particleLimiter.reset();
+        // clusterLimiter.reset();
     }
     // Check if all Gravitational Bodies are supposed to be wiped
     if (input_state.clearAll)
@@ -659,10 +649,17 @@ void PhysicsSystem::createMacroBody(GameState& gameState, InputState& inputState
     body.isPlanet = true;
     body.isMacro = true;
     body.isShatterable = true;
-    body.isCollidable = true;
+    body.isCollidable = inputState.isCreatingCollidable;
     body.isStatic = inputState.isCreatingStatic;
     body.isMacroGhost = inputState.isCreatingMacroGhost;
     body.macroIdentifier = newMacroBodyID;
+
+    if (inputState.isCreatingWithInitialVelocity)
+    {
+        body.position = inputState.mouseDragStartPosition;
+        body.previousPosition = body.position;
+        body.velocity = inputState.mouseCurrPosition - inputState.mouseDragStartPosition;
+    }
     // --- NEW LOGIC: Nudge fragments out of the new body's radius ---
     auto& particles = gameState.getParticlesMutable();
     double nudge_factor = 1.01; // Nudge fragments out by 1% more than the radius
@@ -710,7 +707,6 @@ void PhysicsSystem::createParticle(GameState& gameState, InputState& inputState)
     body.isCollidable = true;
     inputState.isCreatingDust = false;
     gameState.getParticlesMutable().push_back(body);
-    inputState.instantiateDirty = false;
 }
 
 void PhysicsSystem::createParticleCluster(GameState& gameState, InputState& inputState)

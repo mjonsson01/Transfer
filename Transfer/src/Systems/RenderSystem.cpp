@@ -18,7 +18,7 @@ RenderSystem::RenderSystem()
 
     // Assign renderer pointer to instance. No specific driver, so nullptr.
     renderer = SDL_CreateRenderer(window, nullptr);
-    SDL_SetRenderVSync(renderer, 2);
+    // SDL_SetRenderVSync(renderer, 1);
     if (TTF_Init() == false)
     {
         SDL_Log("Failed to initialize SDL_ttf: %s", SDL_GetError());
