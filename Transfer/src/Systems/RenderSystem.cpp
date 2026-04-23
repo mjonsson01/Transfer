@@ -14,8 +14,7 @@ RenderSystem::RenderSystem()
     int no_flags = 0;
 
     // Assign window pointer to instance
-    window = SDL_CreateWindow("Transfer", desired_x_resolution,
-                              desired_y_resolution, no_flags);
+    window = SDL_CreateWindow("Transfer", desired_x_resolution, desired_y_resolution, no_flags);
 
     // Assign renderer pointer to instance. No specific driver, so nullptr.
     renderer = SDL_CreateRenderer(window, nullptr);
@@ -25,8 +24,7 @@ RenderSystem::RenderSystem()
         SDL_Log("Failed to initialize SDL_ttf: %s", SDL_GetError());
         return;
     }
-    std::string fontPath =
-        Utilities::GetResourcePath("Fonts/SpaceMono-Regular.ttf");
+    std::string fontPath = Utilities::GetResourcePath("Fonts/SpaceMono-Regular.ttf");
 
     UIFont = TTF_OpenFont(fontPath.c_str(), 18);
     if (!UIFont)
@@ -62,8 +60,7 @@ void RenderSystem::CleanUp()
 
 // --------- RENDER FULL FRAME METHOD --------- //
 
-void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState,
-                                   const std::vector<UIElement*>& allUIElements)
+void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState, const std::vector<UIElement*>& allUIElements)
 {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // black background
     SDL_RenderClear(renderer);
@@ -92,14 +89,14 @@ void RenderSystem::renderBodies(GameState& gameState)
         {
             continue; // don't render invisible particles
         }
-        SDL_Color color = getColorForMass(particle.mass);
-        SDL_Texture* tex =
-            getCircleTexture(static_cast<int>(particle.radius), color);
+        SDL_Color color = getColorForProperty(particle);
+        SDL_Texture* tex = getCircleTexture(static_cast<int>(particle.radius), color);
         Vector2D current_position = particle.position;
         Vector2D previous_position = particle.previousPosition;
         // Alpha Interpolation causes particle flickers for small particles.
         // Remove for now. Figure out dynamical fix later. Leave interpolation
         // on for slow mo.
+
         float render_x, render_y;
         if (particle.radius <= 1.0 && gameState.getToggleSlow() == false)
         {
@@ -110,10 +107,8 @@ void RenderSystem::renderBodies(GameState& gameState)
         }
         else
         {
-            render_x = previous_position.xVal * (1.0f - alpha) +
-                       current_position.xVal * alpha;
-            render_y = previous_position.yVal * (1.0f - alpha) +
-                       current_position.yVal * alpha;
+            render_x = previous_position.xVal * (1.0f - alpha) + current_position.xVal * alpha;
+            render_y = previous_position.yVal * (1.0f - alpha) + current_position.yVal * alpha;
         }
         float r = static_cast<float>(particle.radius);
         SDL_FRect dstRect = {render_x - r, render_y - r, r * 2, r * 2};
@@ -128,15 +123,12 @@ void RenderSystem::renderBodies(GameState& gameState)
         {
             continue;
         }
-        SDL_Color color = getColorForMass(body.mass);
-        SDL_Texture* tex =
-            getCircleTexture(static_cast<int>(body.radius), color);
+        SDL_Color color = getColorForProperty(body);
+        SDL_Texture* tex = getCircleTexture(static_cast<int>(body.radius), color);
         Vector2D current_position = body.position;
         Vector2D previous_position = body.previousPosition;
-        float render_x = previous_position.xVal * (1.0f - alpha) +
-                         current_position.xVal * alpha;
-        float render_y = previous_position.yVal * (1.0f - alpha) +
-                         current_position.yVal * alpha;
+        float render_x = previous_position.xVal * (1.0f - alpha) + current_position.xVal * alpha;
+        float render_y = previous_position.yVal * (1.0f - alpha) + current_position.yVal * alpha;
         float r = static_cast<float>(body.radius);
         SDL_FRect dstRect = {render_x - r, render_y - r, r * 2, r * 2};
 
@@ -150,8 +142,7 @@ void RenderSystem::renderInputArtifacts(GameState& gameState) {}
 
 // --------- RENDER UI ELEMENTS METHOD --------- //
 
-void RenderSystem::renderUIElements(UIState& UIState,
-                                    std::vector<UIElement*> allUIElements)
+void RenderSystem::renderUIElements(UIState& UIState, std::vector<UIElement*> allUIElements)
 {
     if (!UIState.getAllUIVisibility())
         return;
@@ -177,15 +168,21 @@ void RenderSystem::renderUIElements(UIState& UIState,
 //     return SDL_Color{ r, g, b, a };
 // }
 
-SDL_Color RenderSystem::getColorForMass(double mass)
+SDL_Color RenderSystem::getColorForProperty(const GravitationalBody& body)
 // NEED TO OPTIMIZE OUT CONSTANT ACCESS
 {
     // 1. Use Logarithmic scaling so small changes in light bodies are visible
     // mass + 1.0 avoids log(0)
-    double logMass = std::log10(mass + 1.0);
+    double logMass = std::log10(body.mass + 1.0);
     double logMax = std::log10(MAX_MASS + 1.0);
     double t = std::clamp(logMass / logMax, 0.0, 1.0);
     Uint8 opacity = 255;
+
+    // Ghost mode render
+    if (body.isMacroGhost || !body.isCollidable)
+    {
+        opacity = 175;
+    }
     // 2. Multi-stop gradient (Blue -> Cyan -> Green -> Yellow -> Red)
     Uint8 r, g, b;
 
@@ -291,8 +288,7 @@ SDL_Texture* RenderSystem::createCircleTexture(int radius, SDL_Color color)
 {
     int diameter = radius * 2;
     SDL_Texture* tex =
-        SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888,
-                          SDL_TEXTUREACCESS_TARGET, diameter, diameter);
+        SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, diameter, diameter);
     SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
 
     SDL_SetRenderTarget(renderer, tex);
@@ -329,9 +325,7 @@ void RenderSystem::createStarField(int numStars)
 
     for (int i = 0; i < numStars; ++i)
     {
-        SDL_Texture* tex =
-            twinklingStarTextures[rand() %
-                                  twinklingStarTextures.size()]; // pick texture
+        SDL_Texture* tex = twinklingStarTextures[rand() % twinklingStarTextures.size()]; // pick texture
 
         float w, h;
         SDL_GetTextureSize(tex, &w, &h);
@@ -352,8 +346,7 @@ void RenderSystem::updateStars()
     float time = SDL_GetTicks() / 1000.0f; // seconds
     for (auto& star : twinklingStars)
     {
-        star.currentAlpha =
-            star.baseAlpha + 0.3f * sinf(time * star.twinkleSpeed);
+        star.currentAlpha = star.baseAlpha + 0.3f * sinf(time * star.twinkleSpeed);
         star.currentAlpha = std::clamp(star.currentAlpha, 0.0f, 1.0f);
     }
 }

@@ -27,8 +27,8 @@ constexpr int SPAWN_DELAY_MS = 10;
 // Vertical and horizontal resolutions
 // constexpr int SCREEN_HEIGHT = 1080;
 // constexpr int SCREEN_WIDTH = 1920;
-constexpr int SCREEN_HEIGHT = 1080;
-constexpr int SCREEN_WIDTH = 1920;
+constexpr int SCREEN_HEIGHT = 720;
+constexpr int SCREEN_WIDTH = 1280;
 
 // Background Star count
 constexpr int STAR_NUM = 200;

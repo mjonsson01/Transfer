@@ -8,9 +8,7 @@ InputSystem::InputSystem()
     SDL_InitSubSystem(SDL_INIT_EVENTS);
 }
 
-InputSystem::~InputSystem()
-{
-}
+InputSystem::~InputSystem() {}
 
 // --------- SYSTEM-LEVEL METHOD --------- //
 
@@ -151,7 +149,7 @@ InputSystem::~InputSystem()
 //     // Additional input handling logic to be implemented later
 // }
 
-void InputSystem::ProcessSystemInputFrame(GameState &gameState, UIState &UIState)
+void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState)
 {
     SDL_Event event;
     while (SDL_PollEvent(&event))
@@ -189,9 +187,11 @@ void InputSystem::ProcessSystemInputFrame(GameState &gameState, UIState &UIState
                 // Handle level scene specific input
                 routeSDL_EventInputInGame(&event); // writes to internal member transferInputs;
 
-                // UI Only interactible through mouse clicks, but pass through the transfer game inputs so that the other systems have knowledge of the desired areas.
+                // UI Only interactible through mouse clicks, but pass through the transfer game inputs so that the
+                // other systems have knowledge of the desired areas.
 
-                // pass off data to the UIState InputState sub data. UISystem may or may not consume this input. If it does not, the UISystem will flip flags as necessary to make sure the input is consumed
+                // pass off data to the UIState InputState sub data. UISystem may or may not consume this input. If it
+                // does not, the UISystem will flip flags as necessary to make sure the input is consumed
                 translateAndPassTransferInputsOff(UIState);
 
                 break;
@@ -199,16 +199,17 @@ void InputSystem::ProcessSystemInputFrame(GameState &gameState, UIState &UIState
         }
     }
     // std::cout<< "Transfer Inputs -> " << transferInputs << std::endl;
-    // Now that our event is routed to an InputRoutedEvent (and we haven't quit), we can pass off our details to the UI for checking first, then to the rest of the game
-    // if
+    // Now that our event is routed to an InputRoutedEvent (and we haven't quit), we can pass off our details to the UI
+    // for checking first, then to the rest of the game if
 }
 
-void InputSystem::routeSDL_EventInputInGame(SDL_Event *e)
+void InputSystem::routeSDL_EventInputInGame(SDL_Event* e)
 {
     switch (e->type)
     {
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
-        // if no mouse buttons are currently being dragged, set the start of the drag location. otherwise just continue tracking buttons (the start position will remain fixed)
+        // if no mouse buttons are currently being dragged, set the start of the drag location. otherwise just continue
+        // tracking buttons (the start position will remain fixed)
         if (!transferInputs.leftMousePressed && !transferInputs.rightMousePressed && !transferInputs.middleMousePressed)
         {
             // This is a dragging event
@@ -329,7 +330,7 @@ void InputSystem::routeSDL_EventInputInGame(SDL_Event *e)
     }
 }
 
-void InputSystem::translateAndPassTransferInputsOff(UIState &UIState)
+void InputSystem::translateAndPassTransferInputsOff(UIState& UIState)
 {
     // Check for clear all particle orders
     if (transferInputs.clearParticlesPressed)
@@ -338,7 +339,7 @@ void InputSystem::translateAndPassTransferInputsOff(UIState &UIState)
         return;
     }
     // Always pass off these
-    InputState &updated_input_state = UIState.getMutableInputState();
+    InputState& updated_input_state = UIState.getMutableInputState();
     updated_input_state.mouseCurrPosition = transferInputs.mouseCurrPosition;
     updated_input_state.isDragging = transferInputs.isDragging;
     updated_input_state.mouseDragStartPosition = transferInputs.mouseDragStartPosition;
@@ -346,11 +347,14 @@ void InputSystem::translateAndPassTransferInputsOff(UIState &UIState)
     updated_input_state.isHoldingRightMouseButton = transferInputs.rightMousePressed;
     updated_input_state.isHoldingMiddleMouseButton = transferInputs.rightMousePressed;
 
+    if (transferInputs.leftMousePressed && transferInputs.shiftPressed)
+    {
+        updated_input_state.isCreatingMacro = true;
+        updated_input_state.isCreatingMacroGhost = true;
+    }
     if (transferInputs.leftMousePressed)
     {
         updated_input_state.isCreatingMacro = true;
-        //  updated_input_state.selectedMass = MAX_MASS/10.0;
-        // updated_input_state.selectedRadius = 50.0;
     }
 }
 

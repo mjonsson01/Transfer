@@ -36,8 +36,7 @@ void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState)
         activeElement = isPositionInUIElementHotZone(inputsReceived);
     }
     // If we have an active UI element → ALWAYS route input to it
-    if (activeElement != UIElementType::NONE &&
-        activeElement != UIElementType::FPS_COUNTER_INDEX)
+    if (activeElement != UIElementType::NONE && activeElement != UIElementType::FPS_COUNTER_INDEX)
     {
         updateSpecificElementAndPropagateUpwards(activeElement, inputsReceived);
         inputsReceived.UIInputConsumed = true;
@@ -48,8 +47,7 @@ void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState)
     // Otherwise → pass to world
     inputsReceived.instantiateDirty = true;
     inputsReceived.instantiatePosition = inputsReceived.mouseCurrPosition;
-    inputsReceived.instantiateDragStartPosition =
-        inputsReceived.mouseDragStartPosition;
+    inputsReceived.instantiateDragStartPosition = inputsReceived.mouseDragStartPosition;
 }
 
 void UISystem::CleanUp()
@@ -61,8 +59,7 @@ void UISystem::CleanUp()
     allUIElements.clear();
 }
 
-void UISystem::updateSpecificElementAndPropagateUpwards(
-    UIElementType elementTypeToUpdate, InputState& inputState)
+void UISystem::updateSpecificElementAndPropagateUpwards(UIElementType elementTypeToUpdate, InputState& inputState)
 {
     UIElement* elementToUpdate = allUIElements[elementTypeToUpdate];
 
@@ -72,15 +69,13 @@ void UISystem::updateSpecificElementAndPropagateUpwards(
     if (elementTypeToUpdate == UIElementType::MASS_SLIDER_INDEX)
     {
         double massValToBeCalculatedAndInjected = 0.0; // initialize
-        elementToUpdate->updateMe(inputState.mouseCurrPosition,
-                                  massValToBeCalculatedAndInjected);
+        elementToUpdate->updateMe(inputState.mouseCurrPosition, massValToBeCalculatedAndInjected);
         inputState.selectedMass = massValToBeCalculatedAndInjected;
     }
     if (elementTypeToUpdate == UIElementType::RADIUS_SLIDER_INDEX)
     {
         double radiusValToBeCalculatedAndInjected = 0.0; // initialize
-        elementToUpdate->updateMe(inputState.mouseCurrPosition,
-                                  radiusValToBeCalculatedAndInjected);
+        elementToUpdate->updateMe(inputState.mouseCurrPosition, radiusValToBeCalculatedAndInjected);
         inputState.selectedRadius = radiusValToBeCalculatedAndInjected;
     }
     // if (elementTypeToUpdate == UIElementType::RADIUS_SLIDER_INDEX)

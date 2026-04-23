@@ -34,9 +34,8 @@ struct CircleKey
 
     bool operator==(const CircleKey& other) const
     {
-        return radius == other.radius && color.r == other.color.r &&
-               color.g == other.color.g && color.b == other.color.b &&
-               color.a == other.color.a;
+        return radius == other.radius && color.r == other.color.r && color.g == other.color.g &&
+               color.b == other.color.b && color.a == other.color.a;
     }
 };
 
@@ -47,8 +46,7 @@ template <> struct hash<CircleKey>
 {
     size_t operator()(const CircleKey& k) const
     {
-        return ((hash<int>()(k.radius) ^ (hash<int>()(k.color.r) << 1)) ^
-                (hash<int>()(k.color.g) << 1)) ^
+        return ((hash<int>()(k.radius) ^ (hash<int>()(k.color.r) << 1)) ^ (hash<int>()(k.color.g) << 1)) ^
                (hash<int>()(k.color.b) << 1) ^ (hash<int>()(k.color.a) << 1);
     }
 };
@@ -64,8 +62,7 @@ class RenderSystem
     ~RenderSystem(); // make sure to teardown destructor and window
 
     // Main Loop Rendering Function, renders engine state and UI state
-    void RenderFullFrame(GameState& gameState, UIState& UIState,
-                         const std::vector<UIElement*>& allUIElements);
+    void RenderFullFrame(GameState& gameState, UIState& UIState, const std::vector<UIElement*>& allUIElements);
 
     // Main Cleanup method (tears down all the SDL components)
     void CleanUp();
@@ -83,8 +80,7 @@ class RenderSystem
     // Container for background twinkling stars
     std::vector<TwinklingStar> twinklingStars;
     // Container for textures of all background twinkling stars
-    std::vector<SDL_Texture*>
-        twinklingStarTextures; // pre-created tiny textures (1-3 px)
+    std::vector<SDL_Texture*> twinklingStarTextures; // pre-created tiny textures (1-3 px)
 
   private:
     // Subordinate Rendering Functions
@@ -95,11 +91,10 @@ class RenderSystem
     void renderInputArtifacts(GameState& gameState);
 
     // Renders UI Elements
-    void renderUIElements(UIState& UIState,
-                          std::vector<UIElement*> allUIElements);
+    void renderUIElements(UIState& UIState, std::vector<UIElement*> allUIElements);
 
     // Utility Rendering Helper Functions
-    SDL_Color getColorForMass(double mass);
+    SDL_Color getColorForProperty(const GravitationalBody& body);
 
     // Store for circle textures
     std::unordered_map<CircleKey, SDL_Texture*> circleTextureCache;
