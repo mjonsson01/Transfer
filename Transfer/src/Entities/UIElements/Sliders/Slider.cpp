@@ -2,7 +2,8 @@
 
 #include "Entities/UIElements/Sliders/Slider.h"
 
-Slider::Slider() {
+Slider::Slider()
+{
     orientation = Orientation::Horizontal;
     trackRect = SDL_FRect{0, 0, 0, 0};
     knobRect = {0, 0, 0, 0};
@@ -12,7 +13,8 @@ Slider::Slider() {
     maxValue = 0.0;
 }
 
-void Slider::updateMe(Vector2D positionOfEvent, double& returnedElementValue) {
+void Slider::updateMe(Vector2D positionOfEvent, double& returnedElementValue)
+{
     // Track start positions
     float trackStartX = trackRect.x;
     float trackStartY = trackRect.y;
@@ -25,21 +27,20 @@ void Slider::updateMe(Vector2D positionOfEvent, double& returnedElementValue) {
     float clampedX = positionOfEvent.xVal;
     float clampedY = positionOfEvent.yVal;
 
-    if (orientation == Orientation::Horizontal) {
+    if (orientation == Orientation::Horizontal)
+    {
         if (clampedX < trackStartX)
             clampedX = trackStartX;
         if (clampedX > trackStartX + trackLengthX)
             clampedX = trackStartX + trackLengthX;
 
         // Map knob position to slider value (handles negative minValue)
-        sliderValue = minValue + ((clampedX - trackStartX) / trackLengthX) *
-                                     (maxValue - minValue);
+        sliderValue = minValue + ((clampedX - trackStartX) / trackLengthX) * (maxValue - minValue);
 
         // Update knob position to reflect sliderValue
-        knobRect.x =
-            trackStartX +
-            ((sliderValue - minValue) / (maxValue - minValue)) * trackLengthX;
-    } else // Vertical
+        knobRect.x = trackStartX + ((sliderValue - minValue) / (maxValue - minValue)) * trackLengthX;
+    }
+    else // Vertical
     {
         if (clampedY < trackStartY)
             clampedY = trackStartY;
@@ -47,44 +48,42 @@ void Slider::updateMe(Vector2D positionOfEvent, double& returnedElementValue) {
             clampedY = trackStartY + trackLengthY;
 
         // Vertical sliders usually invert direction (top = max, bottom = min)
-        sliderValue = maxValue - ((clampedY - trackStartY) / trackLengthY) *
-                                     (maxValue - minValue);
+        sliderValue = maxValue - ((clampedY - trackStartY) / trackLengthY) * (maxValue - minValue);
 
         // Update knob position to match sliderValue
-        knobRect.y =
-            trackStartY +
-            ((maxValue - sliderValue) / (maxValue - minValue)) * trackLengthY;
+        knobRect.y = trackStartY + ((maxValue - sliderValue) / (maxValue - minValue)) * trackLengthY;
     }
 
     // Return updated value
     returnedElementValue = sliderValue;
 }
 
-void Slider::renderMe(SDL_Renderer* renderer, UIState& UIState,
-                      TTF_Font* UIFont) {
-    SDL_SetRenderDrawColor(renderer, ColorLibrary::Gray.r, ColorLibrary::Gray.g,
-                           ColorLibrary::Gray.b, ColorLibrary::Gray.a);
+void Slider::renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont)
+{
+    SDL_SetRenderDrawColor(renderer, ColorLibrary::Gray.r, ColorLibrary::Gray.g, ColorLibrary::Gray.b,
+                           ColorLibrary::Gray.a);
     SDL_RenderFillRect(renderer, &trackRect);
-    SDL_SetRenderDrawColor(renderer, ColorLibrary::White.r,
-                           ColorLibrary::White.g, ColorLibrary::White.b,
+    SDL_SetRenderDrawColor(renderer, ColorLibrary::White.r, ColorLibrary::White.g, ColorLibrary::White.b,
                            ColorLibrary::White.a);
     SDL_RenderFillRect(renderer, &knobRect);
-    if (UIState.getRenderDebug()) {
+    if (UIState.getRenderDebug())
+    {
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, 60); // lighter alpha
         SDL_RenderFillRect(renderer, &hotZoneRect);
     }
 
     std::string slider_text = getDisplayText();
-    SDL_Surface* text_surface = TTF_RenderText_Blended(
-        UIFont, slider_text.c_str(), slider_text.length(), ColorLibrary::White);
-    if (!text_surface) {
+    SDL_Surface* text_surface =
+        TTF_RenderText_Blended(UIFont, slider_text.c_str(), slider_text.length(), ColorLibrary::White);
+    if (!text_surface)
+    {
         SDL_Log("Text surface creation failed: %s", SDL_GetError());
         return;
     }
-    SDL_Texture* text_texture =
-        SDL_CreateTextureFromSurface(renderer, text_surface);
-    if (!text_texture) {
+    SDL_Texture* text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
+    if (!text_texture)
+    {
         SDL_Log("Text texture creation failed: %s", SDL_GetError());
         return;
     }

@@ -15,18 +15,15 @@
 // Standard Library Imports
 #include <string>
 
-class UIElement {
+class UIElement
+{
   public:
     UIElement();
     virtual ~UIElement();
-    virtual void renderMe(SDL_Renderer* renderer, UIState& UIState,
-                          TTF_Font* UIFont) {
-        return;
-    }
-    virtual void updateMe(Vector2D positionOfEvent,
-                          double& returnedElementValue) {
-    }; // Default does nothing
-    void setPosition(float x, float y) {
+    virtual void renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) { return; }
+    virtual void updateMe(Vector2D positionOfEvent, double& returnedElementValue) {}; // Default does nothing
+    void setPosition(float x, float y)
+    {
         posX = x;
         posY = y;
     }

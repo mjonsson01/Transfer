@@ -15,7 +15,8 @@
 #include <iostream>
 #include <queue>
 #include <string>
-class AudioSystem {
+class AudioSystem
+{
   public:
     // Constructor and Destructor
     AudioSystem();
@@ -25,9 +26,8 @@ class AudioSystem {
     // Main method to process audio each frame
     void ProcessSystemAudioFrame(GameState& gameState, UIState& UIState);
 
-    bool LoadTrack(const std::string&
-                       musicFilePath); // Loads a new track into the audio
-                                       // system, replacing any existing track
+    bool LoadTrack(const std::string& musicFilePath); // Loads a new track into the audio
+                                                      // system, replacing any existing track
     void AddAllMusicToPlaylist(const std::string& folderPath);
 
     // Clean up helper
@@ -41,7 +41,6 @@ class AudioSystem {
     Uint32 wavLength = 0;
     SDL_AudioStream* stream = nullptr;
     SDL_AudioDeviceID device = 0;
-    bool isQueued =
-        false; // true when wavBuffer has been queued to the stream/device
+    bool isQueued = false;                 // true when wavBuffer has been queued to the stream/device
     std::queue<std::string> musicPlaylist; // Queue to manage songs to be played
 };

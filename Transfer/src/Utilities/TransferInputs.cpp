@@ -2,13 +2,16 @@
 
 #include "TransferInputs.h"
 
-std::ostream& operator<<(std::ostream& os, const TransferInputs& input) {
+std::ostream& operator<<(std::ostream& os, const TransferInputs& input)
+{
     os << "Active Inputs: ";
 
     bool any = false;
 
-    auto printIf = [&](bool condition, const char* name) {
-        if (condition) {
+    auto printIf = [&](bool condition, const char* name)
+    {
+        if (condition)
+        {
             if (any)
                 os << ", ";
             os << name;

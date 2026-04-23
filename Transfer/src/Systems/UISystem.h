@@ -28,13 +28,9 @@ class UISystem
     void CleanUp();
     void UpdateUIElements(GameState& gameState, UIState& UIState);
     std::vector<UIElement*>& getUIElementsMutable() { return allUIElements; }
-    const std::vector<UIElement*>& getUIElements() const
-    {
-        return allUIElements;
-    }
+    const std::vector<UIElement*>& getUIElements() const { return allUIElements; }
     UIElementType isPositionInUIElementHotZone(InputState& inputsReceived);
-    void updateSpecificElementAndPropagateUpwards(UIElementType elementToUpdate,
-                                                  InputState& inputState);
+    void updateSpecificElementAndPropagateUpwards(UIElementType elementToUpdate, InputState& inputState);
 
   private:
     std::vector<UIElement*> allUIElements;

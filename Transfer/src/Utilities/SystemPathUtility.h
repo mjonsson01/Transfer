@@ -5,7 +5,8 @@
 #include <SDL3/SDL.h>
 #include <string>
 
-namespace Utilities {
+namespace Utilities
+{
 
 inline std::string GetBasePath()
 {
@@ -21,21 +22,21 @@ inline std::string GetBasePath()
 inline std::string GetResourcePath(const std::string& relativePath)
 {
     std::string base = GetBasePath();
-    #ifdef __APPLE__
-        // If we're inside a .app bundle, base will end with Contents/Resources/
-        if (base.find("Contents/Resources/") != std::string::npos)
-            {
-                // Release bundle: base already points to Resources
-                return base + "Assets/" + relativePath;
-            }
-        else
-        {
-            // Debug build: executable outside bundle
-            return base + "Resources/Assets/" + relativePath;
-        }
-    #else
-        // Windows/Linux: relative to exe folder need to implement.
-        return base + "Resources/" + relativePath;
+#ifdef __APPLE__
+    // If we're inside a .app bundle, base will end with Contents/Resources/
+    if (base.find("Contents/Resources/") != std::string::npos)
+    {
+        // Release bundle: base already points to Resources
+        return base + "Assets/" + relativePath;
+    }
+    else
+    {
+        // Debug build: executable outside bundle
+        return base + "Resources/Assets/" + relativePath;
+    }
+#else
+    // Windows/Linux: relative to exe folder need to implement.
+    return base + "Resources/" + relativePath;
 #endif
 }
 

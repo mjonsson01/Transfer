@@ -11,7 +11,8 @@
 // Standard Library Imports
 #include <iostream>
 
-struct TransferInputs {
+struct TransferInputs
+{
     TransferInputs() = default;
     TransferInputs(const TransferInputs&) = default;
     TransferInputs& operator=(const TransferInputs&) = default;
@@ -42,12 +43,14 @@ struct TransferInputs {
     bool isDragging = false;
 
     // Helper utilities
-    void resetAllMousePressedVars() {
+    void resetAllMousePressedVars()
+    {
         this->leftMousePressed = false;
         this->rightMousePressed = false;
         this->middleMousePressed = false;
     }
-    void resetAllKeyPressedVars() {
+    void resetAllKeyPressedVars()
+    {
         this->wPressed = false;
         this->aPressed = false;
         this->sPressed = false;

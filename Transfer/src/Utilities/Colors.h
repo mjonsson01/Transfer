@@ -5,7 +5,8 @@
 // SDL3 Imports
 #include <SDL3/SDL_pixels.h>
 
-struct ColorLibrary {
+struct ColorLibrary
+{
     inline static constexpr SDL_Color Red{255, 0, 0, 255};
     inline static constexpr SDL_Color Green{0, 255, 0, 255};
     inline static constexpr SDL_Color Blue{0, 0, 255, 255};

@@ -19,11 +19,13 @@
 // Standard Library Imports
 #include <string>
 
-class MassSlider : public Slider {
+class MassSlider : public Slider
+{
   public:
     MassSlider();
     ~MassSlider() = default;
-    std::string getDisplayText() const override {
+    std::string getDisplayText() const override
+    {
         return "Mass: " + std::to_string(sliderValue); // add units?
     }
 };

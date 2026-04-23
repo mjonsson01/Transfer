@@ -21,33 +21,18 @@ class GameState
     bool IsPlaying() const { return isPlaying; }
     void SetPlaying(bool playing) { isPlaying = playing; }
 
-    bool getIsShuttingDownAudioSystem() const
-    {
-        return isShuttingDownAudioSystem;
-    }
-    void setIsShuttingDownAudioSystem(bool shutdown)
-    {
-        isShuttingDownAudioSystem = shutdown;
-    }
+    bool getIsShuttingDownAudioSystem() const { return isShuttingDownAudioSystem; }
+    void setIsShuttingDownAudioSystem(bool shutdown) { isShuttingDownAudioSystem = shutdown; }
 
     // Getters for Particles with a mutable and nonmutable version to respect
     // System hierarchies
-    const std::vector<GravitationalBody>& getParticles() const
-    {
-        return particles;
-    }
+    const std::vector<GravitationalBody>& getParticles() const { return particles; }
     std::vector<GravitationalBody>& getParticlesMutable() { return particles; }
 
     // Getters for Bodies with a mutable and nonmutable version to respect
     // System hierarchies
-    const std::vector<GravitationalBody>& getMacroBodies() const
-    {
-        return macroBodies;
-    }
-    std::vector<GravitationalBody>& getMacroBodiesMutable()
-    {
-        return macroBodies;
-    }
+    const std::vector<GravitationalBody>& getMacroBodies() const { return macroBodies; }
+    std::vector<GravitationalBody>& getMacroBodiesMutable() { return macroBodies; }
 
     // Getter and setter for the alpha rendering variable
     float getAlpha() const { return alpha; }

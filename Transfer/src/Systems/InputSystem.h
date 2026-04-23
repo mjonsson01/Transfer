@@ -17,7 +17,8 @@
 
 // struct LevelEditorInputs. TBI
 
-class InputSystem {
+class InputSystem
+{
   public:
     // Constructor and Destructor
     InputSystem();

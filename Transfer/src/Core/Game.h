@@ -17,7 +17,8 @@
 // Standard Library Imports
 #include <numeric>
 
-class Game {
+class Game
+{
   public:
     // Constructor and Destructor
     Game();
@@ -34,29 +35,25 @@ class Game {
   public:
   private:
     // Core Game Loop Methods
-    void ProcessInput(); // Handles User Input from keyboard and mouse events
+    void ProcessInput();       // Handles User Input from keyboard and mouse events
     void UpdatePhysicsFrame(); // Updates Game State and Physics
-    void RenderFrame(); // Renders the current frame to the screen including UI
-    void
-    PlayAudio(); // Plays audio based on the current game state and UI state
+    void RenderFrame();        // Renders the current frame to the screen including UI
+    void PlayAudio();          // Plays audio based on the current game state and UI state
 
     // Helpers for Run() method
-    void UpdateFPS(
-        uint32_t renderEnd, uint32_t lastRender, float& fpsAccumulator,
-        float& currentFPS); // Rolling average frame calculation and update
-    void
-    LimitFrameRate(uint32_t renderStart,
-                   uint32_t renderEnd); // Soft Clamps frame rate based on
-                                        // static Game System Constant value
+    void UpdateFPS(uint32_t renderEnd, uint32_t lastRender, float& fpsAccumulator,
+                   float& currentFPS); // Rolling average frame calculation and update
+    void LimitFrameRate(uint32_t renderStart,
+                        uint32_t renderEnd); // Soft Clamps frame rate based on
+                                             // static Game System Constant value
 
   private:
     // Systems and State
-    GameState gameState;     // Contains all game entities and their states
-    UIState UIState;         // Contains all UI related states
-    InputSystem inputSystem; // Manages all user input
-    PhysicsSystem
-        physicsSystem;         // Manages physics calculations and Frame Updates
-    RenderSystem renderSystem; // Manages all rendering operations
-    AudioSystem audioSystem;   // Manages all audio operations
+    GameState gameState;         // Contains all game entities and their states
+    UIState UIState;             // Contains all UI related states
+    InputSystem inputSystem;     // Manages all user input
+    PhysicsSystem physicsSystem; // Manages physics calculations and Frame Updates
+    RenderSystem renderSystem;   // Manages all rendering operations
+    AudioSystem audioSystem;     // Manages all audio operations
     UISystem UISystem;
 };

@@ -12,7 +12,8 @@
 // Standard Library Imports
 #include <vector>
 
-class UIState {
+class UIState
+{
   public:
     UIState();
     ~UIState();
@@ -21,9 +22,7 @@ class UIState {
     float getFPS() { return framesPerSecond; }
     void setFPS(float fps) { framesPerSecond = fps; }
     bool getAllUIVisibility() { return allUIElementsVisible; }
-    void invertUIElementsVisibility() {
-        allUIElementsVisible = !allUIElementsVisible;
-    }
+    void invertUIElementsVisibility() { allUIElementsVisible = !allUIElementsVisible; }
 
     bool getLevelScene() { return levelScene; }
     void setLevelScene(bool ls) { levelScene = ls; }
@@ -43,8 +42,7 @@ class UIState {
     bool pauseMenuActive = false;
     bool levelScene = false;
     bool levelEditorScene = false;
-    bool renderDebug = false; // Toggles rendering of debug elements like
-                              // collision boxes, spawn areas, etc.
-    bool allUIElementsVisible =
-        true; // Default to true because we want all elements visible.
+    bool renderDebug = false;         // Toggles rendering of debug elements like
+                                      // collision boxes, spawn areas, etc.
+    bool allUIElementsVisible = true; // Default to true because we want all elements visible.
 };

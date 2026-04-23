@@ -6,20 +6,21 @@
 
 // Likely change the resolution to be scalable in the future? default 1920x1080
 // for now. Will be inside the Render system eventually.
-Game::Game()
-    : gameState(), UIState(), inputSystem(), physicsSystem(), renderSystem(),
-      audioSystem(), UISystem() {
+Game::Game() : gameState(), UIState(), inputSystem(), physicsSystem(), renderSystem(), audioSystem(), UISystem()
+{
     // fill in imp here
 }
 
 // Handle destruction of any new allocations. None for now, just default.
-Game::~Game() {
+Game::~Game()
+{
     TTF_Quit();
     SDL_Quit();
 }
 
 // Initializes SDL windows, renderer, and starts the main game loop
-void Game::StartGame() {
+void Game::StartGame()
+{
     // Initialize any other useful gameState variables here.
     gameState.SetPlaying(true);
 
@@ -28,8 +29,7 @@ void Game::StartGame() {
 
     // NEED TO FIX. THIS WILL BE ADJUSTED IN UPDATES TO SCENE MANAGEMENT TBI
     UIState.setLevelScene(true);
-    UIState.setRenderDebug(
-        true); // default to true for now to help with development
+    UIState.setRenderDebug(true); // default to true for now to help with development
 
     // Start the main game loop
     Game::Run();
@@ -38,14 +38,16 @@ void Game::StartGame() {
     Game::EndGame();
 }
 // Tears down the 'systems' and cleans up allocated resources.
-void Game::EndGame() {
+void Game::EndGame()
+{
     inputSystem.CleanUp();
     audioSystem.CleanUp();
     physicsSystem.CleanUp();
     UISystem.CleanUp();
     renderSystem.CleanUp();
 }
-void Game::Run() {
+void Game::Run()
+{
     // Initialize the time management variables
     uint32_t last_physics_update_time = SDL_GetTicks();
     uint32_t last_render_time = 0;
@@ -69,7 +71,8 @@ void Game::Run() {
     uint32_t slowdown_print_timer = 300;
     uint32_t last_slowdown_print_time = SDL_GetTicks();
 
-    while (gameState.IsPlaying()) {
+    while (gameState.IsPlaying())
+    {
 
         // Poll for SDL Events and Process Input
         Game::ProcessInput();
@@ -78,7 +81,8 @@ void Game::Run() {
         // Play Audio
         Game::PlayAudio();
 
-        if (SDL_GetTicks() - last_slowdown_print_time > slowdown_print_timer) {
+        if (SDL_GetTicks() - last_slowdown_print_time > slowdown_print_timer)
+        {
             // Add slowed down print statements here
             // std::cout<<"number of
             // particles"<<gameState.getParticles().size()<<std::endl;
@@ -90,14 +94,13 @@ void Game::Run() {
         last_physics_update_time = now;
 
         // Deal with SLOWMO or SPEEDUP
-        scaled_frame_delta =
-            frame_delta *
-            gameState.getTimeScaleFactor(); // Use the new time scale factor
+        scaled_frame_delta = frame_delta * gameState.getTimeScaleFactor(); // Use the new time scale factor
         physics_time_accumulator += scaled_frame_delta;
 
         // Update Physics (remains untouched by time scaling of rendering,
         // maintaining physics accuracy)
-        while (physics_time_accumulator >= PHYSICS_TIME_STEP) {
+        while (physics_time_accumulator >= PHYSICS_TIME_STEP)
+        {
             Game::UpdatePhysicsFrame();
             physics_time_accumulator -= PHYSICS_TIME_STEP;
         }
@@ -110,8 +113,7 @@ void Game::Run() {
         render_end = SDL_GetTicks();
 
         // FPS Calculation
-        Game::UpdateFPS(render_end, last_render_time, fps_time_accumulator,
-                        current_fps);
+        Game::UpdateFPS(render_end, last_render_time, fps_time_accumulator, current_fps);
         last_render_time = render_end;
 
         // Frame limiting (soft limiting)
@@ -121,7 +123,8 @@ void Game::Run() {
 
 // --------- DISPATCH TO SYSTEM METHODS --------- //
 
-void Game::ProcessInput() {
+void Game::ProcessInput()
+{
     // Dispatch to Input System
     inputSystem.ProcessSystemInputFrame(gameState, UIState);
     // std::cout<<"instantiate dirty:
@@ -129,41 +132,43 @@ void Game::ProcessInput() {
     UISystem.UpdateUIElements(gameState, UIState);
 }
 
-void Game::UpdatePhysicsFrame() {
+void Game::UpdatePhysicsFrame()
+{
     // Dispatch to Physics System
     physicsSystem.UpdateSystemFrame(gameState, UIState);
 }
 
-void Game::RenderFrame() {
+void Game::RenderFrame()
+{
     // Dispatch to Renderer System -- renders UI as well.
     const std::vector<UIElement*> allUIElements = UISystem.getUIElements();
     renderSystem.RenderFullFrame(gameState, UIState, allUIElements);
 }
 
-void Game::PlayAudio() {
-    audioSystem.ProcessSystemAudioFrame(gameState, UIState);
-}
+void Game::PlayAudio() { audioSystem.ProcessSystemAudioFrame(gameState, UIState); }
 // --------- UTILITY METHODS FOR FPS --------- //
 
-void Game::UpdateFPS(uint32_t renderEnd, uint32_t lastRender,
-                     float& fpsAccumulator, float& currentFPS) {
+void Game::UpdateFPS(uint32_t renderEnd, uint32_t lastRender, float& fpsAccumulator, float& currentFPS)
+{
     float frameTime = (renderEnd - lastRender) / 1000.0f;
     fpsAccumulator += (renderEnd - lastRender);
 
-    if (fpsAccumulator > FPS_UPDATE_DELTA_MS) {
+    if (fpsAccumulator > FPS_UPDATE_DELTA_MS)
+    {
         frameTime = std::max(frameTime, 0.001f);
         currentFPS = 0.9f * currentFPS + 0.1f * (1.0f / frameTime);
         float target_fps_max = static_cast<float>(TARGET_FPS) * 1.1f;
-        currentFPS =
-            std::min(currentFPS, target_fps_max); // Clamp FPS for stability
+        currentFPS = std::min(currentFPS, target_fps_max); // Clamp FPS for stability
         UIState.setFPS(currentFPS);
         fpsAccumulator = 0.0f;
     }
 }
 
-void Game::LimitFrameRate(uint32_t renderStart, uint32_t renderEnd) {
+void Game::LimitFrameRate(uint32_t renderStart, uint32_t renderEnd)
+{
     double frame_duration = static_cast<double>(renderEnd - renderStart);
-    if (frame_duration < FRAME_DELAY_MS) {
+    if (frame_duration < FRAME_DELAY_MS)
+    {
         SDL_Delay(static_cast<uint32_t>(FRAME_DELAY_MS - frame_duration));
     }
 }

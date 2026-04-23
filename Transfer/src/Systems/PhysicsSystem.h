@@ -59,78 +59,61 @@ class PhysicsSystem
     void updateGravBodyInstantiations(GameState& gameState, UIState& UIState);
 
     // Gravity Methods
-    void updateGravityForSystem(
-        GameState& gameState); // Gravity calculation dispatch helper
-    void calculateGravity(
-        GravitationalBody& body1,
-        GravitationalBody& body2); // Calculate and apply gravity between two
-                                   // gravitational bodies
+    void updateGravityForSystem(GameState& gameState); // Gravity calculation dispatch helper
+    void calculateGravity(GravitationalBody& body1,
+                          GravitationalBody& body2); // Calculate and apply gravity between two
+                                                     // gravitational bodies
 
     // Two-step integration (a la Verlet with half-steps for stability)
-    void integrateForwardsPhase1(
-        GameState& gameState); // First half step of integration. Kicks velocity
-                               // halfway and drifts position. Occurs with
-                               // leftover forces from previous physics frame
-    void integrateForwardsPhase2(
-        GameState& gameState); // Second half step of integration. Kicks
-                               // Velocity halfway. Occurs with newly calculated
-                               // forces from current physics frame
+    void integrateForwardsPhase1(GameState& gameState); // First half step of integration. Kicks velocity
+                                                        // halfway and drifts position. Occurs with
+                                                        // leftover forces from previous physics frame
+    void integrateForwardsPhase2(GameState& gameState); // Second half step of integration. Kicks
+                                                        // Velocity halfway. Occurs with newly calculated
+                                                        // forces from current physics frame
 
     // Top-level collision handler. Makes decisions about the kinds of
     // collisions encountered and dispatches to the subhandlers
     void handleCollisions(GameState& gameState);
 
     // Sub-level collision handlers
-    void handleElasticCollisions(
-        GravitationalBody& smallerBody,
-        GravitationalBody&
-            largerBody); // Handles 'bouncy' collision if the collision
-                         // satisfies Engine-Constant-defined constraints
+    void handleElasticCollisions(GravitationalBody& smallerBody,
+                                 GravitationalBody& largerBody); // Handles 'bouncy' collision if the collision
+                                                                 // satisfies Engine-Constant-defined constraints
     // void handleDynamicExplosionCollision(GravitationalBody& body1,
     // GravitationalBody& body2, GameState& gameState); // Handles 'explosive'
     // collisions that shatter the pieces if the collision satisfies
     // Engine-Constant-defined constraints
-    void handleDynamicExplosionCollision(
-        GravitationalBody& macroBody1, GravitationalBody& macroBody2,
-        GameState& gameState); // Handles 'explosive' collisions that shatter
-                               // the pieces if the collision satisfies
-                               // Engine-Constant-defined constraints
-    void handleAccretion(
-        GravitationalBody& particle,
-        GravitationalBody& body); // Handles accretion collision events for
-                                  // bodies absorbing particles
+    void handleDynamicExplosionCollision(GravitationalBody& macroBody1, GravitationalBody& macroBody2,
+                                         GameState& gameState); // Handles 'explosive' collisions that shatter
+                                                                // the pieces if the collision satisfies
+                                                                // Engine-Constant-defined constraints
+    void handleAccretion(GravitationalBody& particle,
+                         GravitationalBody& body); // Handles accretion collision events for
+                                                   // bodies absorbing particles
     // Gravitational Body Creation Mechanisms
-    void createMacroBody(
-        GameState& gameState,
-        InputState& inputState); // Creates a Macro Gravitational Body
-                                 // with the user-defined attributes
-    void createParticle(
-        GameState& gameState,
-        InputState& inputState); // Creates a Particle Gravitational Body with
-                                 // the user-defined attriubutes
-    void createParticleCluster(
-        GameState& gameState,
-        InputState& inputState); // Creates a cluster of Particle Gravitational
-                                 // Bodies with the user-defined attributes
+    void createMacroBody(GameState& gameState,
+                         InputState& inputState); // Creates a Macro Gravitational Body
+                                                  // with the user-defined attributes
+    void createParticle(GameState& gameState,
+                        InputState& inputState); // Creates a Particle Gravitational Body with
+                                                 // the user-defined attriubutes
+    void createParticleCluster(GameState& gameState,
+                               InputState& inputState); // Creates a cluster of Particle Gravitational
+                                                        // Bodies with the user-defined attributes
 
     // Utility Functions
-    void calculateTotalEnergy(
-        GameState& gameState); // Calculates total energy of all Macro Bodies
-                               // and Particles on Screen.
-    void substituteWithParticles(
-        GravitationalBody& originalBody,
-        GameState& gameState); // Replaces a Macro Body with Particles in place
-                               // to aid accretion
-    void
-    populateCollisionProxyFromMacroBody(GravitationalBody& originalMacroBody,
-                                        GravitationalBody& proxyBody);
+    void calculateTotalEnergy(GameState& gameState); // Calculates total energy of all Macro Bodies
+                                                     // and Particles on Screen.
+    void substituteWithParticles(GravitationalBody& originalBody,
+                                 GameState& gameState); // Replaces a Macro Body with Particles in place
+                                                        // to aid accretion
+    void populateCollisionProxyFromMacroBody(GravitationalBody& originalMacroBody, GravitationalBody& proxyBody);
     // Cleanup Functions
-    void cleanupParticles(
-        GameState& gameState); // Clears any Particles from the screen flagged
-                               // as marked for deletion
-    void cleanupMacroBodies(
-        GameState& gameState); // Clears any Macro Bodies from the screen
-                               // flagged as marked for deletion
+    void cleanupParticles(GameState& gameState);   // Clears any Particles from the screen flagged
+                                                   // as marked for deletion
+    void cleanupMacroBodies(GameState& gameState); // Clears any Macro Bodies from the screen
+                                                   // flagged as marked for deletion
   private:
     SpawnLimiter macroLimiter;
     SpawnLimiter particleLimiter;

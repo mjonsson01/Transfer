@@ -5,7 +5,8 @@
 // SDL3 Imports
 #include <SDL3/SDL.h>
 
-struct TwinklingStar {
+struct TwinklingStar
+{
     SDL_Texture* texture; // pre-created texture
     SDL_FRect dstRect;    // position and size
     float baseAlpha;      // 0.0 - 1.0 handles opacity baseline
