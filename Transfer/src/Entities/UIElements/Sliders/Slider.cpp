@@ -2,7 +2,6 @@
 
 #include "Entities/UIElements/Sliders/Slider.h"
 
-
 Slider::Slider()
 {
     orientation = Orientation::Horizontal;
@@ -30,8 +29,10 @@ void Slider::updateMe(Vector2D positionOfEvent, double& returnedElementValue)
 
     if (orientation == Orientation::Horizontal)
     {
-        if (clampedX < trackStartX) clampedX = trackStartX;
-        if (clampedX > trackStartX + trackLengthX) clampedX = trackStartX + trackLengthX;
+        if (clampedX < trackStartX)
+            clampedX = trackStartX;
+        if (clampedX > trackStartX + trackLengthX)
+            clampedX = trackStartX + trackLengthX;
 
         // Map knob position to slider value (handles negative minValue)
         sliderValue = minValue + ((clampedX - trackStartX) / trackLengthX) * (maxValue - minValue);
@@ -41,8 +42,10 @@ void Slider::updateMe(Vector2D positionOfEvent, double& returnedElementValue)
     }
     else // Vertical
     {
-        if (clampedY < trackStartY) clampedY = trackStartY;
-        if (clampedY > trackStartY + trackLengthY) clampedY = trackStartY + trackLengthY;
+        if (clampedY < trackStartY)
+            clampedY = trackStartY;
+        if (clampedY > trackStartY + trackLengthY)
+            clampedY = trackStartY + trackLengthY;
 
         // Vertical sliders usually invert direction (top = max, bottom = min)
         sliderValue = maxValue - ((clampedY - trackStartY) / trackLengthY) * (maxValue - minValue);
@@ -55,22 +58,24 @@ void Slider::updateMe(Vector2D positionOfEvent, double& returnedElementValue)
     returnedElementValue = sliderValue;
 }
 
-
 void Slider::renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont)
-{    
-    SDL_SetRenderDrawColor(renderer, ColorLibrary::Gray.r, ColorLibrary::Gray.g, ColorLibrary::Gray.b, ColorLibrary::Gray.a);
+{
+    SDL_SetRenderDrawColor(renderer, ColorLibrary::Gray.r, ColorLibrary::Gray.g, ColorLibrary::Gray.b,
+                           ColorLibrary::Gray.a);
     SDL_RenderFillRect(renderer, &trackRect);
-    SDL_SetRenderDrawColor(renderer, ColorLibrary::White.r, ColorLibrary::White.g, ColorLibrary::White.b, ColorLibrary::White.a);
+    SDL_SetRenderDrawColor(renderer, ColorLibrary::White.r, ColorLibrary::White.g, ColorLibrary::White.b,
+                           ColorLibrary::White.a);
     SDL_RenderFillRect(renderer, &knobRect);
-    if (UIState.getRenderDebug()){
+    if (UIState.getRenderDebug())
+    {
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, 60); // lighter alpha
         SDL_RenderFillRect(renderer, &hotZoneRect);
     }
 
-    
     std::string slider_text = getDisplayText();
-    SDL_Surface* text_surface = TTF_RenderText_Blended(UIFont, slider_text.c_str(), slider_text.length(), ColorLibrary::White);
+    SDL_Surface* text_surface =
+        TTF_RenderText_Blended(UIFont, slider_text.c_str(), slider_text.length(), ColorLibrary::White);
     if (!text_surface)
     {
         SDL_Log("Text surface creation failed: %s", SDL_GetError());
@@ -84,8 +89,8 @@ void Slider::renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont
     }
     float width = static_cast<float>(text_surface->w);
     float height = static_cast<float>(text_surface->h);
-    SDL_FRect dst_rect = {getX(), getY()+knobRect.h, width, height};
+    SDL_FRect dst_rect = {getX(), getY() + knobRect.h, width, height};
     SDL_RenderTexture(renderer, text_texture, nullptr, &dst_rect);
     SDL_DestroySurface(text_surface);
-    SDL_DestroyTexture(text_texture);    
+    SDL_DestroyTexture(text_texture);
 }

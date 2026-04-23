@@ -4,16 +4,17 @@
 
 FPSCounter::FPSCounter()
 {
-    setPosition(10.0f,10.0f);
+    setPosition(10.0f, 10.0f);
     setVisibility(true);
     UIElementTypeIdentifier = UIElementType::FPS_COUNTER_INDEX;
 }
 
 void FPSCounter::renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont)
-{ 
+{
     float fps = UIState.getFPS();
     std::string fps_text = "FPS: " + std::to_string(static_cast<int>(fps));
-    SDL_Surface* text_surface = TTF_RenderText_Blended(UIFont, fps_text.c_str(), fps_text.length(), ColorLibrary::White);
+    SDL_Surface* text_surface =
+        TTF_RenderText_Blended(UIFont, fps_text.c_str(), fps_text.length(), ColorLibrary::White);
     if (!text_surface)
     {
         SDL_Log("Text surface creation failed: %s", SDL_GetError());
@@ -30,7 +31,8 @@ void FPSCounter::renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UI
     SDL_FRect dst_rect = {getX(), getY(), width, height};
     hotZoneRect = dst_rect;
 
-    if (UIState.getRenderDebug()){
+    if (UIState.getRenderDebug())
+    {
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, 60); // lighter alpha
         SDL_RenderFillRect(renderer, &hotZoneRect);
@@ -39,4 +41,3 @@ void FPSCounter::renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UI
     SDL_DestroySurface(text_surface);
     SDL_DestroyTexture(text_texture);
 }
-

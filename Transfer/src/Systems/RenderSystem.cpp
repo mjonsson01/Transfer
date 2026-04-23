@@ -18,19 +18,22 @@ RenderSystem::RenderSystem()
 
     // Assign renderer pointer to instance. No specific driver, so nullptr.
     renderer = SDL_CreateRenderer(window, nullptr);
-    if (TTF_Init() == false) {
+    SDL_SetRenderVSync(renderer, 2);
+    if (TTF_Init() == false)
+    {
         SDL_Log("Failed to initialize SDL_ttf: %s", SDL_GetError());
         return;
     }
     std::string fontPath = Utilities::GetResourcePath("Fonts/SpaceMono-Regular.ttf");
 
     UIFont = TTF_OpenFont(fontPath.c_str(), 18);
-    if (!UIFont) {
+    if (!UIFont)
+    {
         SDL_Log("Failed to load font: %s", SDL_GetError());
         return;
     }
     createStarTextures();
-    createStarField(STAR_NUM);   
+    createStarField(STAR_NUM);
 }
 
 // Destructor: Cleans up SDL Window and Renderer
@@ -43,20 +46,21 @@ RenderSystem::~RenderSystem()
 void RenderSystem::CleanUp()
 {
     clearCachedCircleTextures();
-    if (renderer) {
+    if (renderer)
+    {
         SDL_DestroyRenderer(renderer);
         renderer = nullptr;
     }
-    if (window) {
+    if (window)
+    {
         SDL_DestroyWindow(window);
         window = nullptr;
     }
 }
 
-
 // --------- RENDER FULL FRAME METHOD --------- //
 
-void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState,  const std::vector<UIElement*>& allUIElements)
+void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState, const std::vector<UIElement*>& allUIElements)
 {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // black background
     SDL_RenderClear(renderer);
@@ -79,68 +83,69 @@ void RenderSystem::renderBodies(GameState& gameState)
 {
     float alpha = gameState.getAlpha();
     // Render Particles
-    for (auto& particle : gameState.getParticles()) {
-        SDL_Color color = getColorForMass(particle.mass);
+    for (auto& particle : gameState.getParticles())
+    {
+        if (!particle.visible)
+        {
+            continue; // don't render invisible particles
+        }
+        SDL_Color color = getColorForProperty(particle);
         SDL_Texture* tex = getCircleTexture(static_cast<int>(particle.radius), color);
         Vector2D current_position = particle.position;
         Vector2D previous_position = particle.previousPosition;
-        // Alpha Interpolation causes particle flickers for small particles. Remove for now. Figure out dynamical fix later. 
-        // Leave interpolation on for slow mo.
+        // Alpha Interpolation causes particle flickers for small particles.
+        // Remove for now. Figure out dynamical fix later. Leave interpolation
+        // on for slow mo.
+
         float render_x, render_y;
-        if (particle.radius <= 1.0 && gameState.getToggleSlow() == false) {
+        if (particle.radius <= 1.0 && gameState.getToggleSlow() == false)
+        {
             render_x = particle.position.xVal;
             render_y = particle.position.yVal;
             render_x = std::round(render_x);
             render_y = std::round(render_y);
         }
-        else {
+        else
+        {
             render_x = previous_position.xVal * (1.0f - alpha) + current_position.xVal * alpha;
             render_y = previous_position.yVal * (1.0f - alpha) + current_position.yVal * alpha;
         }
         float r = static_cast<float>(particle.radius);
-        SDL_FRect dstRect = {
-            render_x - r,
-            render_y - r,
-            r * 2,
-            r * 2
-        };
+        SDL_FRect dstRect = {render_x - r, render_y - r, r * 2, r * 2};
 
         SDL_RenderTexture(renderer, tex, nullptr, &dstRect);
     }
 
     // Render Macro Bodies
-    for (auto& body : gameState.getMacroBodies()) {
-        SDL_Color color = getColorForMass(body.mass);
+    for (auto& body : gameState.getMacroBodies())
+    {
+        if (!body.visible)
+        {
+            continue;
+        }
+        SDL_Color color = getColorForProperty(body);
         SDL_Texture* tex = getCircleTexture(static_cast<int>(body.radius), color);
         Vector2D current_position = body.position;
         Vector2D previous_position = body.previousPosition;
         float render_x = previous_position.xVal * (1.0f - alpha) + current_position.xVal * alpha;
         float render_y = previous_position.yVal * (1.0f - alpha) + current_position.yVal * alpha;
         float r = static_cast<float>(body.radius);
-        SDL_FRect dstRect = {
-            render_x - r,
-            render_y - r,
-            r * 2,
-            r * 2
-        };
+        SDL_FRect dstRect = {render_x - r, render_y - r, r * 2, r * 2};
 
         SDL_RenderTexture(renderer, tex, nullptr, &dstRect);
     }
-    
 }
 
 // --------- RENDER INPUT ARTIFACTS METHOD --------- //
 // Renders user input artifacts like drag lines. TBI
-void RenderSystem::renderInputArtifacts(GameState& gameState)
-{
-
-}
+void RenderSystem::renderInputArtifacts(GameState& gameState) {}
 
 // --------- RENDER UI ELEMENTS METHOD --------- //
 
-void RenderSystem::renderUIElements(UIState& UIState,  std::vector<UIElement*> allUIElements)
+void RenderSystem::renderUIElements(UIState& UIState, std::vector<UIElement*> allUIElements)
 {
-    if (!UIState.getAllUIVisibility()) return;
+    if (!UIState.getAllUIVisibility())
+        return;
 
     for (auto& element : allUIElements)
     {
@@ -148,53 +153,65 @@ void RenderSystem::renderUIElements(UIState& UIState,  std::vector<UIElement*> a
     }
 }
 
-
 // Smooth interpolation color lookup function
 
 // --------- RENDER UTILITY HELPERS --------- //
 // SDL_Color RenderSystem::getColorForMass(double mass)
 // {
 //     // Simple mapping: lighter masses are blue, heavier masses are red
-//     Uint8 r = static_cast<Uint8>(std::min((mass / MAX_MASS) * 255, 255.0)); // assuming max mass of 1e25 for scaling
-//     Uint8 g = 0;
-//     Uint8 b = static_cast<Uint8>(255 - r);
-//     Uint8 a = 255; // fully opaque
+//     Uint8 r = static_cast<Uint8>(std::min((mass / MAX_MASS) * 255, 255.0));
+//     // assuming max mass of 1e25 for scaling Uint8 g = 0; Uint8 b =
+//     static_cast<Uint8>(255 - r); Uint8 a = 255; // fully opaque
 //     // if (mass >= MAX_MASS-1000.0) return ColorLibrary::Black;
 //     // if (mass <= MAX_MASS/10000.0) return ColorLibrary::White;
-    
+
 //     return SDL_Color{ r, g, b, a };
 // }
 
-SDL_Color RenderSystem::getColorForMass(double mass)
+SDL_Color RenderSystem::getColorForProperty(const GravitationalBody& body)
+// NEED TO OPTIMIZE OUT CONSTANT ACCESS
 {
     // 1. Use Logarithmic scaling so small changes in light bodies are visible
     // mass + 1.0 avoids log(0)
-    double logMass = std::log10(mass + 1.0);
+    double logMass = std::log10(body.mass + 1.0);
     double logMax = std::log10(MAX_MASS + 1.0);
     double t = std::clamp(logMass / logMax, 0.0, 1.0);
+    Uint8 opacity = 255;
 
+    // Ghost mode render
+    if (body.isMacroGhost || !body.isCollidable)
+    {
+        opacity = 175;
+    }
     // 2. Multi-stop gradient (Blue -> Cyan -> Green -> Yellow -> Red)
     Uint8 r, g, b;
 
-    if (t < 0.25) { // Blue to Cyan
+    if (t < 0.25)
+    { // Blue to Cyan
         r = 0;
         g = static_cast<Uint8>(t * 4.0 * 255);
         b = 255;
-    } else if (t < 0.5) { // Cyan to Green
+    }
+    else if (t < 0.5)
+    { // Cyan to Green
         r = 0;
         g = 255;
         b = static_cast<Uint8>((0.5 - t) * 4.0 * 255);
-    } else if (t < 0.75) { // Green to Yellow
+    }
+    else if (t < 0.75)
+    { // Green to Yellow
         r = static_cast<Uint8>((t - 0.5) * 4.0 * 255);
         g = 255;
         b = 0;
-    } else { // Yellow to Red
+    }
+    else
+    { // Yellow to Red
         r = 255;
         g = static_cast<Uint8>((1.0 - t) * 4.0 * 255);
         b = 0;
     }
 
-    return SDL_Color{ r, g, b, 255 };
+    return SDL_Color{r, g, b, opacity};
 }
 
 // Paired below
@@ -227,8 +244,10 @@ SDL_Color RenderSystem::getColorForMass(double mass)
 //     // Normalize mass to [0,1]
 //     double t = std::clamp(mass / MAX_MASS, 0.0, 1.0);
 
-//     // Optional: log-scale for better contrast if masses span many orders of magnitude
-//     // double t = std::clamp(std::log10(mass / MIN_MASS) / std::log10(MAX_MASS / MIN_MASS), 0.0, 1.0);
+//     // Optional: log-scale for better contrast if masses span many orders of
+//     magnitude
+//     // double t = std::clamp(std::log10(mass / MIN_MASS) /
+//     std::log10(MAX_MASS / MIN_MASS), 0.0, 1.0);
 
 //     // Map t to hue. 0..360 sweeps full rainbow.
 //     // If you want low mass blue and high mass red, use 240 -> 0:
@@ -239,12 +258,12 @@ SDL_Color RenderSystem::getColorForMass(double mass)
 //     return HSVtoRGB(hue, sat, val, 255);
 // }
 
-
 // --------- CIRCLE TEXTURE CACHE METHODS --------- //
 // Helper to correctly destroy the circle texture cache.
 void RenderSystem::clearCachedCircleTextures()
 {
-    for (auto& pair : circleTextureCache) {
+    for (auto& pair : circleTextureCache)
+    {
         SDL_DestroyTexture(pair.second);
     }
     circleTextureCache.clear();
@@ -253,7 +272,7 @@ void RenderSystem::clearCachedCircleTextures()
 // Helper to get the texture for a given radius/color pair
 SDL_Texture* RenderSystem::getCircleTexture(int radius, SDL_Color color)
 {
-    CircleKey key{ radius, color };
+    CircleKey key{radius, color};
 
     auto it = circleTextureCache.find(key);
     if (it != circleTextureCache.end())
@@ -268,7 +287,8 @@ SDL_Texture* RenderSystem::getCircleTexture(int radius, SDL_Color color)
 SDL_Texture* RenderSystem::createCircleTexture(int radius, SDL_Color color)
 {
     int diameter = radius * 2;
-    SDL_Texture* tex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, diameter, diameter);
+    SDL_Texture* tex =
+        SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, diameter, diameter);
     SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
 
     SDL_SetRenderTarget(renderer, tex);
@@ -277,15 +297,15 @@ SDL_Texture* RenderSystem::createCircleTexture(int radius, SDL_Color color)
 
     SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
 
-    // Simple naive n^2 fill circle -- fast enough since only executed once. May further optimize to
-    // Bresenham's circle algorithm later
+    // Simple naive n^2 fill circle -- fast enough since only executed once. May
+    // further optimize to Bresenham's circle algorithm later
     for (int w = 0; w < diameter; w++)
     {
         for (int h = 0; h < diameter; h++)
         {
             int dx = radius - w;
             int dy = radius - h;
-            if ((dx*dx + dy*dy) <= (radius*radius))
+            if ((dx * dx + dy * dy) <= (radius * radius))
                 SDL_RenderPoint(renderer, w, h);
         }
     }
@@ -312,7 +332,7 @@ void RenderSystem::createStarField(int numStars)
 
         TwinklingStar star;
         star.texture = tex;
-        star.dstRect = { float(xDist(rng)), float(yDist(rng)), w, h };
+        star.dstRect = {float(xDist(rng)), float(yDist(rng)), w, h};
         star.baseAlpha = alphaDist(rng);
         star.twinkleSpeed = speedDist(rng);
         star.currentAlpha = star.baseAlpha;

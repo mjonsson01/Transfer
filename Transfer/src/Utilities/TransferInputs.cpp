@@ -12,7 +12,8 @@ std::ostream& operator<<(std::ostream& os, const TransferInputs& input)
     {
         if (condition)
         {
-            if (any) os << ", ";
+            if (any)
+                os << ", ";
             os << name;
             any = true;
         }
@@ -31,7 +32,6 @@ std::ostream& operator<<(std::ostream& os, const TransferInputs& input)
     printIf(input.dPressed, "D");
     printIf(input.spacePressed, "Space");
 
-    
     // Menu / Media
     printIf(input.escPressed, "Esc");
     printIf(input.zeroPressed, "0");
@@ -46,4 +46,3 @@ std::ostream& operator<<(std::ostream& os, const TransferInputs& input)
 
     return os;
 }
-

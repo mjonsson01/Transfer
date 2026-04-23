@@ -8,30 +8,31 @@
 
 // Custom Imports
 #include "Core/GameState.h"
-#include "Core/UIState.h"
 #include "Core/InputState.h"
-#include "Entities/UIElements/UIElement.h"
+#include "Core/UIState.h"
 #include "Entities/UIElements/Overlay/FPSCounter.h"
 #include "Entities/UIElements/Sliders/MassSlider.h"
 #include "Entities/UIElements/Sliders/RadiusSlider.h"
+#include "Entities/UIElements/UIElement.h"
 
 // Standard Library Imports
 #include <vector>
 
-// Owns Logic of UI Components and stores the UIElements while dispatching information to the GameState and UIState
+// Owns Logic of UI Components and stores the UIElements while dispatching
+// information to the GameState and UIState
 class UISystem
 {
-public:
+  public:
     UISystem();
     ~UISystem();
     void CleanUp();
-    void UpdateUIElements(GameState &gameState, UIState &UIState);
-    std::vector<UIElement *> &getUIElementsMutable() { return allUIElements; }
-    const std::vector<UIElement *> &getUIElements() const { return allUIElements; }
-    UIElementType isPositionInUIElementHotZone(InputState &inputsReceived);
-    void updateSpecificElementAndPropagateUpwards(UIElementType elementToUpdate, InputState &inputState);
+    void UpdateUIElements(GameState& gameState, UIState& UIState);
+    std::vector<UIElement*>& getUIElementsMutable() { return allUIElements; }
+    const std::vector<UIElement*>& getUIElements() const { return allUIElements; }
+    UIElementType isPositionInUIElementHotZone(InputState& inputsReceived);
+    void updateSpecificElementAndPropagateUpwards(UIElementType elementToUpdate, InputState& inputState);
 
-private:
-    std::vector<UIElement *> allUIElements;
+  private:
+    std::vector<UIElement*> allUIElements;
     UIElementType activeElement = UIElementType::NONE;
 };

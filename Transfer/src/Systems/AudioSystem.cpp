@@ -2,7 +2,6 @@
 
 #include "Systems/AudioSystem.h"
 
-
 AudioSystem::AudioSystem()
 {
     // Initialize audio system variables if needed
@@ -17,15 +16,12 @@ AudioSystem::AudioSystem()
     SDL_PauseAudioDevice(device);
 }
 
-
-AudioSystem::~AudioSystem()
-{   
-    
-}
+AudioSystem::~AudioSystem() {}
 
 void AudioSystem::CleanUp()
 {
-    if (device) SDL_PauseAudioDevice(device); 
+    if (device)
+        SDL_PauseAudioDevice(device);
     if (stream)
     {
         SDL_DestroyAudioStream(stream);
@@ -47,11 +43,12 @@ void AudioSystem::CleanUp()
     SDL_QuitSubSystem(SDL_INIT_AUDIO);
 }
 
-
 void AudioSystem::ProcessSystemAudioFrame(GameState& gameState, UIState& UIState)
 {
-    if (gameState.getIsShuttingDownAudioSystem()) return;
-    if (!device) return;
+    if (gameState.getIsShuttingDownAudioSystem())
+        return;
+    if (!device)
+        return;
 
     if (gameState.getPlayMusic())
     {
@@ -88,7 +85,8 @@ void AudioSystem::ProcessSystemAudioFrame(GameState& gameState, UIState& UIState
     else
     {
         // Pause music
-        if (stream) SDL_ClearAudioStream(stream);
+        if (stream)
+            SDL_ClearAudioStream(stream);
         SDL_PauseAudioDevice(device);
         isQueued = false;
     }
@@ -144,7 +142,6 @@ bool AudioSystem::LoadTrack(const std::string& musicFilePath)
 
     return true;
 }
-
 
 void AudioSystem::AddAllMusicToPlaylist(const std::string& folderPath)
 {
