@@ -24,33 +24,6 @@
 #include <numeric>
 #include <random>
 #include <string>
-#include <unordered_map>
-
-// Circle (Gravitational body) texture cache.
-struct CircleKey
-{
-    int radius;
-    SDL_Color color;
-
-    bool operator==(const CircleKey& other) const
-    {
-        return radius == other.radius && color.r == other.color.r && color.g == other.color.g &&
-               color.b == other.color.b && color.a == other.color.a;
-    }
-};
-
-// Hash function for unordered_map
-namespace std
-{
-template <> struct hash<CircleKey>
-{
-    size_t operator()(const CircleKey& k) const
-    {
-        return ((hash<int>()(k.radius) ^ (hash<int>()(k.color.r) << 1)) ^ (hash<int>()(k.color.g) << 1)) ^
-               (hash<int>()(k.color.b) << 1) ^ (hash<int>()(k.color.a) << 1);
-    }
-};
-} // namespace std
 
 class RenderSystem
 {
@@ -77,18 +50,15 @@ class RenderSystem
     // Font for UI Elements that require text
     TTF_Font* UIFont = nullptr;
 
-    // Container for background twinkling stars
-    std::vector<TwinklingStar> twinklingStars;
-    // Container for textures of all background twinkling stars
-    std::vector<SDL_Texture*> twinklingStarTextures; // pre-created tiny textures (1-3 px)
-
   private:
     // Subordinate Rendering Functions
+    void renderPreviewBodies(UIState& UIState);
+
     void renderBodies(GameState& gameState); // Renders all the gravitational
                                              // bodies (both Macro and Particle)
 
-    // Renders Input Artifacts
-    void renderInputArtifacts(GameState& gameState);
+    // Renders Drag Lines on Preview Bodies
+    void renderDragLine(Vector2D lineStart, Vector2D lineEnd);
 
     // Renders UI Elements
     void renderUIElements(UIState& UIState, std::vector<UIElement*> allUIElements);
@@ -96,12 +66,12 @@ class RenderSystem
     // Utility Rendering Helper Functions
     SDL_Color getColorForProperty(const GravitationalBody& body);
 
-    // Store for circle textures
-    std::unordered_map<CircleKey, SDL_Texture*> circleTextureCache;
-    // Circle textures helpers
-    SDL_Texture* getCircleTexture(int radius, SDL_Color color);
-    SDL_Texture* createCircleTexture(int radius, SDL_Color color);
-
+    // Container for background twinkling stars
+    std::vector<TwinklingStar> twinklingStars;
+    // Container for textures of all background twinkling stars
+    std::vector<SDL_Texture*> twinklingStarTextures; // pre-created tiny textures (1-3 px)
+    std::vector<SDL_Texture*> circleTextureCache;
+    void buildCircleTextureCache();
     // Texture cleanup helper
     void clearCachedCircleTextures();
 

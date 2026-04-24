@@ -14,6 +14,8 @@ InputSystem::~InputSystem() {}
 
 void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState)
 {
+    transferInputs.resetJustPressed();
+    UIState.getMutableInputState().resetTransientFlags(); // clean the input state before polling for new events.
     SDL_Event event;
     while (SDL_PollEvent(&event))
     {
@@ -83,6 +85,7 @@ void InputSystem::routeSDL_EventInputInGame(SDL_Event* e)
         {
         case SDL_BUTTON_LEFT:
             transferInputs.leftMousePressed = true;
+            transferInputs.leftMouseJustPressed = true;
             break;
         case SDL_BUTTON_RIGHT:
             transferInputs.rightMousePressed = true;
@@ -207,9 +210,12 @@ void InputSystem::translateAndPassTransferInputsOff(UIState& UIState)
     updated_input_state.mouseCurrPosition = transferInputs.mouseCurrPosition;
     updated_input_state.isDragging = transferInputs.isDragging;
     updated_input_state.mouseDragStartPosition = transferInputs.mouseDragStartPosition;
-    updated_input_state.isHoldingLeftMouseButton = transferInputs.leftMousePressed;
-    updated_input_state.isHoldingRightMouseButton = transferInputs.rightMousePressed;
-    updated_input_state.isHoldingMiddleMouseButton = transferInputs.rightMousePressed;
+    updated_input_state.isClickingLeftMouseButton = transferInputs.leftMousePressed;
+    updated_input_state.isClickingRightMouseButton = transferInputs.rightMousePressed;
+    updated_input_state.isClickingMiddleMouseButton = transferInputs.middleMousePressed;
+    updated_input_state.isPressingShift = transferInputs.shiftPressed;
+
+    updated_input_state.leftMouseButtonJustPressed = transferInputs.leftMouseJustPressed;
 
     if (transferInputs.leftMouseJustReleased)
     {
@@ -218,9 +224,7 @@ void InputSystem::translateAndPassTransferInputsOff(UIState& UIState)
             updated_input_state.isCreatingWithInitialVelocity = true;
         }
         updated_input_state.isCreatingMacro = true;
-        updated_input_state.isCreatingCollidable = false;
-        // reset after instantiation
-        transferInputs.leftMouseJustReleased = false;
+        updated_input_state.isCreatingCollidable = true;
     }
 }
 

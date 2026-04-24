@@ -6,7 +6,7 @@
 
 // FPS target for system
 // constexpr int TARGET_FPS = 165;
-constexpr int TARGET_FPS = 60;
+constexpr int TARGET_FPS = 120;
 
 // Target frame delay in ms
 const double FRAME_DELAY_MS = 1000.0 / TARGET_FPS;

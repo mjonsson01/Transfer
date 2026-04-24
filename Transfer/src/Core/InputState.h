@@ -14,10 +14,13 @@ struct InputState
     // consumed by a UI event, then instantiate dirty will be set by the
     // UIState.
 
-    bool isDragging = false;                 // set in Input System
-    bool isHoldingRightMouseButton = false;  // set by transfer inputs
-    bool isHoldingMiddleMouseButton = false; // set by transfer inputs
-    bool isHoldingLeftMouseButton = false;   // set by tranfer inputs
+    bool isDragging = false;                  // set in Input System
+    bool isClickingRightMouseButton = false;  // set by transfer inputs
+    bool isClickingMiddleMouseButton = false; // set by transfer inputs
+    bool isClickingLeftMouseButton = false;   // set by tranfer inputs
+    bool leftMouseButtonJustPressed = false;
+    bool leftMouseButtonJustReleased = false;
+    bool isPressingShift = false;
 
     double selectedMass = 0.0;   // spit back up from UI element to UISystem to UIState
     double selectedRadius = 0.0; // spit back up from UI element to UISystem to UIState
@@ -52,6 +55,8 @@ struct InputState
     bool isPhysicsPaused = false; // Toggled when rendering continues but Physics
                                   // System integration is completely paused
     // bool isPaused = false;
+    bool isPreviewingMacro = false;
+    bool isPreviewingWithInitialVelocity = false;
 
     InputState& resetTransientFlags()
     {
@@ -77,6 +82,8 @@ struct InputState
         isCreatingMacroGhost = false;
         isCreatingWithInitialVelocity = false;
 
+        leftMouseButtonJustPressed = false;
+        leftMouseButtonJustReleased = false;
         return *this;
     }
 

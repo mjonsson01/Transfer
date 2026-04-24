@@ -263,16 +263,17 @@ void PhysicsSystem::integrateForwardsPhase1(GameState& gameState)
     // Phase 1 integrate macro bodies
     for (auto& body : macro_bodies)
     {
+        Vector2D current_acceleration(0.0, 0.0);
         if (body.isStatic)
         {
             // do nothing
         }
         else
         {
-            if (abs(body.mass) <= EPSILON)
-                continue;
-
-            Vector2D current_acceleration = body.netForce / body.mass;
+            if (abs(body.mass) >= EPSILON)
+            {
+                current_acceleration = body.netForce / body.mass;
+            }
             body.velocity += current_acceleration * (PHYSICS_TIME_STEP / 2.0);
         }
 
@@ -309,6 +310,7 @@ void PhysicsSystem::integrateForwardsPhase2(GameState& gameState)
     // Phase 2 integrate macro bodies
     for (auto& body : macro_bodies)
     {
+        Vector2D new_acceleration(0.0, 0.0);
         if (body.isStatic)
         {
             // no force integration, but velocity still carried through
@@ -316,10 +318,11 @@ void PhysicsSystem::integrateForwardsPhase2(GameState& gameState)
         }
         else
         {
-            if (abs(body.mass) <= EPSILON)
-                continue;
+            if (abs(body.mass) >= EPSILON)
+            {
+                new_acceleration = body.netForce / body.mass;
+            }
 
-            Vector2D new_acceleration = body.netForce / body.mass;
             body.velocity += new_acceleration * (PHYSICS_TIME_STEP / 2.0);
         }
     }
