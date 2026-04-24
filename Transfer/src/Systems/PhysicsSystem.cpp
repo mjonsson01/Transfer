@@ -129,29 +129,19 @@ void PhysicsSystem::CleanUp()
 void PhysicsSystem::updateGravBodyInstantiations(GameState& gameState, UIState& UIState)
 {
     InputState& input_state = UIState.getMutableInputState();
-    if (input_state.instantiateDirty)
+    if (!input_state.UIInputConsumed)
     {
-        if (input_state.isCreatingMacro && macroLimiter.canSpawn(1 / UIState.getFPS()))
+        if (input_state.isCreatingMacro)
         {
             createMacroBody(gameState, input_state);
-            input_state.resetTransientFlags();
-        }
-        else if (input_state.isCreatingParticle && particleLimiter.canSpawn(1 / UIState.getFPS()))
-        {
-            createParticle(gameState, input_state);
-            input_state.resetTransientFlags();
-        }
-        else if (input_state.isCreatingParticleCluster && clusterLimiter.canSpawn(1 / UIState.getFPS()))
-        {
-            createParticleCluster(gameState, input_state);
             input_state.resetTransientFlags();
         }
     }
     else
     {
-        macroLimiter.reset();
-        particleLimiter.reset();
-        clusterLimiter.reset();
+        // macroLimiter.reset();
+        // particleLimiter.reset();
+        // clusterLimiter.reset();
     }
     // Check if all Gravitational Bodies are supposed to be wiped
     if (input_state.clearAll)
@@ -273,16 +263,17 @@ void PhysicsSystem::integrateForwardsPhase1(GameState& gameState)
     // Phase 1 integrate macro bodies
     for (auto& body : macro_bodies)
     {
+        Vector2D current_acceleration(0.0, 0.0);
         if (body.isStatic)
         {
             // do nothing
         }
         else
         {
-            if (abs(body.mass) <= EPSILON)
-                continue;
-
-            Vector2D current_acceleration = body.netForce / body.mass;
+            if (abs(body.mass) >= EPSILON)
+            {
+                current_acceleration = body.netForce / body.mass;
+            }
             body.velocity += current_acceleration * (PHYSICS_TIME_STEP / 2.0);
         }
 
@@ -319,6 +310,7 @@ void PhysicsSystem::integrateForwardsPhase2(GameState& gameState)
     // Phase 2 integrate macro bodies
     for (auto& body : macro_bodies)
     {
+        Vector2D new_acceleration(0.0, 0.0);
         if (body.isStatic)
         {
             // no force integration, but velocity still carried through
@@ -326,10 +318,11 @@ void PhysicsSystem::integrateForwardsPhase2(GameState& gameState)
         }
         else
         {
-            if (abs(body.mass) <= EPSILON)
-                continue;
+            if (abs(body.mass) >= EPSILON)
+            {
+                new_acceleration = body.netForce / body.mass;
+            }
 
-            Vector2D new_acceleration = body.netForce / body.mass;
             body.velocity += new_acceleration * (PHYSICS_TIME_STEP / 2.0);
         }
     }
@@ -659,10 +652,17 @@ void PhysicsSystem::createMacroBody(GameState& gameState, InputState& inputState
     body.isPlanet = true;
     body.isMacro = true;
     body.isShatterable = true;
-    body.isCollidable = true;
+    body.isCollidable = inputState.isCreatingCollidable;
     body.isStatic = inputState.isCreatingStatic;
     body.isMacroGhost = inputState.isCreatingMacroGhost;
     body.macroIdentifier = newMacroBodyID;
+
+    if (inputState.isCreatingWithInitialVelocity)
+    {
+        body.position = inputState.mouseDragStartPosition;
+        body.previousPosition = body.position;
+        body.velocity = inputState.mouseCurrPosition - inputState.mouseDragStartPosition;
+    }
     // --- NEW LOGIC: Nudge fragments out of the new body's radius ---
     auto& particles = gameState.getParticlesMutable();
     double nudge_factor = 1.01; // Nudge fragments out by 1% more than the radius
@@ -710,7 +710,6 @@ void PhysicsSystem::createParticle(GameState& gameState, InputState& inputState)
     body.isCollidable = true;
     inputState.isCreatingDust = false;
     gameState.getParticlesMutable().push_back(body);
-    inputState.instantiateDirty = false;
 }
 
 void PhysicsSystem::createParticleCluster(GameState& gameState, InputState& inputState)

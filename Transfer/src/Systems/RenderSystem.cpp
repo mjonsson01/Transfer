@@ -8,7 +8,7 @@ RenderSystem::RenderSystem()
     // Add audio later
     SDL_InitSubSystem(SDL_INIT_VIDEO);
     TTF_Init();
-
+    SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
     int desired_x_resolution = SCREEN_WIDTH;
     int desired_y_resolution = SCREEN_HEIGHT;
     int no_flags = 0;
@@ -18,7 +18,7 @@ RenderSystem::RenderSystem()
 
     // Assign renderer pointer to instance. No specific driver, so nullptr.
     renderer = SDL_CreateRenderer(window, nullptr);
-    SDL_SetRenderVSync(renderer, 2);
+    // SDL_SetRenderVSync(renderer, 1);
     if (TTF_Init() == false)
     {
         SDL_Log("Failed to initialize SDL_ttf: %s", SDL_GetError());
@@ -32,6 +32,7 @@ RenderSystem::RenderSystem()
         SDL_Log("Failed to load font: %s", SDL_GetError());
         return;
     }
+    buildCircleTextureCache();
     createStarTextures();
     createStarField(STAR_NUM);
 }
@@ -62,6 +63,7 @@ void RenderSystem::CleanUp()
 
 void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState, const std::vector<UIElement*>& allUIElements)
 {
+    Uint64 start = SDL_GetPerformanceCounter();
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // black background
     SDL_RenderClear(renderer);
 
@@ -69,15 +71,59 @@ void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState, const
     updateStars();
     renderStars();
 
+    // Render all preview bodies
+    renderPreviewBodies(UIState);
     // Render all the bodies (particles)
-    RenderSystem::renderBodies(gameState);
+    renderBodies(gameState);
 
-    RenderSystem::renderUIElements(UIState, allUIElements);
+    renderUIElements(UIState, allUIElements);
 
     // Display the frame
+    Uint64 beforePresent = SDL_GetPerformanceCounter();
     SDL_RenderPresent(renderer);
-}
+    Uint64 end = SDL_GetPerformanceCounter();
+    double render_ms = (beforePresent - start) * 1000.0 / SDL_GetPerformanceFrequency();
+    double present_ms = (end - beforePresent) * 1000.0 / SDL_GetPerformanceFrequency();
 
+    // SDL_Log("PRESENT STALL: %f ms", present_ms);
+    // SDL_Log("Render STALL: %f ms", render_ms);
+}
+void RenderSystem::renderPreviewBodies(UIState& UIState)
+{
+    InputState& input_state = UIState.getMutableInputState();
+    if (input_state.isPreviewingMacro)
+    {
+        // create pseudo body.
+        GravitationalBody body = {};
+        body.mass = input_state.selectedMass;
+        body.radius = input_state.selectedRadius;
+        // rendering preview body
+        if (input_state.isPreviewingWithInitialVelocity)
+        {
+            body.position = input_state.mouseDragStartPosition;
+        }
+        else
+        {
+            body.position = input_state.mouseCurrPosition;
+        }
+        SDL_Color color = getColorForProperty(body);
+        SDL_Texture* tex = circleTextureCache[static_cast<int>(body.radius)];
+        SDL_SetTextureColorMod(tex, color.r, color.g, color.b);
+        SDL_SetTextureAlphaMod(tex, color.a);
+
+        float render_x = body.position.xVal;
+        float render_y = body.position.yVal;
+        render_x = std::round(render_x);
+        render_y = std::round(render_y);
+        float r = static_cast<float>(body.radius);
+        SDL_FRect dstRect = {render_x - r, render_y - r, r * 2, r * 2};
+        SDL_RenderTexture(renderer, tex, nullptr, &dstRect);
+        if (input_state.isPreviewingWithInitialVelocity)
+        {
+            renderDragLine(body.position, input_state.mouseCurrPosition);
+        }
+    }
+}
 // --------- RENDER GRAVITATIONAL BODIES METHOD --------- //
 void RenderSystem::renderBodies(GameState& gameState)
 {
@@ -90,7 +136,10 @@ void RenderSystem::renderBodies(GameState& gameState)
             continue; // don't render invisible particles
         }
         SDL_Color color = getColorForProperty(particle);
-        SDL_Texture* tex = getCircleTexture(static_cast<int>(particle.radius), color);
+        SDL_Texture* tex = circleTextureCache[static_cast<int>(particle.radius)];
+        SDL_SetTextureColorMod(tex, color.r, color.g, color.b);
+        SDL_SetTextureAlphaMod(tex, color.a);
+
         Vector2D current_position = particle.position;
         Vector2D previous_position = particle.previousPosition;
         // Alpha Interpolation causes particle flickers for small particles.
@@ -124,7 +173,10 @@ void RenderSystem::renderBodies(GameState& gameState)
             continue;
         }
         SDL_Color color = getColorForProperty(body);
-        SDL_Texture* tex = getCircleTexture(static_cast<int>(body.radius), color);
+        SDL_Texture* tex = circleTextureCache[static_cast<int>(body.radius)];
+        SDL_SetTextureColorMod(tex, color.r, color.g, color.b);
+        SDL_SetTextureAlphaMod(tex, color.a);
+
         Vector2D current_position = body.position;
         Vector2D previous_position = body.previousPosition;
         float render_x = previous_position.xVal * (1.0f - alpha) + current_position.xVal * alpha;
@@ -136,10 +188,118 @@ void RenderSystem::renderBodies(GameState& gameState)
     }
 }
 
-// --------- RENDER INPUT ARTIFACTS METHOD --------- //
-// Renders user input artifacts like drag lines. TBI
-void RenderSystem::renderInputArtifacts(GameState& gameState) {}
+// --------- RENDER DRAGLINES METHOD --------- //
 
+void RenderSystem::renderDragLine(Vector2D lineStart, Vector2D lineEnd)
+{
+    SDL_Color color = ColorLibrary::White;
+    SDL_FColor f_color = {1.0f, 1.0f, 1.0f, 1.0f};
+
+    float dx = static_cast<float>(lineEnd.xVal - lineStart.xVal);
+    float dy = static_cast<float>(lineEnd.yVal - lineStart.yVal);
+    float length = static_cast<float>((lineEnd - lineStart).magnitude());
+    if (length <= EPSILON)
+    {
+        return;
+    }
+    dx /= length;
+    dy /= length;
+    float px = -dy;
+    float py = dx;
+    const float thickness = 6.0f;
+    const float arrow_length = 20.0f;
+    const float arrow_width = 24.0f;
+    float half_T = thickness / 2.0f;
+    // --- IMPORTANT: shorten line so arrow has space ---
+    Vector2D line_end = {lineEnd.xVal - dx * arrow_length, lineEnd.yVal - dy * arrow_length};
+    SDL_Vertex line_verts[4];
+
+    line_verts[0].position = {float(lineStart.xVal) + px * half_T, float(lineStart.yVal) + py * half_T};
+    line_verts[1].position = {float(lineStart.xVal) - px * half_T, float(lineStart.yVal) - py * half_T};
+    line_verts[2].position = {float(line_end.xVal) - px * half_T, float(line_end.yVal) - py * half_T};
+    line_verts[3].position = {float(line_end.xVal) + px * half_T, float(line_end.yVal) + py * half_T};
+
+    for (int i = 0; i < 4; i++)
+        line_verts[i].color = f_color;
+    int line_indices[6] = {0, 1, 2, 0, 2, 3};
+    SDL_RenderGeometry(renderer, nullptr, line_verts, 4, line_indices, 6);
+
+    // --- Arrowhead (triangle) ---
+    float half_arrow_W = arrow_width / 2.0f;
+
+    SDL_Vertex arrow_verts[3];
+
+    Vector2D tip = lineEnd;
+    Vector2D base = line_end;
+
+    arrow_verts[0].position = {float(tip.xVal), float(tip.yVal)};
+
+    arrow_verts[1].position = {float(base.xVal) + px * (arrow_width / 2), float(base.yVal) + py * (arrow_width / 2)};
+
+    arrow_verts[2].position = {float(base.xVal) - px * (arrow_width / 2), float(base.yVal) - py * (arrow_width / 2)};
+
+    for (int i = 0; i < 3; i++)
+        arrow_verts[i].color = f_color;
+
+    SDL_RenderGeometry(renderer, nullptr, arrow_verts, 3, nullptr, 0);
+}
+
+void RenderSystem::buildCircleTextureCache()
+{
+    // Safety cleanup if re-initializing
+    clearCachedCircleTextures();
+    int max_radius = static_cast<int>(MAX_RADIUS);
+    circleTextureCache.reserve(max_radius);
+
+    for (int radius = 1; radius <= max_radius; ++radius)
+    {
+        int diameter = radius * 2;
+
+        SDL_Texture* tex =
+            SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, diameter, diameter);
+
+        if (!tex)
+        {
+            SDL_Log("Failed to create circle texture: %s", SDL_GetError());
+            continue;
+        }
+
+        SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
+
+        // --- render circle into texture once ---
+        SDL_SetRenderTarget(renderer, tex);
+
+        // transparent background
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+        SDL_RenderClear(renderer);
+
+        // white circle (IMPORTANT: color stays neutral for modulation later)
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+
+        int r2 = radius * radius;
+
+        for (int y = 0; y < diameter; ++y)
+        {
+            int dy = y - radius;
+
+            for (int x = 0; x < diameter; ++x)
+            {
+                int dx = x - radius;
+
+                if (dx * dx + dy * dy <= r2)
+                {
+                    SDL_RenderPoint(renderer, x, y);
+                }
+            }
+        }
+
+        SDL_SetRenderTarget(renderer, nullptr);
+
+        circleTextureCache[radius] = tex;
+    }
+
+    // SDL_Log("Circle texture cache built: %d radii", max_radius);
+}
 // --------- RENDER UI ELEMENTS METHOD --------- //
 
 void RenderSystem::renderUIElements(UIState& UIState, std::vector<UIElement*> allUIElements)
@@ -156,18 +316,6 @@ void RenderSystem::renderUIElements(UIState& UIState, std::vector<UIElement*> al
 // Smooth interpolation color lookup function
 
 // --------- RENDER UTILITY HELPERS --------- //
-// SDL_Color RenderSystem::getColorForMass(double mass)
-// {
-//     // Simple mapping: lighter masses are blue, heavier masses are red
-//     Uint8 r = static_cast<Uint8>(std::min((mass / MAX_MASS) * 255, 255.0));
-//     // assuming max mass of 1e25 for scaling Uint8 g = 0; Uint8 b =
-//     static_cast<Uint8>(255 - r); Uint8 a = 255; // fully opaque
-//     // if (mass >= MAX_MASS-1000.0) return ColorLibrary::Black;
-//     // if (mass <= MAX_MASS/10000.0) return ColorLibrary::White;
-
-//     return SDL_Color{ r, g, b, a };
-// }
-
 SDL_Color RenderSystem::getColorForProperty(const GravitationalBody& body)
 // NEED TO OPTIMIZE OUT CONSTANT ACCESS
 {
@@ -214,103 +362,13 @@ SDL_Color RenderSystem::getColorForProperty(const GravitationalBody& body)
     return SDL_Color{r, g, b, opacity};
 }
 
-// Paired below
-
-// static SDL_Color HSVtoRGB(double h, double s, double v, Uint8 a = 255)
-// {
-//     h = std::fmod(h, 360.0);
-//     if (h < 0) h += 360.0;
-
-//     double c = v * s;
-//     double x = c * (1.0 - std::fabs(std::fmod(h / 60.0, 2.0) - 1.0));
-//     double m = v - c;
-
-//     double r1=0, g1=0, b1=0;
-//     if      (h < 60)  { r1 = c; g1 = x; b1 = 0; }
-//     else if (h < 120) { r1 = x; g1 = c; b1 = 0; }
-//     else if (h < 180) { r1 = 0; g1 = c; b1 = x; }
-//     else if (h < 240) { r1 = 0; g1 = x; b1 = c; }
-//     else if (h < 300) { r1 = x; g1 = 0; b1 = c; }
-//     else              { r1 = c; g1 = 0; b1 = x; }
-
-//     Uint8 r = (Uint8)std::clamp((r1 + m) * 255.0, 0.0, 255.0);
-//     Uint8 g = (Uint8)std::clamp((g1 + m) * 255.0, 0.0, 255.0);
-//     Uint8 b = (Uint8)std::clamp((b1 + m) * 255.0, 0.0, 255.0);
-//     return SDL_Color{ r, g, b, a };
-// }
-
-// SDL_Color RenderSystem::getColorForMass(double mass)
-// {
-//     // Normalize mass to [0,1]
-//     double t = std::clamp(mass / MAX_MASS, 0.0, 1.0);
-
-//     // Optional: log-scale for better contrast if masses span many orders of
-//     magnitude
-//     // double t = std::clamp(std::log10(mass / MIN_MASS) /
-//     std::log10(MAX_MASS / MIN_MASS), 0.0, 1.0);
-
-//     // Map t to hue. 0..360 sweeps full rainbow.
-//     // If you want low mass blue and high mass red, use 240 -> 0:
-//     double hue = 240.0 * (1.0 - t); // blue (240) -> red (0)
-
-//     double sat = 1.0;
-//     double val = 1.0;
-//     return HSVtoRGB(hue, sat, val, 255);
-// }
-
-// --------- CIRCLE TEXTURE CACHE METHODS --------- //
-// Helper to correctly destroy the circle texture cache.
 void RenderSystem::clearCachedCircleTextures()
 {
-    for (auto& pair : circleTextureCache)
+    for (auto& tex : circleTextureCache)
     {
-        SDL_DestroyTexture(pair.second);
+        SDL_DestroyTexture(tex);
     }
     circleTextureCache.clear();
-}
-
-// Helper to get the texture for a given radius/color pair
-SDL_Texture* RenderSystem::getCircleTexture(int radius, SDL_Color color)
-{
-    CircleKey key{radius, color};
-
-    auto it = circleTextureCache.find(key);
-    if (it != circleTextureCache.end())
-        return it->second;
-
-    SDL_Texture* tex = createCircleTexture(radius, color);
-    circleTextureCache[key] = tex;
-    return tex;
-}
-
-// Helper to create a circle (grav body) texture and places in the cache.
-SDL_Texture* RenderSystem::createCircleTexture(int radius, SDL_Color color)
-{
-    int diameter = radius * 2;
-    SDL_Texture* tex =
-        SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, diameter, diameter);
-    SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
-
-    SDL_SetRenderTarget(renderer, tex);
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0); // transparent background
-    SDL_RenderClear(renderer);
-
-    SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
-
-    // Simple naive n^2 fill circle -- fast enough since only executed once. May
-    // further optimize to Bresenham's circle algorithm later
-    for (int w = 0; w < diameter; w++)
-    {
-        for (int h = 0; h < diameter; h++)
-        {
-            int dx = radius - w;
-            int dy = radius - h;
-            if ((dx * dx + dy * dy) <= (radius * radius))
-                SDL_RenderPoint(renderer, w, h);
-        }
-    }
-    SDL_SetRenderTarget(renderer, nullptr);
-    return tex;
 }
 
 // --------- TWINKLING STAR METHODS --------- //
@@ -369,7 +427,9 @@ void RenderSystem::createStarTextures()
     for (int r = minStarRadius; r <= maxStarRadius; ++r)
     {
         SDL_Color color = {255, 255, 255, 255};
-        SDL_Texture* tex = createCircleTexture(r, color);
+        SDL_Texture* tex = circleTextureCache[r];
+        SDL_SetTextureColorMod(tex, color.r, color.g, color.b);
+        SDL_SetTextureAlphaMod(tex, color.a);
         twinklingStarTextures.push_back(tex);
     }
 }

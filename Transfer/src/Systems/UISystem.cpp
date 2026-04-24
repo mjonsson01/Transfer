@@ -21,33 +21,33 @@ UISystem::~UISystem()
 
 void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState)
 {
-    // std::cout<<"UISystem active element: "<<activeElement<<std::endl;
+    bool consumed = false;
     InputState& inputsReceived = UIState.getMutableInputState();
-    // Left mouse button click is the only one UI cares about
-    if (!inputsReceived.isHoldingLeftMouseButton)
-    {
-        activeElement = UIElementType::NONE;
-        return;
-    }
 
-    // If nothing is active yet, try to acquire one
-    if (activeElement == UIElementType::NONE)
+    if (inputsReceived.leftMouseButtonJustPressed && inputsReceived.isClickingLeftMouseButton)
     {
         activeElement = isPositionInUIElementHotZone(inputsReceived);
     }
-    // If we have an active UI element → ALWAYS route input to it
-    if (activeElement != UIElementType::NONE && activeElement != UIElementType::FPS_COUNTER_INDEX)
+    // If you are clicking and its a preview macro, disable the previewing macro and consume?
+
+    // If releasing on an element, still count as consumed
+    if (!inputsReceived.isClickingLeftMouseButton || inputsReceived.leftMouseButtonJustReleased)
+    {
+        activeElement = isPositionInUIElementHotZone(inputsReceived);
+        if (activeElement != UIElementType::NONE)
+        {
+            consumed = true;
+        }
+        activeElement = UIElementType::NONE; // release any hold on the element
+    }
+    if (activeElement != UIElementType::NONE && activeElement != FPS_COUNTER_INDEX)
     {
         updateSpecificElementAndPropagateUpwards(activeElement, inputsReceived);
-        inputsReceived.UIInputConsumed = true;
-        inputsReceived.instantiateDirty = false;
-        return;
+        consumed = true;
     }
-
-    // Otherwise → pass to world
-    inputsReceived.instantiateDirty = true;
-    inputsReceived.instantiatePosition = inputsReceived.mouseCurrPosition;
-    inputsReceived.instantiateDragStartPosition = inputsReceived.mouseDragStartPosition;
+    inputsReceived.UIInputConsumed = consumed;
+    inputsReceived.isPreviewingMacro = inputsReceived.isClickingLeftMouseButton && !consumed;
+    inputsReceived.isPreviewingWithInitialVelocity = inputsReceived.isPreviewingMacro && inputsReceived.isPressingShift;
 }
 
 void UISystem::CleanUp()
