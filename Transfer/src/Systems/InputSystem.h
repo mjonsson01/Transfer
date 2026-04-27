@@ -33,6 +33,8 @@ class InputSystem
 
   private:
     void routeSDL_EventInputInGame(SDL_Event* event);
+    void routeSDL_EventInputInMenu(SDL_Event* event);
     void translateAndPassTransferInputsOff(UIState& UIState);
+    void translateAndPassMenuInputsOff(UIState& UIState);
     TransferInputs transferInputs; // in game inputs
 };

@@ -32,8 +32,9 @@ struct TransferInputs
     bool leftMouseJustPressed = false;
 
     // Menu and Media controls
-    bool escPressed = false;  // Pause menu
-    bool zeroPressed = false; // Music play/pause
+    bool escPressed = false;
+    bool zeroPressed = false;    // Music play/pause
+    bool escJustPressed = false; // Pause menu
 
     // Modifier Controls
     // bool ctrlPressed = false;
@@ -55,6 +56,7 @@ struct TransferInputs
     {
         leftMouseJustPressed = false;
         leftMouseJustReleased = false;
+        escJustPressed = false;
     }
     void resetAllKeyPressedVars()
     {

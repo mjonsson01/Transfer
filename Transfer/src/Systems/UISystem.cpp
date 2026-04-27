@@ -3,15 +3,15 @@
 #include "UISystem.h"
 
 // Constructor
-UISystem::UISystem() : allUIElements()
+UISystem::UISystem() : allGameUIElements(), allPauseUIElements()
 {
     // Initialize any UI system state here
     FPSCounter* fps_counter = new FPSCounter();
-    allUIElements.push_back(fps_counter);
+    allGameUIElements.push_back(fps_counter);
     MassSlider* mass_slider = new MassSlider();
-    allUIElements.push_back(mass_slider);
+    allGameUIElements.push_back(mass_slider);
     RadiusSlider* radius_slider = new RadiusSlider();
-    allUIElements.push_back(radius_slider);
+    allGameUIElements.push_back(radius_slider);
 }
 // Destructor
 UISystem::~UISystem()
@@ -20,6 +20,25 @@ UISystem::~UISystem()
 }
 
 void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState)
+{
+    if (UIState.getGameScene())
+    {
+        if (UIState.getPauseMenuActive())
+        {
+            updatePauseUIElements(gameState, UIState);
+        }
+        else
+        {
+            updateGameUIElements(gameState, UIState);
+        }
+    }
+    else
+    {
+        return;
+    }
+}
+
+void UISystem::updateGameUIElements(GameState& gameState, UIState& UIState)
 {
     bool consumed = false;
     InputState& inputsReceived = UIState.getMutableInputState();
@@ -50,18 +69,20 @@ void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState)
     inputsReceived.isPreviewingWithInitialVelocity = inputsReceived.isPreviewingMacro && inputsReceived.isPressingShift;
 }
 
+void UISystem::updatePauseUIElements(GameState& gameState, UIState& UIState) { return; }
+
 void UISystem::CleanUp()
 {
-    for (auto& element : allUIElements)
+    for (auto& element : allGameUIElements)
     {
         delete element;
     }
-    allUIElements.clear();
+    allGameUIElements.clear();
 }
 
 void UISystem::updateSpecificElementAndPropagateUpwards(UIElementType elementTypeToUpdate, InputState& inputState)
 {
-    UIElement* elementToUpdate = allUIElements[elementTypeToUpdate];
+    UIElement* elementToUpdate = allGameUIElements[elementTypeToUpdate];
 
     // this could be further abstracted into passing the full input state so
     // that the UIelement decides what it updates, but I want to make the ui
@@ -78,16 +99,13 @@ void UISystem::updateSpecificElementAndPropagateUpwards(UIElementType elementTyp
         elementToUpdate->updateMe(inputState.mouseCurrPosition, radiusValToBeCalculatedAndInjected);
         inputState.selectedRadius = radiusValToBeCalculatedAndInjected;
     }
-    // if (elementTypeToUpdate == UIElementType::RADIUS_SLIDER_INDEX)
-    // {
-    // }
 }
 
 UIElementType UISystem::isPositionInUIElementHotZone(InputState& inputsReceived)
 {
     UIElementType hotzoneType = UIElementType::NONE; // default result
     Vector2D curr_pos = inputsReceived.mouseCurrPosition;
-    for (auto& element : allUIElements)
+    for (auto& element : allGameUIElements)
     {
         hotzoneType = element->isInDeadZone(curr_pos);
         if (hotzoneType != UIElementType::NONE)
@@ -97,42 +115,3 @@ UIElementType UISystem::isPositionInUIElementHotZone(InputState& inputsReceived)
     }
     return hotzoneType; // single return
 }
-
-// void UISystem::ProcessUIFrame(GameState& gameState, UIState& UIState)
-// {
-
-// }
-
-// void UISystem::InitializeUIElements(UIState& UIState)
-// {
-//     // Create and add the FPS counter
-//     FPSCounter* fpsCounter = new FPSCounter();
-//     UIState.addUIElement(fpsCounter);
-//     // Create and add the Mass Slider
-//     MassSlider* massSlider = new MassSlider();
-//     UIState.addUIElement(massSlider);
-//     // Add other UI elements as needed
-// }
-
-// void UISystem::DeleteUIElements(UIState& UIState)
-// {
-//     // Get all UI elements and delete them
-//     std::vector<UIElement*> ui_elements = UIState.getUIElements();
-//     for (auto& element : ui_elements) {
-//         delete element;
-//     }
-//     UIState.clearUIElements();
-// }
-
-// void UISystem::RenderUIElements(SDL_Renderer* renderer, UIState& UIState,
-// TTF_Font* UIFont)
-// {
-//     std::vector<UIElement*> ui_elements = UIState.getUIElements();
-//     if (!UIState.getUIElementsVisible()) return; // Skip rendering if UI
-//     elements are hidden
-
-//     for (auto& element : ui_elements) {
-//         element->renderElement(renderer, UIState, UIFont); // Pass UIFont if
-//         needed
-//     }
-// }

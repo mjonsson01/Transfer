@@ -54,7 +54,7 @@ struct InputState
     bool clearAll = false;        // Toggled when screen wipe is requested
     bool isPhysicsPaused = false; // Toggled when rendering continues but Physics
                                   // System integration is completely paused
-    // bool isPaused = false;
+    bool isPaused = false;
     bool isPreviewingMacro = false;
     bool isPreviewingWithInitialVelocity = false;
 

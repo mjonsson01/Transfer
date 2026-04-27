@@ -27,12 +27,19 @@ class UISystem
     ~UISystem();
     void CleanUp();
     void UpdateUIElements(GameState& gameState, UIState& UIState);
-    std::vector<UIElement*>& getUIElementsMutable() { return allUIElements; }
-    const std::vector<UIElement*>& getUIElements() const { return allUIElements; }
+    void updateGameUIElements(GameState& gameState, UIState& UIState);
+    std::vector<UIElement*>& getGameUIElementsMutable() { return allGameUIElements; }
+    const std::vector<UIElement*>& getGameUIElements() const { return allGameUIElements; }
+    void updatePauseUIElements(GameState& gameState, UIState& UIState);
+    std::vector<UIElement*>& getPauseUIElementsMutable() { return allGameUIElements; }
+    const std::vector<UIElement*>& getPauseUIElements() const { return allGameUIElements; }
     UIElementType isPositionInUIElementHotZone(InputState& inputsReceived);
     void updateSpecificElementAndPropagateUpwards(UIElementType elementToUpdate, InputState& inputState);
 
   private:
-    std::vector<UIElement*> allUIElements;
+    std::vector<UIElement*> allGameUIElements;
+    std::vector<UIElement*> allPauseUIElements;
+    std::vector<UIElement*> allStartGameUIElements;
+    std::vector<UIElement*> allLevelEditorUIElements;
     UIElementType activeElement = UIElementType::NONE;
 };

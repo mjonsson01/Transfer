@@ -28,8 +28,8 @@ void Game::StartGame()
     // implemented yet.
 
     // NEED TO FIX. THIS WILL BE ADJUSTED IN UPDATES TO SCENE MANAGEMENT TBI
-    UIState.setLevelScene(true);
-    UIState.setRenderDebug(true); // default to true for now to help with development
+    UIState.setGameScene(true);
+    // UIState.setRenderDebug(true); // default to true for now to help with development
 
     // Start the main game loop
     Game::Run();
@@ -141,8 +141,8 @@ void Game::UpdatePhysicsFrame()
 void Game::RenderFrame()
 {
     // Dispatch to Renderer System -- renders UI as well.
-    const std::vector<UIElement*> allUIElements = UISystem.getUIElements();
-    renderSystem.RenderFullFrame(gameState, UIState, allUIElements);
+    const std::vector<UIElement*> allGameUIElements = UISystem.getGameUIElements();
+    renderSystem.RenderFullFrame(gameState, UIState, allGameUIElements);
 }
 
 void Game::PlayAudio() { audioSystem.ProcessSystemAudioFrame(gameState, UIState); }
