@@ -3,8 +3,8 @@
 #pragma once
 
 // Custom Imports
-#include "Entities/GravitationalBody.h"
-#include "Utilities/GameSystemConstants.h"
+#include "Entities/Physics/GravitationalBody.h"
+#include "Utilities/Constants/GameSystemConstants.h"
 
 // Standard Library Imports
 #include <vector>

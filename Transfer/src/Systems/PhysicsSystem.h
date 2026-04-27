@@ -5,11 +5,11 @@
 // Custom Imports
 #include "Core/GameState.h"
 #include "Core/UIState.h"
-#include "Entities/GravitationalBody.h"
-#include "Entities/MathStructures.h"
-#include "Utilities/CustomMathUtilities.h"
-#include "Utilities/EngineConstants.h"
-#include "Utilities/GameSystemConstants.h"
+#include "Entities/Physics/GravitationalBody.h"
+#include "Utilities/Constants/EngineConstants.h"
+#include "Utilities/Constants/GameSystemConstants.h"
+#include "Utilities/Math/CustomMathUtilities.h"
+#include "Utilities/Math/Vector2D.h"
 
 // Standard Library Imports
 #include <algorithm>

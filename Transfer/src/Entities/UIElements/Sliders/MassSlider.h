@@ -8,13 +8,13 @@
 
 // Custom Imports
 #include "Core/UIState.h"
-#include "Entities/MathStructures.h"
 #include "Entities/UIElements/Sliders/Slider.h"
 #include "Entities/UIElements/UIElement.h"
 #include "Entities/UIElements/UIElementTypeEnum.h"
-#include "Utilities/Colors.h"
-#include "Utilities/EngineConstants.h"
-#include "Utilities/GameSystemConstants.h"
+#include "Utilities/Constants/EngineConstants.h"
+#include "Utilities/Constants/GameSystemConstants.h"
+#include "Utilities/Math/Vector2D.h"
+#include "Utilities/Rendering/Colors.h"
 
 // Standard Library Imports
 #include <string>

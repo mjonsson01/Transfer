@@ -7,7 +7,7 @@
 
 // Custom Imports
 #include "Core/InputState.h"
-#include "Utilities/GameSystemConstants.h"
+#include "Utilities/Constants/GameSystemConstants.h"
 
 // Standard Library Imports
 #include <vector>

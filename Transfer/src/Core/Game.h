@@ -11,8 +11,8 @@
 #include "Systems/PhysicsSystem.h"
 #include "Systems/RenderSystem.h"
 #include "Systems/UISystem.h"
-#include "Utilities/EngineConstants.h"
-#include "Utilities/GameSystemConstants.h"
+#include "Utilities/Constants/EngineConstants.h"
+#include "Utilities/Constants/GameSystemConstants.h"
 
 // Standard Library Imports
 #include <numeric>

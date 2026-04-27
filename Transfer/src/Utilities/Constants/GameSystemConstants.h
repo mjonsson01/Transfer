@@ -1,4 +1,4 @@
-// File: Transfer/src/Utilities/GameSystemConstants.h
+// File: Transfer/src/Utilities/Constants/GameSystemConstants.h
 
 #pragma once
 // #ifndef GAME_SYSTEM_CONSTANTS_H

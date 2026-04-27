@@ -10,12 +10,12 @@
 // Custom Imports
 #include "Core/GameState.h"
 #include "Core/UIState.h"
-#include "Entities/TwinklingStars.h"
 #include "Entities/UIElements/UIElement.h"
-#include "Utilities/Colors.h"
-#include "Utilities/EngineConstants.h"
-#include "Utilities/GameSystemConstants.h"
-#include "Utilities/SystemPathUtility.h"
+#include "Entities/VisualElements/TwinklingStars.h"
+#include "Utilities/Constants/EngineConstants.h"
+#include "Utilities/Constants/GameSystemConstants.h"
+#include "Utilities/Rendering/Colors.h"
+#include "Utilities/System/SystemPathUtility.h"
 
 // Standard Library Imports
 #include <algorithm>

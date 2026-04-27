@@ -1,4 +1,4 @@
-// File: Transfer/src/Entities/MathStructures.h
+// File: Transfer/src/Utilities/Math/Vector2D.h
 
 #pragma once
 

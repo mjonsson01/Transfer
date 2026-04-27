@@ -8,9 +8,9 @@
 
 // Custom Imports
 #include "Core/UIState.h"
-#include "Entities/MathStructures.h"
 #include "Entities/UIElements/UIElementTypeEnum.h"
-#include "Utilities/Colors.h"
+#include "Utilities/Math/Vector2D.h"
+#include "Utilities/Rendering/Colors.h"
 
 // Standard Library Imports
 #include <string>

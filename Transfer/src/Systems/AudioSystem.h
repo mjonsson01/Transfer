@@ -8,7 +8,7 @@
 // Custom Imports
 #include "Core/GameState.h"
 #include "Core/UIState.h"
-#include "Utilities/SystemPathUtility.h"
+#include "Utilities/System/SystemPathUtility.h"
 
 // Standard Library Imports
 #include <filesystem>

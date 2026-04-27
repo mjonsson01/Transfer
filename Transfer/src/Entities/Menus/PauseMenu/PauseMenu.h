@@ -1,4 +1,4 @@
-// File: Transfer/src/Menus/PauseMenu/PauseScene.cpp
+// File: Transfer/src/Menus/PauseMenu/PauseMenu.cpp
 
 #pragma once
 

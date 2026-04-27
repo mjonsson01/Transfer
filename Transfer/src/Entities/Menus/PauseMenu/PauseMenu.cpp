@@ -1,3 +1,3 @@
-// File: Transfer/src/Menus/PauseMenu/PauseScene.cpp
+// File: Transfer/src/Menus/PauseMenu/PauseMenu.cpp
 
 #include "Entities/Menus/PauseMenu/PauseMenu.h"

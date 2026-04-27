@@ -1,9 +1,9 @@
-// File: Transfer/src/Entities/GravitationalBody.h
+// File: Transfer/src/Entities/Physics/GravitationalBody.h
 
 #pragma once
 
 // Custom Imports
-#include "Entities/MathStructures.h"
+#include "Utilities/Math/Vector2D.h"
 
 // Standard Library Imports
 #include <cstdint>

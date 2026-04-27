@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "Entities/MathStructures.h"
+#include "Utilities/Math/Vector2D.h"
 
 struct InputState
 {

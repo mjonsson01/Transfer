@@ -8,9 +8,9 @@
 // Custom Imports
 #include "Core/GameState.h"
 #include "Core/UIState.h"
-#include "Utilities/EngineConstants.h"
-#include "Utilities/GameSystemConstants.h"
-#include "Utilities/TransferInputs.h"
+#include "Utilities/Constants/EngineConstants.h"
+#include "Utilities/Constants/GameSystemConstants.h"
+#include "Utilities/UserInput/TransferInputs.h"
 
 // Standard Library Imports
 #include <iostream>

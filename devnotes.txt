@@ -69,8 +69,7 @@ Adding baseline behavior to blow up both macro colliding bodies as long as the h
 Want to rework collision dynamics so that spread doesn't produce that weird crescent shape.
 
 
-NEEDTOFIX
-Pressing shift to begin the input for a velocity instantiated body has weird behaviors when toggling off and on. 
+
 
 Add restriction on creating 0 mass bodies unless in dev mode?
 
@@ -83,3 +82,5 @@ Should either instantly accrete or correct their positions and put them at bound
 
 
 Need to rework menus and scenes into enums most likely.
+
+UISystem needs to own and manage the scenes around. That way I can put it in test scene easily.

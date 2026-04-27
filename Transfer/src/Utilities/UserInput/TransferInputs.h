@@ -1,4 +1,4 @@
-// File: Transfer/src/Utilities/TransferInputs.h
+// File: Transfer/src/Utilities/UserInput/TransferInputs.h
 
 #pragma once
 
@@ -6,7 +6,7 @@
 #include <SDL3/SDL.h>
 
 // Custom Imports
-#include "Entities/MathStructures.h"
+#include "Utilities/Math/Vector2D.h"
 
 // Standard Library Imports
 #include <iostream>

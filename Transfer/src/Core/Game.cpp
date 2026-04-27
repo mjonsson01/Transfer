@@ -1,7 +1,10 @@
 // File: Transfer/src/Core/Game.cpp
 
+// Custom Imports
 #include "Core/Game.h"
-#include "Utilities/SystemPathUtility.h"
+#include "Utilities/System/SystemPathUtility.h"
+
+// Standard Library Imports
 #include <iostream>
 
 // Likely change the resolution to be scalable in the future? default 1920x1080
