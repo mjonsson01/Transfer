@@ -200,9 +200,13 @@ void InputSystem::routeSDL_EventInputInGame(SDL_Event* e)
             break;
         // Left Shift Preferred
         case SDL_SCANCODE_LSHIFT:
+            // update drag start position if repressing shift
             if (transferInputs.leftMousePressed || transferInputs.rightMousePressed)
             {
-                transferInputs.mouseDragStartPosition = transferInputs.mouseCurrPosition;
+                if (transferInputs.isDragging)
+                {
+                    transferInputs.mouseDragStartPosition = transferInputs.mouseCurrPosition;
+                }
             }
             transferInputs.shiftPressed = true;
             break;
