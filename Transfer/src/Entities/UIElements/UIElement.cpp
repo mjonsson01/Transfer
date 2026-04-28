@@ -7,8 +7,9 @@ UIElement::UIElement() {}
 
 UIElement::~UIElement() {}
 
-UIElementType UIElement::isInDeadZone(const Vector2D& positionToCheck)
+UIElementType UIElement::checkAndReturnIfHit(const Vector2D& positionToCheck)
 {
+    // std::cout<<"check and return if hit called"<<std::endl;
     SDL_FPoint point = {static_cast<float>(positionToCheck.xVal), static_cast<float>(positionToCheck.yVal)};
     UIElementType type_hit = UIElementType::NONE;
     if (SDL_PointInRectFloat(&point, &hotZoneRect))

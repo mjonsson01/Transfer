@@ -12,6 +12,8 @@ UISystem::UISystem() : allGameUIElements(), allPauseUIElements()
     allGameUIElements.push_back(mass_slider);
     RadiusSlider* radius_slider = new RadiusSlider();
     allGameUIElements.push_back(radius_slider);
+    PlayGameButton* play_button = new PlayGameButton();
+    allGameUIElements.push_back(play_button);
 }
 // Destructor
 UISystem::~UISystem()
@@ -45,14 +47,14 @@ void UISystem::updateGameUIElements(GameState& gameState, UIState& UIState)
 
     if (inputsReceived.leftMouseButtonJustPressed && inputsReceived.isClickingLeftMouseButton)
     {
-        activeElement = isPositionInUIElementHotZone(inputsReceived);
+        activeElement = findElementWeAreIn(inputsReceived);
     }
     // If you are clicking and its a preview macro, disable the previewing macro and consume?
 
     // If releasing on an element, still count as consumed
-    if (!inputsReceived.isClickingLeftMouseButton || inputsReceived.leftMouseButtonJustReleased)
+    if (!inputsReceived.isClickingLeftMouseButton && inputsReceived.leftMouseButtonJustReleased)
     {
-        activeElement = isPositionInUIElementHotZone(inputsReceived);
+        activeElement = findElementWeAreIn(inputsReceived);
         if (activeElement != UIElementType::NONE)
         {
             consumed = true;
@@ -99,19 +101,26 @@ void UISystem::updateSpecificElementAndPropagateUpwards(UIElementType elementTyp
         elementToUpdate->updateMe(inputState.mouseCurrPosition, radiusValToBeCalculatedAndInjected);
         inputState.selectedRadius = radiusValToBeCalculatedAndInjected;
     }
+    if (elementTypeToUpdate == UIElementType::PLAY_GAME_BUTTON_INDEX)
+    {   
+        std::cout<<"hit play game button"<<std::endl;
+        double placeholder = 0.0;
+        elementToUpdate->updateMe(inputState.mouseCurrPosition, placeholder);
+    }
 }
 
-UIElementType UISystem::isPositionInUIElementHotZone(InputState& inputsReceived)
+UIElementType UISystem::findElementWeAreIn(InputState& inputsReceived)
 {
-    UIElementType hotzoneType = UIElementType::NONE; // default result
+    // std::cout<<"findElementWeAreInCalled"<<std::endl;
+    UIElementType contacted_element = UIElementType::NONE; // default result
     Vector2D curr_pos = inputsReceived.mouseCurrPosition;
     for (auto& element : allGameUIElements)
     {
-        hotzoneType = element->isInDeadZone(curr_pos);
-        if (hotzoneType != UIElementType::NONE)
+        contacted_element = element->checkAndReturnIfHit(curr_pos);
+        if (contacted_element != UIElementType::NONE)
         {
             break; // stop at the first hit
         }
     }
-    return hotzoneType; // single return
+    return contacted_element; // single return
 }

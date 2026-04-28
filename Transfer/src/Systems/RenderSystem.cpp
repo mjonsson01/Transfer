@@ -24,14 +24,11 @@ RenderSystem::RenderSystem()
         SDL_Log("Failed to initialize SDL_ttf: %s", SDL_GetError());
         return;
     }
-    std::string fontPath = Utilities::GetResourcePath("Fonts/SpaceMono-Regular.ttf");
+    std::string fontPathRegular = Utilities::GetResourcePath("Fonts/SpaceMono-Regular.ttf");
+    std::string fontPathTitle = Utilities::GetResourcePath("Fonts/SpaceMono-Bold.ttf");
 
-    UIFont = TTF_OpenFont(fontPath.c_str(), 18);
-    if (!UIFont)
-    {
-        SDL_Log("Failed to load font: %s", SDL_GetError());
-        return;
-    }
+    UIFontRegular = TTF_OpenFont(fontPathRegular.c_str(), 18);
+    UIFontTitle = TTF_OpenFont(fontPathTitle.c_str(), 24);
     buildCircleTextureCache();
     createStarTextures();
     createStarField(STAR_NUM);
@@ -61,7 +58,7 @@ void RenderSystem::CleanUp()
 
 // --------- RENDER FULL FRAME METHOD --------- //
 
-void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState, const std::vector<UIElement*>& allUIElements)
+void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState, const std::vector<UIElement*>& allUIElementsInScope)
 {
     Uint64 start = SDL_GetPerformanceCounter();
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // black background
@@ -76,7 +73,7 @@ void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState, const
     // Render all the bodies (particles)
     renderBodies(gameState);
 
-    renderUIElements(UIState, allUIElements);
+    renderUIElements(UIState, allUIElementsInScope);
 
     // Display the frame
     Uint64 beforePresent = SDL_GetPerformanceCounter();
@@ -302,14 +299,19 @@ void RenderSystem::buildCircleTextureCache()
 }
 // --------- RENDER UI ELEMENTS METHOD --------- //
 
-void RenderSystem::renderUIElements(UIState& UIState, std::vector<UIElement*> allUIElements)
+void RenderSystem::renderUIElements(UIState& UIState, std::vector<UIElement*> allUIElementsInScope)
 {
     if (!UIState.getAllUIVisibility())
         return;
 
-    for (auto& element : allUIElements)
+    for (auto& element : allUIElementsInScope)
     {
-        element->renderMe(renderer, UIState, UIFont);
+        if (element->getUIElementType() == PLAY_GAME_BUTTON_INDEX)
+        {
+            element->renderMe(renderer, UIState, UIFontTitle);
+        }
+        else
+            element->renderMe(renderer, UIState, UIFontRegular);
     }
 }
 

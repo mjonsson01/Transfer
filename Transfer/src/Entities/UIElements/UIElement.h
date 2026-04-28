@@ -20,7 +20,7 @@ class UIElement
   public:
     UIElement();
     virtual ~UIElement();
-    virtual void renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) { return; }
+    virtual void renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) {}; // Default does nothing
     virtual void updateMe(Vector2D positionOfEvent, double& returnedElementValue) {}; // Default does nothing
     void setPosition(float x, float y)
     {
@@ -30,7 +30,8 @@ class UIElement
     float getX() const { return posX; }
     float getY() const { return posY; }
     void setVisibility(bool desiredVisibility) { visible = desiredVisibility; }
-    UIElementType isInDeadZone(const Vector2D& positionToCheck);
+    UIElementType checkAndReturnIfHit(const Vector2D& positionToCheck);
+    UIElementType getUIElementType() const {return UIElementTypeIdentifier;}
 
   private:
     float posX = 0;

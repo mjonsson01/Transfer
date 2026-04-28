@@ -35,20 +35,22 @@ class RenderSystem
     ~RenderSystem(); // make sure to teardown destructor and window
 
     // Main Loop Rendering Function, renders engine state and UI state
-    void RenderFullFrame(GameState& gameState, UIState& UIState, const std::vector<UIElement*>& allUIElements);
+    void RenderFullFrame(GameState& gameState, UIState& UIState, const std::vector<UIElement*>& allUIElementsInScope);
 
     // Main Cleanup method (tears down all the SDL components)
     void CleanUp();
     // Getters for SDL Components
     SDL_Renderer* getRenderer() const { return renderer; }
-    TTF_Font* getUIFont() const { return UIFont; }
+    TTF_Font* getUIFontRegular() const { return UIFontRegular; }
+    TTF_Font* getUIFontTitle() const { return UIFontTitle; }
 
   private:
     // SDL Components
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
     // Font for UI Elements that require text
-    TTF_Font* UIFont = nullptr;
+    TTF_Font* UIFontRegular = nullptr;
+    TTF_Font* UIFontTitle = nullptr;
 
   private:
     // Subordinate Rendering Functions
@@ -61,7 +63,7 @@ class RenderSystem
     void renderDragLine(Vector2D lineStart, Vector2D lineEnd);
 
     // Renders UI Elements
-    void renderUIElements(UIState& UIState, std::vector<UIElement*> allUIElements);
+    void renderUIElements(UIState& UIState, std::vector<UIElement*> allUIElementsInScope);
 
     // Utility Rendering Helper Functions
     SDL_Color getColorForProperty(const GravitationalBody& body);

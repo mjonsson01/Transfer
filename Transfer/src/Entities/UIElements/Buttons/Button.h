@@ -2,10 +2,32 @@
 
 #pragma once
 
+// SDL3 Imports
+#include <SDL3/SDL.h>
+#include <SDL3_ttf/SDL_ttf.h>
+
+// Custom Imports
 #include "Entities/UIElements/UIElement.h"
+#include "Entities/UIElements/UIElementTypeEnum.h"
+
+// Standard Library Imports
+#include <string>
 
 class Button : public UIElement
 {
-    Button();
-    ~Button() = default;
+    public: 
+        Button();
+        ~Button() = default;
+        void renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) override;
+        virtual std::string getDisplayText() const { return displayText; }
+        void updateMe(Vector2D positionOfEvent, double& returnedElementValue) override; // No need for returned Element value. Just trying to adapt to the function
+        void clickMe(Vector2D positionOfEvent);
+        double getButtonState() { return buttonSelected; }
+
+    protected:
+        SDL_FRect boundingRect;
+        bool buttonSelected;
+        std::string displayText;
+        std::string altText;
+
 };

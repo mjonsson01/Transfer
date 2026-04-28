@@ -13,6 +13,7 @@
 #include "Entities/UIElements/Overlay/FPSCounter.h"
 #include "Entities/UIElements/Sliders/MassSlider.h"
 #include "Entities/UIElements/Sliders/RadiusSlider.h"
+#include "Entities/UIElements/Buttons/PlayGameButton.h"
 #include "Entities/UIElements/UIElement.h"
 
 // Standard Library Imports
@@ -33,7 +34,7 @@ class UISystem
     void updatePauseUIElements(GameState& gameState, UIState& UIState);
     std::vector<UIElement*>& getPauseUIElementsMutable() { return allGameUIElements; }
     const std::vector<UIElement*>& getPauseUIElements() const { return allGameUIElements; }
-    UIElementType isPositionInUIElementHotZone(InputState& inputsReceived);
+    UIElementType findElementWeAreIn(InputState& inputsReceived);
     void updateSpecificElementAndPropagateUpwards(UIElementType elementToUpdate, InputState& inputState);
 
   private:
