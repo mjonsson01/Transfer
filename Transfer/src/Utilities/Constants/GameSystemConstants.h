@@ -6,7 +6,7 @@
 
 // FPS target for system
 // constexpr int TARGET_FPS = 165;
-constexpr int TARGET_FPS = 120;
+constexpr int TARGET_FPS = 120; // CANNOT EXCEED PHYSICS UPDATE TIMESTEP WITHOUT SIDE EFFECTS
 
 // Target frame delay in ms
 const double FRAME_DELAY_MS = 1000.0 / TARGET_FPS;
@@ -25,10 +25,10 @@ const double FAST_TIME_SCALE_FACTOR = 2.0f;    // 2x speed
 constexpr int SPAWN_DELAY_MS = 10;
 
 // Vertical and horizontal resolutions
-// constexpr int SCREEN_HEIGHT = 1080;
-// constexpr int SCREEN_WIDTH = 1920;
-constexpr int SCREEN_HEIGHT = 720;
-constexpr int SCREEN_WIDTH = 1280;
+constexpr int SCREEN_HEIGHT = 1080;
+constexpr int SCREEN_WIDTH = 1920;
+// constexpr int SCREEN_HEIGHT = 720;
+// constexpr int SCREEN_WIDTH = 1280;
 
 // Background Star count
 constexpr int STAR_NUM = 200;
