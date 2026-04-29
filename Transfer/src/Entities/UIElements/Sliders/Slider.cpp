@@ -15,47 +15,49 @@ Slider::Slider()
 
 void Slider::slideMe(Vector2D positionOfEvent, double& returnedElementValue)
 {
+
     // Track start positions
-    float trackStartX = trackRect.x;
-    float trackStartY = trackRect.y;
+    float track_start_x = trackRect.x;
+    float track_start_y = trackRect.y;
 
     // Usable track lengths (accounting for knob size)
-    float trackLengthX = trackRect.w - knobRect.w;
-    float trackLengthY = trackRect.h - knobRect.h;
-
-    // Clamp the event position to the track bounds
-    float clampedX = positionOfEvent.xVal;
-    float clampedY = positionOfEvent.yVal;
+    float track_length_x = trackRect.w - knobRect.w;
+    float track_length_y = trackRect.h - knobRect.h;
 
     if (orientation == Orientation::Horizontal)
     {
-        if (clampedX < trackStartX)
-            clampedX = trackStartX;
-        if (clampedX > trackStartX + trackLengthX)
-            clampedX = trackStartX + trackLengthX;
+        float new_x = positionOfEvent.xVal - (knobRect.w / 2.0f);
+
+        // Clamp the new centered position
+        if (new_x < track_start_x)
+            new_x = track_start_x;
+        if (new_x > track_start_x + track_length_x)
+            new_x = track_start_x + track_length_x;
 
         // Map knob position to slider value (handles negative minValue)
-        sliderValue = minValue + ((clampedX - trackStartX) / trackLengthX) * (maxValue - minValue);
+        sliderValue = minValue + ((new_x - track_start_x) / track_length_x) * (maxValue - minValue);
 
         // Update knob position to reflect sliderValue
-        knobRect.x = trackStartX + ((sliderValue - minValue) / (maxValue - minValue)) * trackLengthX;
+        knobRect.x = track_start_x + ((sliderValue - minValue) / (maxValue - minValue)) * track_length_x;
     }
     else // Vertical
     {
-        if (clampedY < trackStartY)
-            clampedY = trackStartY;
-        if (clampedY > trackStartY + trackLengthY)
-            clampedY = trackStartY + trackLengthY;
+        float new_y = positionOfEvent.yVal - (knobRect.h / 2.0f);
+        if (new_y < track_start_y)
+            new_y = track_start_y;
+        if (new_y > track_start_y + track_length_y)
+            new_y = track_start_y + track_length_y;
 
         // Vertical sliders usually invert direction (top = max, bottom = min)
-        sliderValue = maxValue - ((clampedY - trackStartY) / trackLengthY) * (maxValue - minValue);
+        sliderValue = maxValue - ((new_y - track_start_y) / track_length_y) * (maxValue - minValue);
 
         // Update knob position to match sliderValue
-        knobRect.y = trackStartY + ((maxValue - sliderValue) / (maxValue - minValue)) * trackLengthY;
+        knobRect.y = track_start_y + ((maxValue - sliderValue) / (maxValue - minValue)) * track_length_y;
     }
 
     // Return updated value
     returnedElementValue = sliderValue;
+    return;
 }
 
 void Slider::renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont)

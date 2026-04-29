@@ -30,6 +30,7 @@ class Slider : public UIElement
     virtual std::string getDisplayText() const { return std::to_string(sliderValue); }
     void slideMe(Vector2D positionOfEvent, double& returnedElementValue) override;
     double getSliderValue() { return sliderValue; }
+    SDL_FPoint getKnobPosition() const { return {knobRect.x, knobRect.y}; }
 
   protected:
     Orientation orientation;
