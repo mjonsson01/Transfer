@@ -12,8 +12,10 @@ UISystem::UISystem() : allGameUIElements(), allPauseUIElements()
     allGameUIElements.push_back(mass_slider);
     RadiusSlider* radius_slider = new RadiusSlider();
     allGameUIElements.push_back(radius_slider);
-    PlayGameButton* play_button = new PlayGameButton();
-    allGameUIElements.push_back(play_button);
+
+    // fully implemented, but needs to go to a start menu scene or something
+    // PlayGameButton* play_button = new PlayGameButton();
+    // allGameUIElements.push_back(play_button);
 }
 // Destructor
 UISystem::~UISystem()
@@ -39,32 +41,47 @@ void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState)
         return;
     }
 }
-
 void UISystem::updateGameUIElements(GameState& gameState, UIState& UIState)
 {
     bool consumed = false;
     InputState& inputsReceived = UIState.getMutableInputState();
 
-    if (inputsReceived.leftMouseButtonJustPressed && inputsReceived.isClickingLeftMouseButton)
+    // Grab elements on just pressed
+    if (inputsReceived.leftMouseButtonJustPressed)
     {
         activeElement = findElementWeAreIn(inputsReceived);
     }
-    // If you are clicking and its a preview macro, disable the previewing macro and consume?
-
-    // If releasing on an element, still count as consumed
-    if (!inputsReceived.isClickingLeftMouseButton && inputsReceived.leftMouseButtonJustReleased)
+    // immediately consume if clicking on an active element
+    if (activeElement != UIElementType::NONE)
     {
-        activeElement = findElementWeAreIn(inputsReceived);
-        if (activeElement != UIElementType::NONE)
+        consumed = true;
+    }
+    // continuously update elements that are draggable
+    if (inputsReceived.isClickingLeftMouseButton && inputsReceived.isDragging)
+    {
+        if (isSlider(activeElement) && activeElement != FPS_COUNTER_INDEX)
         {
+            routeSliderInput(activeElement, inputsReceived);
             consumed = true;
         }
-        activeElement = UIElementType::NONE; // release any hold on the element
     }
-    if (activeElement != UIElementType::NONE && activeElement != FPS_COUNTER_INDEX)
+    else
     {
-        updateSpecificElementAndPropagateUpwards(activeElement, inputsReceived);
-        consumed = true;
+        // If we just released the mouse
+        if (inputsReceived.leftMouseButtonJustReleased) // You may need to pass this flag into InputState
+        {
+            UIElementType releasedOverElement = findElementWeAreIn(inputsReceived);
+            if (releasedOverElement != UIElementType::NONE)
+            {
+                consumed = true;
+
+                if (isButton(activeElement))
+                {
+                    routeButtonClick(activeElement, inputsReceived);
+                }
+                activeElement = UIElementType::NONE; // Reset for next interaction
+            }
+        }
     }
     inputsReceived.UIInputConsumed = consumed;
     inputsReceived.isPreviewingMacro = inputsReceived.isClickingLeftMouseButton && !consumed;
@@ -79,36 +96,48 @@ void UISystem::CleanUp()
     {
         delete element;
     }
+    for (auto& element : allStartGameUIElements)
+    {
+        delete element;
+    }
     allGameUIElements.clear();
+    allStartGameUIElements.clear();
 }
 
-void UISystem::updateSpecificElementAndPropagateUpwards(UIElementType elementTypeToUpdate, InputState& inputState)
+void UISystem::routeSliderInput(UIElementType sliderTypeToUpdate, InputState& inputState)
 {
-    UIElement* elementToUpdate = allGameUIElements[elementTypeToUpdate];
+    UIElement* elementToUpdate = allGameUIElements[sliderTypeToUpdate];
 
     // this could be further abstracted into passing the full input state so
     // that the UIelement decides what it updates, but I want to make the ui
     // element as stupid as possible
-    if (elementTypeToUpdate == UIElementType::MASS_SLIDER_INDEX)
+    if (sliderTypeToUpdate == UIElementType::MASS_SLIDER_INDEX)
     {
         double massValToBeCalculatedAndInjected = 0.0; // initialize
-        elementToUpdate->updateMe(inputState.mouseCurrPosition, massValToBeCalculatedAndInjected);
+        elementToUpdate->slideMe(inputState.mouseCurrPosition, massValToBeCalculatedAndInjected);
         inputState.selectedMass = massValToBeCalculatedAndInjected;
     }
-    if (elementTypeToUpdate == UIElementType::RADIUS_SLIDER_INDEX)
+    if (sliderTypeToUpdate == UIElementType::RADIUS_SLIDER_INDEX)
     {
         double radiusValToBeCalculatedAndInjected = 0.0; // initialize
-        elementToUpdate->updateMe(inputState.mouseCurrPosition, radiusValToBeCalculatedAndInjected);
+        elementToUpdate->slideMe(inputState.mouseCurrPosition, radiusValToBeCalculatedAndInjected);
         inputState.selectedRadius = radiusValToBeCalculatedAndInjected;
     }
-    if (elementTypeToUpdate == UIElementType::PLAY_GAME_BUTTON_INDEX)
-    {   
-        std::cout<<"hit play game button"<<std::endl;
-        double placeholder = 0.0;
-        elementToUpdate->updateMe(inputState.mouseCurrPosition, placeholder);
+    else
+    {
+        return;
     }
 }
 
+void UISystem::routeButtonClick(UIElementType buttonToUpdate, InputState& inputState)
+{
+    UIElement* elementToUpdate = allGameUIElements[buttonToUpdate];
+    if (buttonToUpdate == UIElementType::PLAY_GAME_BUTTON_INDEX)
+    {
+        elementToUpdate->clickMe(inputState.mouseCurrPosition);
+    }
+    // Will add other ui elements from in game here? Or maybe should just route to scene elements?
+}
 UIElementType UISystem::findElementWeAreIn(InputState& inputsReceived)
 {
     // std::cout<<"findElementWeAreInCalled"<<std::endl;
@@ -123,4 +152,19 @@ UIElementType UISystem::findElementWeAreIn(InputState& inputsReceived)
         }
     }
     return contacted_element; // single return
+}
+
+bool UISystem::isSlider(UIElementType typeToCheck)
+{
+    bool conclusion = false;
+    if (typeToCheck == UIElementType::MASS_SLIDER_INDEX || typeToCheck == UIElementType::RADIUS_SLIDER_INDEX)
+        conclusion = true;
+    return conclusion;
+}
+bool UISystem::isButton(UIElementType typeToCheck)
+{
+    bool conclusion = false;
+    if (typeToCheck == UIElementType::PLAY_GAME_BUTTON_INDEX)
+        conclusion = true;
+    return conclusion;
 }

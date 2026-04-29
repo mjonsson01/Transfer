@@ -58,7 +58,8 @@ void RenderSystem::CleanUp()
 
 // --------- RENDER FULL FRAME METHOD --------- //
 
-void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState, const std::vector<UIElement*>& allUIElementsInScope)
+void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState,
+                                   const std::vector<UIElement*>& allUIElementsInScope)
 {
     Uint64 start = SDL_GetPerformanceCounter();
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // black background
@@ -294,8 +295,6 @@ void RenderSystem::buildCircleTextureCache()
 
         circleTextureCache[radius] = tex;
     }
-
-    // SDL_Log("Circle texture cache built: %d radii", max_radius);
 }
 // --------- RENDER UI ELEMENTS METHOD --------- //
 

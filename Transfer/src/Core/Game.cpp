@@ -87,8 +87,6 @@ void Game::Run()
         if (SDL_GetTicks() - last_slowdown_print_time > slowdown_print_timer)
         {
             // Add slowed down print statements here
-            // std::cout<<"number of
-            // particles"<<gameState.getParticles().size()<<std::endl;
         }
 
         // Timekeeping
@@ -130,8 +128,6 @@ void Game::ProcessInput()
 {
     // Dispatch to Input System
     inputSystem.ProcessSystemInputFrame(gameState, UIState);
-    // std::cout<<"instantiate dirty:
-    // "<<UIState.getMutableInputState().instantiateDirty<<std::endl;
     UISystem.UpdateUIElements(gameState, UIState);
 }
 

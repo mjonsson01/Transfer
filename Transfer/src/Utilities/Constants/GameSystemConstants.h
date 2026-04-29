@@ -6,7 +6,7 @@
 
 // FPS target for system
 // constexpr int TARGET_FPS = 165;
-constexpr int TARGET_FPS = 120; // CANNOT EXCEED PHYSICS UPDATE TIMESTEP WITHOUT SIDE EFFECTS
+constexpr int TARGET_FPS = 120; // CANNOT EXCEED PHYSICS UPDATE FPS WITHOUT SIDE EFFECTS
 
 // Target frame delay in ms
 const double FRAME_DELAY_MS = 1000.0 / TARGET_FPS;

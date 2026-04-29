@@ -84,3 +84,6 @@ Should either instantly accrete or correct their positions and put them at bound
 Need to rework menus and scenes into enums most likely.
 
 UISystem needs to own and manage the scenes around. That way I can put it in test scene easily.
+
+
+Need to investigate private vs public vs protected methods bc they are bleeding over each other a bit

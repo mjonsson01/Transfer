@@ -10,10 +10,10 @@
 #include "Core/GameState.h"
 #include "Core/InputState.h"
 #include "Core/UIState.h"
+#include "Entities/UIElements/Buttons/PlayGameButton.h"
 #include "Entities/UIElements/Overlay/FPSCounter.h"
 #include "Entities/UIElements/Sliders/MassSlider.h"
 #include "Entities/UIElements/Sliders/RadiusSlider.h"
-#include "Entities/UIElements/Buttons/PlayGameButton.h"
 #include "Entities/UIElements/UIElement.h"
 
 // Standard Library Imports
@@ -35,9 +35,12 @@ class UISystem
     std::vector<UIElement*>& getPauseUIElementsMutable() { return allGameUIElements; }
     const std::vector<UIElement*>& getPauseUIElements() const { return allGameUIElements; }
     UIElementType findElementWeAreIn(InputState& inputsReceived);
-    void updateSpecificElementAndPropagateUpwards(UIElementType elementToUpdate, InputState& inputState);
+    void routeSliderInput(UIElementType elementToUpdate, InputState& inputState);
+    void routeButtonClick(UIElementType elementToUpdate, InputState& inputState);
 
   private:
+    bool isSlider(UIElementType typeToCheck);
+    bool isButton(UIElementType typeToCheck);
     std::vector<UIElement*> allGameUIElements;
     std::vector<UIElement*> allPauseUIElements;
     std::vector<UIElement*> allStartGameUIElements;

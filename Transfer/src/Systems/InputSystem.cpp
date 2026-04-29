@@ -14,7 +14,7 @@ InputSystem::~InputSystem() {}
 
 void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState)
 {
-    // std::cout << "UIState: PauseMenuActive->" << UIState.getPauseMenuActive() << "\n" << std::endl;
+
     transferInputs.resetJustPressed();
     UIState.getMutableInputState().resetTransientFlags(); // clean the input state before polling for new events.
     SDL_Event event;
@@ -319,7 +319,7 @@ void InputSystem::translateAndPassTransferInputsOff(UIState& UIState)
     updated_input_state.isPressingShift = transferInputs.shiftPressed;
 
     updated_input_state.leftMouseButtonJustPressed = transferInputs.leftMouseJustPressed;
-
+    updated_input_state.leftMouseButtonJustReleased = transferInputs.leftMouseJustReleased;
     if (transferInputs.leftMouseJustReleased)
     {
         updated_input_state.isCreatingCollidable = true;

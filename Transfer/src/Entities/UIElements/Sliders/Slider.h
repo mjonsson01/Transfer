@@ -28,7 +28,7 @@ class Slider : public UIElement
     ~Slider() = default;
     void renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) override;
     virtual std::string getDisplayText() const { return std::to_string(sliderValue); }
-    void updateMe(Vector2D positionOfEvent, double& returnedElementValue) override;
+    void slideMe(Vector2D positionOfEvent, double& returnedElementValue) override;
     double getSliderValue() { return sliderValue; }
 
   protected:

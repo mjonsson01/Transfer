@@ -1,8 +1,6 @@
 // File: Transfer/src/Entities/UIElements/Buttons/Button.cpp
 
-
 #include "Entities/UIElements/Buttons/Button.h"
-
 
 Button::Button()
 {
@@ -12,7 +10,6 @@ Button::Button()
     hotZoneRect = boundingRect;
 }
 
-
 void Button::clickMe(Vector2D positionOfEvent)
 {
     std::string temp = altText;
@@ -21,10 +18,6 @@ void Button::clickMe(Vector2D positionOfEvent)
     return;
 }
 
-void Button::updateMe(Vector2D positionOfEvent, double& returnedElementValue)
-{
-    clickMe(positionOfEvent);
-}
 void Button::renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont)
 {
     SDL_SetRenderDrawColor(renderer, ColorLibrary::Gray.r, ColorLibrary::Gray.g, ColorLibrary::Gray.b,

@@ -13,7 +13,7 @@ Slider::Slider()
     maxValue = 0.0;
 }
 
-void Slider::updateMe(Vector2D positionOfEvent, double& returnedElementValue)
+void Slider::slideMe(Vector2D positionOfEvent, double& returnedElementValue)
 {
     // Track start positions
     float trackStartX = trackRect.x;

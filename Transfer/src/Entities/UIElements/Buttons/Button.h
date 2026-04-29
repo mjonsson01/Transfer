@@ -15,19 +15,17 @@
 
 class Button : public UIElement
 {
-    public: 
-        Button();
-        ~Button() = default;
-        void renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) override;
-        virtual std::string getDisplayText() const { return displayText; }
-        void updateMe(Vector2D positionOfEvent, double& returnedElementValue) override; // No need for returned Element value. Just trying to adapt to the function
-        void clickMe(Vector2D positionOfEvent);
-        double getButtonState() { return buttonSelected; }
+  public:
+    Button();
+    ~Button() = default;
+    void renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) override;
+    virtual std::string getDisplayText() const { return displayText; }
+    void clickMe(Vector2D positionOfEvent) override;
+    double getButtonState() { return buttonSelected; }
 
-    protected:
-        SDL_FRect boundingRect;
-        bool buttonSelected;
-        std::string displayText;
-        std::string altText;
-
+  protected:
+    SDL_FRect boundingRect;
+    bool buttonSelected;
+    std::string displayText;
+    std::string altText;
 };
