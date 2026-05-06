@@ -41,9 +41,9 @@ class Game
     void PlayAudio();          // Plays audio based on the current game state and UI state
 
     // Helpers for Run() method
-    void UpdateFPS(uint32_t renderEnd, uint32_t lastRender, float& fpsAccumulator,
+    void updateFPS(uint32_t renderEnd, uint32_t lastRender, float& fpsAccumulator,
                    float& currentFPS); // Rolling average frame calculation and update
-    void LimitFrameRate(uint32_t renderStart,
+    void limitFrameRate(uint32_t renderStart,
                         uint32_t renderEnd); // Soft Clamps frame rate based on
                                              // static Game System Constant value
 

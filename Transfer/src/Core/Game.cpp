@@ -51,6 +51,7 @@ void Game::EndGame()
 }
 void Game::Run()
 {
+    // TODO: Change to performance timer?
     // Initialize the time management variables
     uint32_t last_physics_update_time = SDL_GetTicks();
     uint32_t last_render_time = 0;
@@ -74,22 +75,10 @@ void Game::Run()
     uint32_t slowdown_print_timer = 300;
     uint32_t last_slowdown_print_time = SDL_GetTicks();
 
+    gameState.setPhysicsWillRunThisFrame(true);
     while (gameState.IsPlaying())
     {
-
-        // Poll for SDL Events and Process Input
-        Game::ProcessInput();
-        if (!gameState.IsPlaying())
-            break; // stop immediately
-        // Play Audio
-        Game::PlayAudio();
-
-        if (SDL_GetTicks() - last_slowdown_print_time > slowdown_print_timer)
-        {
-            // Add slowed down print statements here
-        }
-
-        // Timekeeping
+          // Timekeeping
         now = SDL_GetTicks();
         frame_delta = (now - last_physics_update_time) / 1000.0f;
         last_physics_update_time = now;
@@ -100,11 +89,30 @@ void Game::Run()
 
         // Update Physics (remains untouched by time scaling of rendering,
         // maintaining physics accuracy)
+        bool physicsWillRun = (physics_time_accumulator >= PHYSICS_TIME_STEP);
+        gameState.setPhysicsWillRunThisFrame(physicsWillRun);
+
+        // Poll for SDL Events and Process Input
+        Game::ProcessInput();
+        if (!gameState.IsPlaying())
+            break; // stop immediately
+
+        if (SDL_GetTicks() - last_slowdown_print_time > slowdown_print_timer)
+        {
+            // Add slowed down print statements here
+        }
+
+      
+
+
         while (physics_time_accumulator >= PHYSICS_TIME_STEP)
         {
             Game::UpdatePhysicsFrame();
             physics_time_accumulator -= PHYSICS_TIME_STEP;
         }
+                // Play Audio
+        Game::PlayAudio();
+
         // Rendering
         alpha = physics_time_accumulator / PHYSICS_TIME_STEP;
         gameState.setAlpha(alpha);
@@ -114,11 +122,11 @@ void Game::Run()
         render_end = SDL_GetTicks();
 
         // FPS Calculation
-        Game::UpdateFPS(render_end, last_render_time, fps_time_accumulator, current_fps);
+        Game::updateFPS(render_end, last_render_time, fps_time_accumulator, current_fps);
         last_render_time = render_end;
 
         // Frame limiting (soft limiting)
-        Game::LimitFrameRate(render_start, render_end);
+        Game::limitFrameRate(render_start, render_end);
     }
 }
 
@@ -147,7 +155,7 @@ void Game::RenderFrame()
 void Game::PlayAudio() { audioSystem.ProcessSystemAudioFrame(gameState, UIState); }
 // --------- UTILITY METHODS FOR FPS --------- //
 
-void Game::UpdateFPS(uint32_t renderEnd, uint32_t lastRender, float& fpsAccumulator, float& currentFPS)
+void Game::updateFPS(uint32_t renderEnd, uint32_t lastRender, float& fpsAccumulator, float& currentFPS)
 {
     float frameTime = (renderEnd - lastRender) / 1000.0f;
     fpsAccumulator += (renderEnd - lastRender);
@@ -163,7 +171,7 @@ void Game::UpdateFPS(uint32_t renderEnd, uint32_t lastRender, float& fpsAccumula
     }
 }
 
-void Game::LimitFrameRate(uint32_t renderStart, uint32_t renderEnd)
+void Game::limitFrameRate(uint32_t renderStart, uint32_t renderEnd)
 {
     double frame_duration = static_cast<double>(renderEnd - renderStart);
     if (frame_duration < FRAME_DELAY_MS)
