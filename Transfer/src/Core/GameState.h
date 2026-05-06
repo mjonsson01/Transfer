@@ -38,40 +38,18 @@ class GameState
     float getAlpha() const { return alpha; }
     void setAlpha(float alphaIn) { alpha = alphaIn; }
 
-    // Getter for the current time scale factor
-    float getTimeScaleFactor() const
-    {
-        if (toggleSlow && !toggleFast)
-            return SLOW_TIME_SCALE_FACTOR;
-        else if (!toggleSlow && toggleFast)
-            return FAST_TIME_SCALE_FACTOR;
-        else
-            return REGULAR_TIME_SCALE_FACTOR;
-    }
-
-    bool getToggleSlow() const { return toggleSlow; }
-    void invertToggleSlow() { toggleSlow = !toggleSlow; }
-
-    bool getToggleFast() const { return toggleFast; }
-    void invertToggleFast() { toggleFast = !toggleFast; }
-
     bool getPlayMusic() const { return playMusic; }
     void invertPlayMusic() { playMusic = !playMusic; }
 
     void incrementMaxIDInstantiated() { maxIDInstantiated += 1; }
     int getMaxIDInstantiated() const { return maxIDInstantiated; }
-
   private:
     // State variables
     bool isPlaying = false;
     bool playMusic = false;
     bool isShuttingDownAudioSystem = false;
-
     // Frame helper vars
     float alpha = 0.0f;
-
-    bool toggleSlow = false; // default to false for regular speed
-    bool toggleFast = false; // default to false for regular speed
 
     // Database for all the Macro Bodies
     std::vector<GravitationalBody> macroBodies;

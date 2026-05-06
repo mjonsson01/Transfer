@@ -24,6 +24,7 @@ struct InputState
 
     double selectedMass = 0.0;   // spit back up from UI element to UISystem to UIState
     double selectedRadius = 0.0; // spit back up from UI element to UISystem to UIState
+    double selectedSimSpeedScale = 1.0; // spit back up from UI element to UISystem to UIState
 
     bool UIInputConsumed = false; // Does not get reset as a transient flag
 

@@ -12,6 +12,8 @@ UISystem::UISystem() : allGameUIElements(), allPauseUIElements()
     allGameUIElements.push_back(mass_slider);
     RadiusSlider* radius_slider = new RadiusSlider();
     allGameUIElements.push_back(radius_slider);
+    SimulationSpeedSlider* simulation_speed_slider = new SimulationSpeedSlider();
+    allGameUIElements.push_back(simulation_speed_slider);
 
     // fully implemented, but needs to go to a start menu scene or something
     // PlayGameButton* play_button = new PlayGameButton();
@@ -60,7 +62,7 @@ void UISystem::updateGameUIElements(GameState& gameState, UIState& UIState)
     if (inputsReceived.isClickingLeftMouseButton && inputsReceived.isDragging)
     {
         if (isSlider(activeElement) && activeElement != FPS_COUNTER_INDEX)
-        {
+        {   
             routeSliderInput(activeElement, inputsReceived);
             consumed = true;
         }
@@ -111,17 +113,25 @@ void UISystem::routeSliderInput(UIElementType sliderTypeToUpdate, InputState& in
     // this could be further abstracted into passing the full input state so
     // that the UIelement decides what it updates, but I want to make the ui
     // element as stupid as possible
+
+    // Also prob refactor as switch. there is duplicate code here so TODO: Cleanup
     if (sliderTypeToUpdate == UIElementType::MASS_SLIDER_INDEX)
     {
-        double massValToBeCalculatedAndInjected = 0.0; // initialize
-        elementToUpdate->slideMe(inputState.mouseCurrPosition, massValToBeCalculatedAndInjected);
-        inputState.selectedMass = massValToBeCalculatedAndInjected;
+        double mass_val_to_be_calculated_and_injected = 0.0; // initialize
+        elementToUpdate->slideMe(inputState.mouseCurrPosition, mass_val_to_be_calculated_and_injected);
+        inputState.selectedMass = mass_val_to_be_calculated_and_injected;
     }
-    if (sliderTypeToUpdate == UIElementType::RADIUS_SLIDER_INDEX)
+    else if (sliderTypeToUpdate == UIElementType::RADIUS_SLIDER_INDEX)
     {
-        double radiusValToBeCalculatedAndInjected = 0.0; // initialize
-        elementToUpdate->slideMe(inputState.mouseCurrPosition, radiusValToBeCalculatedAndInjected);
-        inputState.selectedRadius = radiusValToBeCalculatedAndInjected;
+        double radius_val_to_be_calculated_and_injected = 0.0; // initialize
+        elementToUpdate->slideMe(inputState.mouseCurrPosition, radius_val_to_be_calculated_and_injected);
+        inputState.selectedRadius = radius_val_to_be_calculated_and_injected;
+    }
+    else if (sliderTypeToUpdate == UIElementType::SIMULATION_SPEED_SLIDER_INDEX)
+    {
+        double simulation_speed_val_to_be_calculated_and_injected = 1.0; // initialize to 1
+        elementToUpdate->slideMe(inputState.mouseCurrPosition, simulation_speed_val_to_be_calculated_and_injected);
+        inputState.selectedSimSpeedScale = simulation_speed_val_to_be_calculated_and_injected;
     }
     else
     {
@@ -157,7 +167,7 @@ UIElementType UISystem::findElementWeAreIn(InputState& inputsReceived)
 bool UISystem::isSlider(UIElementType typeToCheck)
 {
     bool conclusion = false;
-    if (typeToCheck == UIElementType::MASS_SLIDER_INDEX || typeToCheck == UIElementType::RADIUS_SLIDER_INDEX)
+    if (typeToCheck == UIElementType::MASS_SLIDER_INDEX || typeToCheck == UIElementType::RADIUS_SLIDER_INDEX || typeToCheck == UIElementType::SIMULATION_SPEED_SLIDER_INDEX)
         conclusion = true;
     return conclusion;
 }

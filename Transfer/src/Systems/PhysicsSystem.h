@@ -53,10 +53,10 @@ class PhysicsSystem
     // Helper method called in the destructor to clear up physics-related
     // contents
     void CleanUp();
-
+    void UpdateGravBodyInstantiations(GameState& gameState, UIState& UIState);
   private:
     // Add/remove any user-requested new Gravitational bodies;
-    void updateGravBodyInstantiations(GameState& gameState, UIState& UIState);
+
 
     // Gravity Methods
     void updateGravityForSystem(GameState& gameState); // Gravity calculation dispatch helper

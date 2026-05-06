@@ -57,28 +57,12 @@ static inline GravitationalBodyPair pickMassPair(GravitationalBody& a, Gravitati
 
 void PhysicsSystem::UpdateSystemFrame(GameState& gameState, UIState& UIState)
 {
-
-    // Check for dirty input that requires immediate updates to the Physics
-    // System
-    updateGravBodyInstantiations(gameState, UIState);
-
     // Check if the Physics System is paused for early exit
     if (UIState.getInputState().isPhysicsPaused)
         return;
 
     // ------------------------ MAIN PHYSICS LOOP ------------------------ //
-    // Integrate first half step
-    integrateForwardsPhase1(gameState);
-
-    // Update all the gravity
-    updateGravityForSystem(gameState);
-
-    // Integrate second half step
-    integrateForwardsPhase2(gameState);
-
-    // Check total energy
-    // calculateTotalEnergy(gameState);
-
+ 
     // Handle all the collisions
     handleCollisions(gameState);
 
@@ -105,6 +89,19 @@ void PhysicsSystem::UpdateSystemFrame(GameState& gameState, UIState& UIState)
             }
         }
     }
+    // Integrate first half step
+    integrateForwardsPhase1(gameState);
+
+    // Update all the gravity
+    updateGravityForSystem(gameState);
+
+    // Integrate second half step
+    integrateForwardsPhase2(gameState);
+
+    // Check total energy
+    // calculateTotalEnergy(gameState);
+
+
     // Clean up the marked for deletion particles and macro bodies
     cleanupParticles(gameState);
     cleanupMacroBodies(gameState);
@@ -126,7 +123,7 @@ void PhysicsSystem::CleanUp()
 
 // --------- BODY INSTANTIATION METHOD --------- //
 
-void PhysicsSystem::updateGravBodyInstantiations(GameState& gameState, UIState& UIState)
+void PhysicsSystem::UpdateGravBodyInstantiations(GameState& gameState, UIState& UIState)
 {
     InputState& input_state = UIState.getMutableInputState();
     if (!input_state.UIInputConsumed)

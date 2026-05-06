@@ -140,23 +140,11 @@ void RenderSystem::renderBodies(GameState& gameState)
 
         Vector2D current_position = particle.position;
         Vector2D previous_position = particle.previousPosition;
-        // Alpha Interpolation causes particle flickers for small particles.
-        // Remove for now. Figure out dynamical fix later. Leave interpolation
-        // on for slow mo.
 
         float render_x, render_y;
-        if (particle.radius <= 1.0 && gameState.getToggleSlow() == false)
-        {
-            render_x = particle.position.xVal;
-            render_y = particle.position.yVal;
-            render_x = std::round(render_x);
-            render_y = std::round(render_y);
-        }
-        else
-        {
-            render_x = previous_position.xVal * (1.0f - alpha) + current_position.xVal * alpha;
-            render_y = previous_position.yVal * (1.0f - alpha) + current_position.yVal * alpha;
-        }
+
+        render_x = std::round(previous_position.xVal * (1.0f - alpha) + current_position.xVal * alpha);
+        render_y = std::round(previous_position.yVal * (1.0f - alpha) + current_position.yVal * alpha);
         float r = static_cast<float>(particle.radius);
         SDL_FRect dstRect = {render_x - r, render_y - r, r * 2, r * 2};
 

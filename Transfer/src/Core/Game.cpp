@@ -82,6 +82,8 @@ void Game::Run()
         Game::ProcessInput();
         if (!gameState.IsPlaying())
             break; // stop immediately
+        // Update instantiations based on unused user input immediately
+        Game::UpdateInstantiations();
         // Play Audio
         Game::PlayAudio();
 
@@ -96,14 +98,14 @@ void Game::Run()
         last_physics_update_time = now;
 
         // Deal with SLOWMO or SPEEDUP
-        scaled_frame_delta = frame_delta * gameState.getTimeScaleFactor(); // Use the new time scale factor
+        scaled_frame_delta = frame_delta * UIState.getTimeScaleFactor(); // Use the new time scale factor
         physics_time_accumulator += scaled_frame_delta;
 
         // Update Physics (remains untouched by time scaling of rendering,
         // maintaining physics accuracy)
         while (physics_time_accumulator >= PHYSICS_TIME_STEP)
         {
-            Game::UpdatePhysicsFrame();
+            Game::IntegratePhysicsFrame();
             physics_time_accumulator -= PHYSICS_TIME_STEP;
         }
         // Rendering
@@ -132,12 +134,16 @@ void Game::ProcessInput()
     UISystem.UpdateUIElements(gameState, UIState);
 }
 
-void Game::UpdatePhysicsFrame()
+void Game::IntegratePhysicsFrame()
 {
     // Dispatch to Physics System
     physicsSystem.UpdateSystemFrame(gameState, UIState);
 }
 
+void Game::UpdateInstantiations()
+{
+    physicsSystem.UpdateGravBodyInstantiations(gameState, UIState);
+}
 void Game::RenderFrame()
 {
     // Dispatch to Renderer System -- renders UI as well.
