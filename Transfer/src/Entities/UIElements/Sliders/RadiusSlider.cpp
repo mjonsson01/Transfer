@@ -7,7 +7,7 @@ RadiusSlider::RadiusSlider() : Slider() {
 
     // Track size and position
     // trackRect = SDL_FRect{1200, 650, 300, 12};
-    trackRect = SDL_FRect{1 * SCREEN_WIDTH / 3, 2 * SCREEN_HEIGHT / 3, 300, 12};
+    trackRect = SDL_FRect{9 * SCREEN_WIDTH / 24 , 2 * SCREEN_HEIGHT / 3, 300, 12};
     knobRect = SDL_FRect{0, 0, 20, 30}; // will set x,y below
     // Dead zone
     float deadzonePaddingX = 30.0f;
