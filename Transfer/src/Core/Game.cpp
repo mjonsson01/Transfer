@@ -75,10 +75,22 @@ void Game::Run()
     uint32_t slowdown_print_timer = 300;
     uint32_t last_slowdown_print_time = SDL_GetTicks();
 
-    gameState.setPhysicsWillRunThisFrame(true);
     while (gameState.IsPlaying())
     {
-          // Timekeeping
+
+        // Poll for SDL Events and Process Input
+        Game::ProcessInput();
+        if (!gameState.IsPlaying())
+            break; // stop immediately
+        // Play Audio
+        Game::PlayAudio();
+
+        if (SDL_GetTicks() - last_slowdown_print_time > slowdown_print_timer)
+        {
+            // Add slowed down print statements here
+        }
+
+        // Timekeeping
         now = SDL_GetTicks();
         frame_delta = (now - last_physics_update_time) / 1000.0f;
         last_physics_update_time = now;
@@ -89,30 +101,11 @@ void Game::Run()
 
         // Update Physics (remains untouched by time scaling of rendering,
         // maintaining physics accuracy)
-        bool physicsWillRun = (physics_time_accumulator >= PHYSICS_TIME_STEP);
-        gameState.setPhysicsWillRunThisFrame(physicsWillRun);
-
-        // Poll for SDL Events and Process Input
-        Game::ProcessInput();
-        if (!gameState.IsPlaying())
-            break; // stop immediately
-
-        if (SDL_GetTicks() - last_slowdown_print_time > slowdown_print_timer)
-        {
-            // Add slowed down print statements here
-        }
-
-      
-
-
         while (physics_time_accumulator >= PHYSICS_TIME_STEP)
         {
             Game::UpdatePhysicsFrame();
             physics_time_accumulator -= PHYSICS_TIME_STEP;
         }
-                // Play Audio
-        Game::PlayAudio();
-
         // Rendering
         alpha = physics_time_accumulator / PHYSICS_TIME_STEP;
         gameState.setAlpha(alpha);
