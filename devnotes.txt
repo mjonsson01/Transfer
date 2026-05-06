@@ -87,3 +87,8 @@ UISystem needs to own and manage the scenes around. That way I can put it in tes
 
 
 Need to investigate private vs public vs protected methods bc they are bleeding over each other a bit
+
+
+
+
+Changing playback speed causes dropped commands. Need to fit into the loop where input is polled at same time as the physics?
