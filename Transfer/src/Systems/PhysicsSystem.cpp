@@ -62,7 +62,7 @@ void PhysicsSystem::UpdateSystemFrame(GameState& gameState, UIState& UIState)
         return;
 
     // ------------------------ MAIN PHYSICS LOOP ------------------------ //
- 
+
     // Handle all the collisions
     handleCollisions(gameState);
 
@@ -76,7 +76,7 @@ void PhysicsSystem::UpdateSystemFrame(GameState& gameState, UIState& UIState)
             {
                 --body.lifetime; // decrement lifetime
                 body.mass *= 0.95;
-                body.radius *= 0.995;
+                body.radius *= 1.001;
                 body.velocity *= 0.999;
             }
 
@@ -100,7 +100,6 @@ void PhysicsSystem::UpdateSystemFrame(GameState& gameState, UIState& UIState)
 
     // Check total energy
     // calculateTotalEnergy(gameState);
-
 
     // Clean up the marked for deletion particles and macro bodies
     cleanupParticles(gameState);
@@ -836,7 +835,7 @@ void PhysicsSystem::populateCollisionProxyFromMacroBody(GravitationalBody& origi
     // to take to reach the collision center. needs to be instantiated
     // at the collision level.
     proxyBody.mass = 1.0 * originalMacroBody.mass;
-    proxyBody.radius = originalMacroBody.radius * 0.9;
+    proxyBody.radius = originalMacroBody.radius * 1.0;
     proxyBody.velocity = originalMacroBody.velocity * 1.0;
     proxyBody.isStatic = true;
     proxyBody.isBounce = true;

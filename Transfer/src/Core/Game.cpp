@@ -140,10 +140,7 @@ void Game::IntegratePhysicsFrame()
     physicsSystem.UpdateSystemFrame(gameState, UIState);
 }
 
-void Game::UpdateInstantiations()
-{
-    physicsSystem.UpdateGravBodyInstantiations(gameState, UIState);
-}
+void Game::UpdateInstantiations() { physicsSystem.UpdateGravBodyInstantiations(gameState, UIState); }
 void Game::RenderFrame()
 {
     // Dispatch to Renderer System -- renders UI as well.
