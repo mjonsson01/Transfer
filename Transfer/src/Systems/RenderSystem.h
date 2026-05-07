@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <map>
 #include <numeric>
 #include <random>
 #include <string>
@@ -73,6 +74,7 @@ class RenderSystem
     // Container for textures of all background twinkling stars
     std::vector<SDL_Texture*> twinklingStarTextures; // pre-created tiny textures (1-3 px)
     std::vector<SDL_Texture*> circleTextureCache;
+
     void buildCircleTextureCache();
     // Texture cleanup helper
     void clearCachedCircleTextures();

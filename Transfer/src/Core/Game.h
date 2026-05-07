@@ -35,17 +35,17 @@ class Game
   public:
   private:
     // Core Game Loop Methods
-    void ProcessInput();       // Handles User Input from keyboard and mouse events
+    void ProcessInput();          // Handles User Input from keyboard and mouse events
     void IntegratePhysicsFrame(); // Integrate Game State Bodies forward by 1 time step
-    void UpdateInstantiations(); // Updates Game State Bodies from User Input
-    void RenderFrame();        // Renders the current frame to the screen including UI
-    void PlayAudio();          // Plays audio based on the current game state and UI state
+    void UpdateInstantiations();  // Updates Game State Bodies from User Input
+    void RenderFrame();           // Renders the current frame to the screen including UI
+    void PlayAudio();             // Plays audio based on the current game state and UI state
     // Helpers for Run() method
-    void updateFPS(uint32_t renderEnd, uint32_t lastRender, float& fpsAccumulator,
+    void updateFPS(Uint32 renderEnd, Uint32 lastRender, float& fpsAccumulator,
                    float& currentFPS); // Rolling average frame calculation and update
-    void limitFrameRate(uint32_t renderStart,
-                        uint32_t renderEnd); // Soft Clamps frame rate based on
-                                             // static Game System Constant value
+    void limitFrameRate(Uint32 renderStart,
+                        Uint32 renderEnd); // Soft Clamps frame rate based on
+                                           // static Game System Constant value
 
   private:
     // Systems and State

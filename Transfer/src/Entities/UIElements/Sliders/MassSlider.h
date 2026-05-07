@@ -17,6 +17,7 @@
 #include "Utilities/Rendering/Colors.h"
 
 // Standard Library Imports
+#include <algorithm>
 #include <string>
 
 class MassSlider : public Slider
@@ -28,4 +29,5 @@ class MassSlider : public Slider
     {
         return "Mass: " + std::to_string(sliderValue); // add units?
     }
+    void slideMe(Vector2D positionOfEvent, double& returnedElementValue) override;
 };

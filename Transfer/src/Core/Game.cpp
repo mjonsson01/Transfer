@@ -53,13 +53,13 @@ void Game::Run()
 {
     // TODO: Change to performance timer?
     // Initialize the time management variables
-    uint32_t last_physics_update_time = SDL_GetTicks();
-    uint32_t last_render_time = 0;
-    uint32_t now = 0;
+    Uint32 last_physics_update_time = SDL_GetTicks();
+    Uint32 last_render_time = 0;
+    Uint32 now = 0;
     float frame_delta = 0.0f;
     float scaled_frame_delta = 0.0f;
-    uint32_t render_start = 0.0f;
-    uint32_t render_end = 0.0f;
+    Uint32 render_start = 0.0f;
+    Uint32 render_end = 0.0f;
 
     // Timing accumulators
     float physics_time_accumulator = 0.0f;
@@ -72,8 +72,8 @@ void Game::Run()
     float alpha = gameState.getAlpha();
 
     // slowdown cout output pace timer
-    uint32_t slowdown_print_timer = 300;
-    uint32_t last_slowdown_print_time = SDL_GetTicks();
+    Uint32 slowdown_print_timer = 300;
+    Uint32 last_slowdown_print_time = SDL_GetTicks();
 
     while (gameState.IsPlaying())
     {
@@ -90,6 +90,7 @@ void Game::Run()
         if (SDL_GetTicks() - last_slowdown_print_time > slowdown_print_timer)
         {
             // Add slowed down print statements here
+            // std::cout << gameState.getParticles().size() << std::endl;
         }
 
         // Timekeeping
@@ -151,7 +152,7 @@ void Game::RenderFrame()
 void Game::PlayAudio() { audioSystem.ProcessSystemAudioFrame(gameState, UIState); }
 // --------- UTILITY METHODS FOR FPS --------- //
 
-void Game::updateFPS(uint32_t renderEnd, uint32_t lastRender, float& fpsAccumulator, float& currentFPS)
+void Game::updateFPS(Uint32 renderEnd, Uint32 lastRender, float& fpsAccumulator, float& currentFPS)
 {
     float frameTime = (renderEnd - lastRender) / 1000.0f;
     fpsAccumulator += (renderEnd - lastRender);
@@ -167,11 +168,11 @@ void Game::updateFPS(uint32_t renderEnd, uint32_t lastRender, float& fpsAccumula
     }
 }
 
-void Game::limitFrameRate(uint32_t renderStart, uint32_t renderEnd)
+void Game::limitFrameRate(Uint32 renderStart, Uint32 renderEnd)
 {
     double frame_duration = static_cast<double>(renderEnd - renderStart);
     if (frame_duration < FRAME_DELAY_MS)
     {
-        SDL_Delay(static_cast<uint32_t>(FRAME_DELAY_MS - frame_duration));
+        SDL_Delay(static_cast<Uint32>(FRAME_DELAY_MS - frame_duration));
     }
 }
