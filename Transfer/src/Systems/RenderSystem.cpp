@@ -92,6 +92,11 @@ void RenderSystem::renderPreviewBodies(UIState& UIState)
     if (input_state.isPreviewingMacro)
     {
         // create pseudo body.
+        if (input_state.selectedRadius <= 1.0)
+        {
+            // also probably throw an error toast here somehow
+            return;
+        }
         GravitationalBody body = {};
         body.mass = input_state.selectedMass;
         body.radius = input_state.selectedRadius;
@@ -315,83 +320,81 @@ void RenderSystem::renderUIElements(UIState& UIState, std::vector<UIElement*> al
 // Need to rework to fix constant calls (store color in grav body) and also fix beyond max mass opacity.
 SDL_Color RenderSystem::getColorForProperty(const GravitationalBody& body)
 // NEED TO OPTIMIZE OUT CONSTANT ACCESS
-// {
-//     // 1. The "Event Horizon" (Beyond Max Mass)
-//     double absMass = std::abs(body.mass);
-//     if (absMass > MAX_MASS)
-//         return SDL_Color{0, 0, 0, 255};
-
-//     // 2. The Scaling Factor
-//     // Power of 0.1 stretches the scale so 10^3 and 10^12 actually look different.
-//     static const double exponent = 0.1;
-//     static const double maxScaled = std::pow(MAX_MASS, exponent);
-//     double t = std::pow(absMass, exponent) / maxScaled;
-//     t = std::clamp(t, 0.0, 1.0);
-
-//     Uint8 r = 0, g = 0, b = 0;
-
-//     if (body.mass < 0)
-//     {
-//         // NEGATIVE SPECTRUM: Faint Pink -> Deep Red -> Bright White-Red
-//         // As t increases, we move from a dim red to a vibrant, hot red
-//         r = static_cast<Uint8>(100 + (155 * t));
-//         g = static_cast<Uint8>(200 * std::pow(t, 3)); // Adds "heat" (yellowish) at high mass
-//         b = static_cast<Uint8>(200 * std::pow(t, 5)); // Becomes white at the very limit
-//     }
-//     else
-//     {
-//         // POSITIVE SPECTRUM: Faint Blue -> Deep Blue -> Electric Cyan/White
-//         r = static_cast<Uint8>(200 * std::pow(t, 5));
-//         g = static_cast<Uint8>(200 * std::pow(t, 3));
-//         b = static_cast<Uint8>(100 + (155 * t));
-//     }
-
-//     Uint8 opacity = (body.isMacroGhost || !body.isCollidable) ? 175 : 255;
-//     return SDL_Color{r, g, b, opacity};
-// }
-
 {
-    double mass = body.mass;
-    double absMass = std::abs(mass);
+    // 1. The "Event Horizon" (Beyond Max Mass)
+    double absMass = std::abs(body.mass);
+    // if (absMass > MAX_MASS)
+    //     return SDL_Color{0, 0, 0, 255};
 
-    // 1. Event Horizon check
-    if (absMass > MAX_MASS)
-        return SDL_Color{0, 0, 0, 255};
-
-    // 2. High-Compression Scaling
-    // We use a very low exponent (0.07) so that small masses
-    // stay white/pale longer before turning deep blue/red.
-    static const double exponent = 0.07;
+    // 2. The Scaling Factor
+    // Power of 0.1 stretches the scale so 10^3 and 10^12 actually look different.
+    static const double exponent = 0.1;
     static const double maxScaled = std::pow(MAX_MASS, exponent);
+    double t = std::pow(absMass, exponent) / maxScaled;
+    t = std::clamp(t, 0.0, 1.0);
 
-    // t goes from 0.0 (massless) to 1.0 (at MAX_MASS)
-    double t = std::clamp(std::pow(absMass, exponent) / maxScaled, 0.0, 1.0);
+    Uint8 r = 0, g = 0, b = 0;
 
-    // 3. Start at White (255, 255, 255)
-    // As 't' increases, we subtract color from the channels we DON'T want.
-    Uint8 r, g, b;
-    Uint8 dropOff = static_cast<Uint8>(255 * t);
-
-    if (mass < 0)
+    if (body.mass < 0)
     {
-        // NEGATIVE: Skew toward RED
-        // We keep Red high, and pull Green/Blue down toward 0
-        r = 255;
-        g = 255 - dropOff;
-        b = 255 - dropOff;
+        r = static_cast<Uint8>(100 + (155 * t));
+        g = static_cast<Uint8>(200 * std::pow(t, 3)); // Adds "heat" (yellowish) at high mass
+        b = static_cast<Uint8>(200 * std::pow(t, 5)); // Becomes white at the very limit
     }
     else
     {
-        // POSITIVE: Skew toward BLUE
-        // We keep Blue high, and pull Red/Green down toward 0
-        r = 255 - dropOff;
-        g = 255 - dropOff;
-        b = 255;
+        r = static_cast<Uint8>(200 * std::pow(t, 5));
+        g = static_cast<Uint8>(200 * std::pow(t, 3));
+        b = static_cast<Uint8>(100 + (155 * t));
     }
 
     Uint8 opacity = (body.isMacroGhost || !body.isCollidable) ? 175 : 255;
     return SDL_Color{r, g, b, opacity};
 }
+
+// Error in here somewhere. funky
+// {
+//     double mass = body.mass;
+//     double absMass = std::abs(mass);
+
+//     // 1. Event Horizon check
+//     if (absMass > MAX_MASS)
+//         return SDL_Color{0, 0, 0, 255};
+
+//     // 2. High-Compression Scaling
+//     // We use a very low exponent (0.07) so that small masses
+//     // stay white/pale longer before turning deep blue/red.
+//     static const double exponent = 0.07;
+//     static const double maxScaled = std::pow(MAX_MASS, exponent);
+
+//     // t goes from 0.0 (massless) to 1.0 (at MAX_MASS)
+//     double t = std::clamp(std::pow(absMass, exponent) / maxScaled, 0.0, 1.0);
+
+//     // 3. Start at White (255, 255, 255)
+//     // As 't' increases, we subtract color from the channels we DON'T want.
+//     Uint8 r, g, b;
+//     Uint8 dropOff = static_cast<Uint8>(255 * t);
+
+//     if (mass < 0)
+//     {
+//         // NEGATIVE: Skew toward RED
+//         // We keep Red high, and pull Green/Blue down toward 0
+//         r = 255;
+//         g = 255 - dropOff;
+//         b = 255 - dropOff;
+//     }
+//     else
+//     {
+//         // POSITIVE: Skew toward BLUE
+//         // We keep Blue high, and pull Red/Green down toward 0
+//         r = 255 - dropOff;
+//         g = 255 - dropOff;
+//         b = 255;
+//     }
+
+//     Uint8 opacity = (body.isMacroGhost || !body.isCollidable) ? 175 : 255;
+//     return SDL_Color{r, g, b, opacity};
+// }
 void RenderSystem::clearCachedCircleTextures()
 {
     for (auto& tex : circleTextureCache)
