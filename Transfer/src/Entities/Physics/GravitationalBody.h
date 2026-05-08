@@ -6,7 +6,7 @@
 #include "Utilities/Math/Vector2D.h"
 
 // Standard Library Imports
-#include <cstdint>
+#include <SDL3/SDL_stdinc.h>
 #include <iostream>
 #include <vector>
 
@@ -53,7 +53,7 @@ struct GravitationalBody
                                 // purposes, maybe toggle visibility off
     // Control flag to send to cleanup function
     bool isTransient = false; // for bodies that are bounce artifacts of collisions
-    uint32_t lifetime = 0;
+    Uint32 lifetime = 0;
     bool isMarkedForDeletion = false;
 
     int macroIdentifier = -1; // Defaults to minus one on construction unless

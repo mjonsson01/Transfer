@@ -76,7 +76,7 @@ void PhysicsSystem::UpdateSystemFrame(GameState& gameState, UIState& UIState)
             {
                 --body.lifetime; // decrement lifetime
                 body.mass *= 0.95;
-                body.radius *= 1.001;
+                body.radius *= 0.999;
                 body.velocity *= 0.999;
             }
 
@@ -636,6 +636,12 @@ void PhysicsSystem::handleAccretion(GravitationalBody& particle, GravitationalBo
 
 void PhysicsSystem::createMacroBody(GameState& gameState, InputState& inputState)
 {
+
+    if (inputState.selectedRadius <= 1.0)
+    {
+        // need to throw error toast or something somehow
+        return;
+    }
     gameState.incrementMaxIDInstantiated();
     int newMacroBodyID = gameState.getMaxIDInstantiated();
 
