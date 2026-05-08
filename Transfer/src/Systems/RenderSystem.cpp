@@ -59,7 +59,7 @@ void RenderSystem::CleanUp()
 // --------- RENDER FULL FRAME METHOD --------- //
 
 void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState,
-                                   const std::vector<UIElement*>& allUIElementsInScope)
+                                   const std::unordered_map<UIElementType, UIElement*>& allUIElementsInScope)
 {
     Uint64 start = SDL_GetPerformanceCounter();
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // black background
@@ -298,19 +298,20 @@ void RenderSystem::buildCircleTextureCache()
 }
 // --------- RENDER UI ELEMENTS METHOD --------- //
 
-void RenderSystem::renderUIElements(UIState& UIState, std::vector<UIElement*> allUIElementsInScope)
+void RenderSystem::renderUIElements(UIState& UIState,
+                                    const std::unordered_map<UIElementType, UIElement*>& allUIElementsInScope)
 {
     if (!UIState.getAllUIVisibility())
         return;
 
-    for (auto& element : allUIElementsInScope)
+    for (auto& pair : allUIElementsInScope)
     {
-        if (element->getUIElementType() == PLAY_GAME_BUTTON_INDEX)
+        if (pair.first == PLAY_GAME_BUTTON_INDEX)
         {
-            element->renderMe(renderer, UIState, UIFontTitle);
+            pair.second->renderMe(renderer, UIState, UIFontTitle);
         }
         else
-            element->renderMe(renderer, UIState, UIFontRegular);
+            pair.second->renderMe(renderer, UIState, UIFontRegular);
     }
 }
 

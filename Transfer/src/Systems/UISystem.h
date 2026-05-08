@@ -18,7 +18,7 @@
 #include "Entities/UIElements/UIElement.h"
 
 // Standard Library Imports
-#include <vector>
+#include <unordered_map>
 
 // Owns Logic of UI Components and stores the UIElements while dispatching
 // information to the GameState and UIState
@@ -30,11 +30,12 @@ class UISystem
     void CleanUp();
     void UpdateUIElements(GameState& gameState, UIState& UIState);
     void updateGameUIElements(GameState& gameState, UIState& UIState);
-    std::vector<UIElement*>& getGameUIElementsMutable() { return allGameUIElements; }
-    const std::vector<UIElement*>& getGameUIElements() const { return allGameUIElements; }
+    std::unordered_map<UIElementType, UIElement*>& getAllUIElements() { return allUIElements; }
+    // std::vector<UIElement*>& getGameUIElementsMutable() { return allGameUIElements; }
+    // const std::vector<UIElement*>& getGameUIElements() const { return allGameUIElements; }
     void updatePauseUIElements(GameState& gameState, UIState& UIState);
-    std::vector<UIElement*>& getPauseUIElementsMutable() { return allGameUIElements; }
-    const std::vector<UIElement*>& getPauseUIElements() const { return allGameUIElements; }
+    // std::vector<UIElement*>& getPauseUIElementsMutable() { return allGameUIElements; }
+    // const std::vector<UIElement*>& getPauseUIElements() const { return allGameUIElements; }
     UIElementType findElementWeAreIn(InputState& inputsReceived);
     void routeSliderInput(UIElementType elementToUpdate, InputState& inputState);
     void routeButtonClick(UIElementType elementToUpdate, InputState& inputState);
@@ -42,9 +43,6 @@ class UISystem
   private:
     bool isSlider(UIElementType typeToCheck);
     bool isButton(UIElementType typeToCheck);
-    std::vector<UIElement*> allGameUIElements;
-    std::vector<UIElement*> allPauseUIElements;
-    std::vector<UIElement*> allStartGameUIElements;
-    std::vector<UIElement*> allLevelEditorUIElements;
+    std::unordered_map<UIElementType, UIElement*> allUIElements;
     UIElementType activeElement = UIElementType::NONE;
 };

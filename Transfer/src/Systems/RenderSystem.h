@@ -25,6 +25,7 @@
 #include <numeric>
 #include <random>
 #include <string>
+#include <unordered_map>
 
 class RenderSystem
 {
@@ -36,7 +37,8 @@ class RenderSystem
     ~RenderSystem(); // make sure to teardown destructor and window
 
     // Main Loop Rendering Function, renders engine state and UI state
-    void RenderFullFrame(GameState& gameState, UIState& UIState, const std::vector<UIElement*>& allUIElementsInScope);
+    void RenderFullFrame(GameState& gameState, UIState& UIState,
+                         const std::unordered_map<UIElementType, UIElement*>& allUIElementsInScope);
 
     // Main Cleanup method (tears down all the SDL components)
     void CleanUp();
@@ -64,7 +66,7 @@ class RenderSystem
     void renderDragLine(Vector2D lineStart, Vector2D lineEnd);
 
     // Renders UI Elements
-    void renderUIElements(UIState& UIState, std::vector<UIElement*> allUIElementsInScope);
+    void renderUIElements(UIState& UIState, const std::unordered_map<UIElementType, UIElement*>& allUIElementsInScope);
 
     // Utility Rendering Helper Functions
     SDL_Color getColorForProperty(const GravitationalBody& body);

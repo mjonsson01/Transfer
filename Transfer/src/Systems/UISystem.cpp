@@ -3,17 +3,26 @@
 #include "UISystem.h"
 
 // Constructor
-UISystem::UISystem() : allGameUIElements(), allPauseUIElements()
+UISystem::UISystem() : allUIElements()
 {
     // Initialize any UI system state here
+    // FPSCounter* fps_counter = new FPSCounter();
+    // allGameUIElements.push_back(fps_counter);
+    // MassSlider* mass_slider = new MassSlider();
+    // allGameUIElements.push_back(mass_slider);
+    // RadiusSlider* radius_slider = new RadiusSlider();
+    // allGameUIElements.push_back(radius_slider);
+    // SimulationSpeedSlider* simulation_speed_slider = new SimulationSpeedSlider();
+    // allGameUIElements.push_back(simulation_speed_slider);
+
     FPSCounter* fps_counter = new FPSCounter();
-    allGameUIElements.push_back(fps_counter);
+    allUIElements.insert({fps_counter->getUIElementType(), fps_counter});
     MassSlider* mass_slider = new MassSlider();
-    allGameUIElements.push_back(mass_slider);
+    allUIElements.insert({mass_slider->getUIElementType(), mass_slider});
     RadiusSlider* radius_slider = new RadiusSlider();
-    allGameUIElements.push_back(radius_slider);
+    allUIElements.insert({radius_slider->getUIElementType(), radius_slider});
     SimulationSpeedSlider* simulation_speed_slider = new SimulationSpeedSlider();
-    allGameUIElements.push_back(simulation_speed_slider);
+    allUIElements.insert({simulation_speed_slider->getUIElementType(), simulation_speed_slider});
 
     // fully implemented, but needs to go to a start menu scene or something
     // PlayGameButton* play_button = new PlayGameButton();
@@ -62,7 +71,7 @@ void UISystem::updateGameUIElements(GameState& gameState, UIState& UIState)
     if (inputsReceived.isClickingLeftMouseButton && inputsReceived.isDragging)
     {
         if (isSlider(activeElement) && activeElement != FPS_COUNTER_INDEX)
-        {   
+        {
             routeSliderInput(activeElement, inputsReceived);
             consumed = true;
         }
@@ -94,21 +103,16 @@ void UISystem::updatePauseUIElements(GameState& gameState, UIState& UIState) { r
 
 void UISystem::CleanUp()
 {
-    for (auto& element : allGameUIElements)
+    for (auto& pair : allUIElements)
     {
-        delete element;
+        delete pair.second;
     }
-    for (auto& element : allStartGameUIElements)
-    {
-        delete element;
-    }
-    allGameUIElements.clear();
-    allStartGameUIElements.clear();
+    allUIElements.clear();
 }
 
 void UISystem::routeSliderInput(UIElementType sliderTypeToUpdate, InputState& inputState)
 {
-    UIElement* elementToUpdate = allGameUIElements[sliderTypeToUpdate];
+    UIElement* elementToUpdate = allUIElements.find(sliderTypeToUpdate)->second;
 
     // this could be further abstracted into passing the full input state so
     // that the UIelement decides what it updates, but I want to make the ui
@@ -141,7 +145,7 @@ void UISystem::routeSliderInput(UIElementType sliderTypeToUpdate, InputState& in
 
 void UISystem::routeButtonClick(UIElementType buttonToUpdate, InputState& inputState)
 {
-    UIElement* elementToUpdate = allGameUIElements[buttonToUpdate];
+    UIElement* elementToUpdate = allUIElements.find(buttonToUpdate)->second;
     if (buttonToUpdate == UIElementType::PLAY_GAME_BUTTON_INDEX)
     {
         elementToUpdate->clickMe(inputState.mouseCurrPosition);
@@ -153,9 +157,9 @@ UIElementType UISystem::findElementWeAreIn(InputState& inputsReceived)
     // std::cout<<"findElementWeAreInCalled"<<std::endl;
     UIElementType contacted_element = UIElementType::NONE; // default result
     Vector2D curr_pos = inputsReceived.mouseCurrPosition;
-    for (auto& element : allGameUIElements)
+    for (auto& pair : allUIElements)
     {
-        contacted_element = element->checkAndReturnIfHit(curr_pos);
+        contacted_element = pair.second->checkAndReturnIfHit(curr_pos);
         if (contacted_element != UIElementType::NONE)
         {
             break; // stop at the first hit
@@ -167,7 +171,8 @@ UIElementType UISystem::findElementWeAreIn(InputState& inputsReceived)
 bool UISystem::isSlider(UIElementType typeToCheck)
 {
     bool conclusion = false;
-    if (typeToCheck == UIElementType::MASS_SLIDER_INDEX || typeToCheck == UIElementType::RADIUS_SLIDER_INDEX || typeToCheck == UIElementType::SIMULATION_SPEED_SLIDER_INDEX)
+    if (typeToCheck == UIElementType::MASS_SLIDER_INDEX || typeToCheck == UIElementType::RADIUS_SLIDER_INDEX ||
+        typeToCheck == UIElementType::SIMULATION_SPEED_SLIDER_INDEX)
         conclusion = true;
     return conclusion;
 }
