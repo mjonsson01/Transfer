@@ -32,4 +32,5 @@ constexpr int SCREEN_WIDTH = 1280;
 // Background Star count
 constexpr int STAR_NUM = 200;
 
+constexpr bool VIEW_DEBUG = false;
 // #endif

@@ -36,7 +36,7 @@ class UIState
     void setStartMenuActive(bool sma) { startMenuActive = sma; }
     bool getRenderDebug() { return renderDebug; }
     void setRenderDebug(bool rd) { renderDebug = rd; }
-    float getTimeScaleFactor() const {return static_cast<float>(inputState.selectedSimSpeedScale);}
+    float getTimeScaleFactor() const { return static_cast<float>(inputState.selectedSimSpeedScale); }
 
   private:
     InputState inputState;
@@ -51,7 +51,7 @@ class UIState
     bool levelEditorScene = false;
     bool levelSelectScene = false;
 
-    bool renderDebug = true;         // Toggles rendering of debug elements like
+    bool renderDebug = VIEW_DEBUG;    // Toggles rendering of debug elements like
                                       // collision boxes, spawn areas, etc.
     bool allUIElementsVisible = true; // Default to true because we want all elements visible.
 };
