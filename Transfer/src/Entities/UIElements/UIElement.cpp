@@ -7,13 +7,13 @@ UIElement::UIElement() {}
 
 UIElement::~UIElement() {}
 
-UIElementType UIElement::checkAndReturnIfHit(const Vector2D& positionToCheck)
+UIElementIdentifier UIElement::checkAndReturnIfHit(const Vector2D& positionToCheck)
 {
     SDL_FPoint point = {static_cast<float>(positionToCheck.xVal), static_cast<float>(positionToCheck.yVal)};
-    UIElementType type_hit = UIElementType::NONE;
+    UIElementIdentifier type_hit = UIElementIdentifier::NONE;
     if (SDL_PointInRectFloat(&point, &hotZoneRect))
     {
-        type_hit = UIElementTypeIdentifier;
+        type_hit = UIElementIdentifierIdentifier;
     }
     return type_hit;
 }

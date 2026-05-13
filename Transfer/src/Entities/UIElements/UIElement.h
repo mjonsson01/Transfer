@@ -8,7 +8,7 @@
 
 // Custom Imports
 #include "Core/UIState.h"
-#include "Entities/UIElements/UIElementTypeEnum.h"
+#include "Entities/UIElements/UIElementIdentifierEnum.h"
 #include "Utilities/Math/Vector2D.h"
 #include "Utilities/Rendering/Colors.h"
 
@@ -31,8 +31,8 @@ class UIElement
     float getX() const { return posX; }
     float getY() const { return posY; }
     void setVisibility(bool desiredVisibility) { visible = desiredVisibility; }
-    UIElementType checkAndReturnIfHit(const Vector2D& positionToCheck);
-    UIElementType getUIElementType() const { return UIElementTypeIdentifier; }
+    UIElementIdentifier checkAndReturnIfHit(const Vector2D& positionToCheck);
+    UIElementIdentifier getUIElementIdentifier() const { return UIElementIdentifierIdentifier; }
 
   private:
     float posX = 0;
@@ -41,7 +41,7 @@ class UIElement
 
   protected:
     SDL_FRect hotZoneRect;
-    UIElementType UIElementTypeIdentifier;
+    UIElementIdentifier UIElementIdentifierIdentifier;
 };
 
 // Derived UI Element Classes

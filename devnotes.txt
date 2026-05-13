@@ -92,3 +92,11 @@ Need to investigate private vs public vs protected methods bc they are bleeding 
 
 
 Changing playback speed causes dropped commands. Need to fit into the loop where input is polled at same time as the physics?
+
+TBI change src to have UI as a full subfolder instead of this entities scenes nonsense?
+
+TBI make build just build with the last build config and not run clean?
+
+
+abstract the clickMe and slideMe into one method called interact, which will check the type and then dispatch at the local ui level?
+

@@ -8,7 +8,7 @@
 
 // Custom Imports
 #include "Entities/UIElements/UIElement.h"
-#include "Entities/UIElements/UIElementTypeEnum.h"
+#include "Entities/UIElements/UIElementIdentifierEnum.h"
 
 // Standard Library Imports
 #include <string>

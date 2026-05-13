@@ -9,7 +9,7 @@
 // Custom Imports
 #include "Core/UIState.h"
 #include "Entities/UIElements/UIElement.h"
-#include "Entities/UIElements/UIElementTypeEnum.h"
+#include "Entities/UIElements/UIElementIdentifierEnum.h"
 #include "Utilities/Rendering/Colors.h"
 
 // Standard Library Imports

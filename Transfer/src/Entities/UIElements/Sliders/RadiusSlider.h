@@ -10,7 +10,7 @@
 #include "Core/UIState.h"
 #include "Entities/UIElements/Sliders/Slider.h"
 #include "Entities/UIElements/UIElement.h"
-#include "Entities/UIElements/UIElementTypeEnum.h"
+#include "Entities/UIElements/UIElementIdentifierEnum.h"
 #include "Utilities/Constants/EngineConstants.h"
 #include "Utilities/Constants/GameSystemConstants.h"
 #include "Utilities/Math/Vector2D.h"

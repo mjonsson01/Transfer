@@ -5,24 +5,14 @@
 // Constructor
 UISystem::UISystem() : allUIElements()
 {
-    // Initialize any UI system state here
-    // FPSCounter* fps_counter = new FPSCounter();
-    // allGameUIElements.push_back(fps_counter);
-    // MassSlider* mass_slider = new MassSlider();
-    // allGameUIElements.push_back(mass_slider);
-    // RadiusSlider* radius_slider = new RadiusSlider();
-    // allGameUIElements.push_back(radius_slider);
-    // SimulationSpeedSlider* simulation_speed_slider = new SimulationSpeedSlider();
-    // allGameUIElements.push_back(simulation_speed_slider);
-
     FPSCounter* fps_counter = new FPSCounter();
-    allUIElements.insert({fps_counter->getUIElementType(), fps_counter});
+    allUIElements.insert({fps_counter->getUIElementIdentifier(), fps_counter});
     MassSlider* mass_slider = new MassSlider();
-    allUIElements.insert({mass_slider->getUIElementType(), mass_slider});
+    allUIElements.insert({mass_slider->getUIElementIdentifier(), mass_slider});
     RadiusSlider* radius_slider = new RadiusSlider();
-    allUIElements.insert({radius_slider->getUIElementType(), radius_slider});
+    allUIElements.insert({radius_slider->getUIElementIdentifier(), radius_slider});
     SimulationSpeedSlider* simulation_speed_slider = new SimulationSpeedSlider();
-    allUIElements.insert({simulation_speed_slider->getUIElementType(), simulation_speed_slider});
+    allUIElements.insert({simulation_speed_slider->getUIElementIdentifier(), simulation_speed_slider});
 
     // fully implemented, but needs to go to a start menu scene or something
     // PlayGameButton* play_button = new PlayGameButton();
@@ -36,7 +26,7 @@ UISystem::~UISystem()
 
 void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState)
 {
-    if (UIState.getGameScene())
+    if (UIState.getGameScene()) // TODO convert to switch of game scene?
     {
         if (UIState.getPauseMenuActive())
         {
@@ -63,7 +53,7 @@ void UISystem::updateGameUIElements(GameState& gameState, UIState& UIState)
         activeElement = findElementWeAreIn(inputsReceived);
     }
     // immediately consume if clicking on an active element
-    if (activeElement != UIElementType::NONE)
+    if (activeElement != UIElementIdentifier::NONE)
     {
         consumed = true;
     }
@@ -79,10 +69,10 @@ void UISystem::updateGameUIElements(GameState& gameState, UIState& UIState)
     else
     {
         // If we just released the mouse
-        if (inputsReceived.leftMouseButtonJustReleased) // You may need to pass this flag into InputState
+        if (inputsReceived.leftMouseButtonJustReleased)
         {
-            UIElementType releasedOverElement = findElementWeAreIn(inputsReceived);
-            if (releasedOverElement != UIElementType::NONE)
+            UIElementIdentifier releasedOverElement = findElementWeAreIn(inputsReceived);
+            if (releasedOverElement != UIElementIdentifier::NONE)
             {
                 consumed = true;
 
@@ -90,7 +80,7 @@ void UISystem::updateGameUIElements(GameState& gameState, UIState& UIState)
                 {
                     routeButtonClick(activeElement, inputsReceived);
                 }
-                activeElement = UIElementType::NONE; // Reset for next interaction
+                activeElement = UIElementIdentifier::NONE; // Reset for next interaction
             }
         }
     }
@@ -105,12 +95,12 @@ void UISystem::CleanUp()
 {
     for (auto& pair : allUIElements)
     {
-        delete pair.second;
+        delete pair.second; // delete all UIElement pointers
     }
     allUIElements.clear();
 }
 
-void UISystem::routeSliderInput(UIElementType sliderTypeToUpdate, InputState& inputState)
+void UISystem::routeSliderInput(UIElementIdentifier sliderTypeToUpdate, InputState& inputState)
 {
     UIElement* elementToUpdate = allUIElements.find(sliderTypeToUpdate)->second;
 
@@ -119,19 +109,19 @@ void UISystem::routeSliderInput(UIElementType sliderTypeToUpdate, InputState& in
     // element as stupid as possible
 
     // Also prob refactor as switch. there is duplicate code here so TODO: Cleanup
-    if (sliderTypeToUpdate == UIElementType::MASS_SLIDER_INDEX)
+    if (sliderTypeToUpdate == UIElementIdentifier::MASS_SLIDER_INDEX)
     {
         double mass_val_to_be_calculated_and_injected = 0.0; // initialize
         elementToUpdate->slideMe(inputState.mouseCurrPosition, mass_val_to_be_calculated_and_injected);
         inputState.selectedMass = mass_val_to_be_calculated_and_injected;
     }
-    else if (sliderTypeToUpdate == UIElementType::RADIUS_SLIDER_INDEX)
+    else if (sliderTypeToUpdate == UIElementIdentifier::RADIUS_SLIDER_INDEX)
     {
         double radius_val_to_be_calculated_and_injected = 0.0; // initialize
         elementToUpdate->slideMe(inputState.mouseCurrPosition, radius_val_to_be_calculated_and_injected);
         inputState.selectedRadius = radius_val_to_be_calculated_and_injected;
     }
-    else if (sliderTypeToUpdate == UIElementType::SIMULATION_SPEED_SLIDER_INDEX)
+    else if (sliderTypeToUpdate == UIElementIdentifier::SIMULATION_SPEED_SLIDER_INDEX)
     {
         double simulation_speed_val_to_be_calculated_and_injected = 1.0; // initialize to 1
         elementToUpdate->slideMe(inputState.mouseCurrPosition, simulation_speed_val_to_be_calculated_and_injected);
@@ -139,28 +129,29 @@ void UISystem::routeSliderInput(UIElementType sliderTypeToUpdate, InputState& in
     }
     else
     {
+        // no known identifier, just exit.
         return;
     }
 }
 
-void UISystem::routeButtonClick(UIElementType buttonToUpdate, InputState& inputState)
+void UISystem::routeButtonClick(UIElementIdentifier buttonToUpdate, InputState& inputState)
 {
     UIElement* elementToUpdate = allUIElements.find(buttonToUpdate)->second;
-    if (buttonToUpdate == UIElementType::PLAY_GAME_BUTTON_INDEX)
+    if (buttonToUpdate == UIElementIdentifier::PLAY_GAME_BUTTON_INDEX)
     {
         elementToUpdate->clickMe(inputState.mouseCurrPosition);
     }
     // Will add other ui elements from in game here? Or maybe should just route to scene elements?
 }
-UIElementType UISystem::findElementWeAreIn(InputState& inputsReceived)
+UIElementIdentifier UISystem::findElementWeAreIn(InputState& inputsReceived)
 {
     // std::cout<<"findElementWeAreInCalled"<<std::endl;
-    UIElementType contacted_element = UIElementType::NONE; // default result
+    UIElementIdentifier contacted_element = UIElementIdentifier::NONE; // default result
     Vector2D curr_pos = inputsReceived.mouseCurrPosition;
     for (auto& pair : allUIElements)
     {
         contacted_element = pair.second->checkAndReturnIfHit(curr_pos);
-        if (contacted_element != UIElementType::NONE)
+        if (contacted_element != UIElementIdentifier::NONE)
         {
             break; // stop at the first hit
         }
@@ -168,18 +159,19 @@ UIElementType UISystem::findElementWeAreIn(InputState& inputsReceived)
     return contacted_element; // single return
 }
 
-bool UISystem::isSlider(UIElementType typeToCheck)
+bool UISystem::isSlider(UIElementIdentifier typeToCheck)
 {
     bool conclusion = false;
-    if (typeToCheck == UIElementType::MASS_SLIDER_INDEX || typeToCheck == UIElementType::RADIUS_SLIDER_INDEX ||
-        typeToCheck == UIElementType::SIMULATION_SPEED_SLIDER_INDEX)
+    if (typeToCheck == UIElementIdentifier::MASS_SLIDER_INDEX ||
+        typeToCheck == UIElementIdentifier::RADIUS_SLIDER_INDEX ||
+        typeToCheck == UIElementIdentifier::SIMULATION_SPEED_SLIDER_INDEX)
         conclusion = true;
     return conclusion;
 }
-bool UISystem::isButton(UIElementType typeToCheck)
+bool UISystem::isButton(UIElementIdentifier typeToCheck)
 {
     bool conclusion = false;
-    if (typeToCheck == UIElementType::PLAY_GAME_BUTTON_INDEX)
+    if (typeToCheck == UIElementIdentifier::PLAY_GAME_BUTTON_INDEX)
         conclusion = true;
     return conclusion;
 }

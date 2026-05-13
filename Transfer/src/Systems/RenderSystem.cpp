@@ -59,7 +59,7 @@ void RenderSystem::CleanUp()
 // --------- RENDER FULL FRAME METHOD --------- //
 
 void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState,
-                                   const std::unordered_map<UIElementType, UIElement*>& allUIElementsInScope)
+                                   const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope)
 {
     Uint64 start = SDL_GetPerformanceCounter();
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // black background
@@ -299,7 +299,7 @@ void RenderSystem::buildCircleTextureCache()
 // --------- RENDER UI ELEMENTS METHOD --------- //
 
 void RenderSystem::renderUIElements(UIState& UIState,
-                                    const std::unordered_map<UIElementType, UIElement*>& allUIElementsInScope)
+                                    const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope)
 {
     if (!UIState.getAllUIVisibility())
         return;

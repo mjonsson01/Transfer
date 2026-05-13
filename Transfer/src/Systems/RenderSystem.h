@@ -38,7 +38,7 @@ class RenderSystem
 
     // Main Loop Rendering Function, renders engine state and UI state
     void RenderFullFrame(GameState& gameState, UIState& UIState,
-                         const std::unordered_map<UIElementType, UIElement*>& allUIElementsInScope);
+                         const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope);
 
     // Main Cleanup method (tears down all the SDL components)
     void CleanUp();
@@ -66,7 +66,8 @@ class RenderSystem
     void renderDragLine(Vector2D lineStart, Vector2D lineEnd);
 
     // Renders UI Elements
-    void renderUIElements(UIState& UIState, const std::unordered_map<UIElementType, UIElement*>& allUIElementsInScope);
+    void renderUIElements(UIState& UIState,
+                          const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope);
 
     // Utility Rendering Helper Functions
     SDL_Color getColorForProperty(const GravitationalBody& body);

@@ -357,38 +357,24 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
             // skip if deleting
             if (body_b.isMarkedForDeletion)
             {
-                std::cout << "Collision Branch Hit: 1" << std::endl;
+                // std::cout << "Collision Branch Hit: 1" << std::endl;
                 continue;
             }
             // skip if not collidable
             if (!body_b.isCollidable)
             {
-                std::cout << "Collision Branch Hit: 2" << std::endl;
+                // std::cout << "Collision Branch Hit: 2" << std::endl;
                 continue;
             }
             // skip if they are ghost, since this is a macro macro loop
             if (body_b.isMacroGhost)
             {
-                std::cout << "Collision Branch Hit: 3" << std::endl;
+                // std::cout << "Collision Branch Hit: 3" << std::endl;
                 continue;
             }
 
             CollisionInfo collision_info = getCollisionInfo(body_a, body_b);
-            //             double distance;
-            // Vector2D unitNormalVector;       // unit normal (from bodyA to bodyB)
-            // Vector2D relativeVelocityVector; // vB - vA
-            // double normalSpeed;              // signed speed along normal vector
-            // double absNormalSpeed;           // abs value of signed speed along normal vector
-            // bool shouldCollide;
-            // bool shouldBlowUp;
-            std::cout << collision_info.distance << "\n"
-                      << collision_info.unitNormalVector << "\n"
-                      << collision_info.relativeVelocityVector << "\n"
-                      << collision_info.normalSpeed << "\n"
-                      << collision_info.absNormalSpeed << "\n"
-                      << collision_info.shouldCollide << "\n"
-                      << collision_info.shouldBlowUp << "\n"
-                      << std::endl;
+
             // if collision distance condition not satisfied skip
             if (!collision_info.shouldCollide)
             {
@@ -401,7 +387,7 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
             // if both are bounce, elastic collide
             if (pair.light->isBounce && pair.heavy->isBounce)
             {
-                std::cout << "Collision Branch Hit: 5" << std::endl;
+                // std::cout << "Collision Branch Hit: 5" << std::endl;
                 handleElasticCollisions(*pair.light, *pair.heavy);
                 continue;
             }
@@ -418,13 +404,13 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
                 {
                     if (pair.light->isShatterable)
                     {
-                        std::cout << "Collision Branch Hit: 6" << std::endl;
+                        // std::cout << "Collision Branch Hit: 6" << std::endl;
                         substituteWithParticles(*pair.light, gameState);
                         continue;
                     }
                     else
                     {
-                        std::cout << "Collision Branch Hit: 7" << std::endl;
+                        // std::cout << "Collision Branch Hit: 7" << std::endl;
                         handleElasticCollisions(*pair.light, *pair.heavy);
                         continue;
                     }
@@ -433,13 +419,13 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
                 {
                     if (pair.heavy->isShatterable)
                     {
-                        std::cout << "Collision Branch Hit: 8" << std::endl;
+                        // std::cout << "Collision Branch Hit: 8" << std::endl;
                         substituteWithParticles(*pair.heavy, gameState);
                         continue;
                     }
                     else
                     {
-                        std::cout << "Collision Branch Hit: 9" << std::endl;
+                        // std::cout << "Collision Branch Hit: 9" << std::endl;
                         handleElasticCollisions(*pair.light, *pair.heavy);
                         continue;
                     }
@@ -449,7 +435,7 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
                     if (pair.ratio <= 1.4)
                     {
                         // close in size, blow both of em up
-                        std::cout << "Collision Branch Hit: 10" << std::endl;
+                        // std::cout << "Collision Branch Hit: 10" << std::endl;
                         handleDynamicExplosionCollision(*pair.light, *pair.heavy, gameState);
                         continue;
                     }
@@ -474,7 +460,7 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
                 }
                 else
                 {
-                    std::cout << "Collision Branch Hit: 13" << std::endl;
+                    // std::cout << "Collision Branch Hit: 13" << std::endl;
                     handleElasticCollisions(*pair.light, *pair.heavy);
                 }
             }
@@ -486,12 +472,12 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
     {
         if (particle.isMarkedForDeletion)
         {
-            std::cout << "Collision Branch Hit: 14" << std::endl;
+            // std::cout << "Collision Branch Hit: 14" << std::endl;
             continue;
         }
         if (!particle.isCollidable)
         {
-            std::cout << "Collision Branch Hit: 15" << std::endl;
+            // std::cout << "Collision Branch Hit: 15" << std::endl;
             continue;
         }
         for (auto& macro_body : macro_bodies)
@@ -502,12 +488,12 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
             };
             if (macro_body.isMarkedForDeletion)
             {
-                std::cout << "Collision Branch Hit: 16" << std::endl;
+                // std::cout << "Collision Branch Hit: 16" << std::endl;
                 continue;
             }
             if (!macro_body.isCollidable)
             {
-                std::cout << "Collision Branch Hit: 17" << std::endl;
+                // std::cout << "Collision Branch Hit: 17" << std::endl;
                 continue;
             }
             CollisionInfo collision_info = getCollisionInfo(macro_body, particle);
@@ -515,7 +501,7 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
             {
                 if (macro_body.isBounce)
                 {
-                    std::cout << "Collision Branch Hit: 18" << std::endl;
+                    // std::cout << "Collision Branch Hit: 18" << std::endl;
                     handleElasticCollisions(particle, macro_body);
                     continue;
                 }
@@ -523,7 +509,7 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
                 {
                     if (particle.isAccretable)
                     {
-                        std::cout << "Collision Branch Hit: 19" << std::endl;
+                        // std::cout << "Collision Branch Hit: 19" << std::endl;
                         if (particle.mass > macro_body.mass)
                         {
                             handleElasticCollisions(particle, macro_body);

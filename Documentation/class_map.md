@@ -80,7 +80,7 @@
 - `getY()`
 - `setVisibility()`
 - `checkAndReturnIfHit()`
-- `getUIElementType()`
+- `getUIElementIdentifier()`
 
 ---
 ## Header: `Entities\UIElements\Buttons\Button.h`

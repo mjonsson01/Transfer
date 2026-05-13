@@ -10,5 +10,5 @@ PlayGameButton::PlayGameButton() : Button()
     displayText = "Play Game";
     altText = "Clicked";
     bool buttonSelected = false;
-    UIElementTypeIdentifier = UIElementType::PLAY_GAME_BUTTON_INDEX;
+    UIElementIdentifierIdentifier = UIElementIdentifier::PLAY_GAME_BUTTON_INDEX;
 }

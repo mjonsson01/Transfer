@@ -16,7 +16,7 @@
 #include "Entities/UIElements/Sliders/RadiusSlider.h"
 #include "Entities/UIElements/Sliders/SimulationSpeedSlider.h"
 #include "Entities/UIElements/UIElement.h"
-
+#include "Scenes/Scene.h"
 // Standard Library Imports
 #include <unordered_map>
 
@@ -30,19 +30,20 @@ class UISystem
     void CleanUp();
     void UpdateUIElements(GameState& gameState, UIState& UIState);
     void updateGameUIElements(GameState& gameState, UIState& UIState);
-    std::unordered_map<UIElementType, UIElement*>& getAllUIElements() { return allUIElements; }
+    std::unordered_map<UIElementIdentifier, UIElement*>& getAllUIElements() { return allUIElements; }
     // std::vector<UIElement*>& getGameUIElementsMutable() { return allGameUIElements; }
     // const std::vector<UIElement*>& getGameUIElements() const { return allGameUIElements; }
     void updatePauseUIElements(GameState& gameState, UIState& UIState);
     // std::vector<UIElement*>& getPauseUIElementsMutable() { return allGameUIElements; }
     // const std::vector<UIElement*>& getPauseUIElements() const { return allGameUIElements; }
-    UIElementType findElementWeAreIn(InputState& inputsReceived);
-    void routeSliderInput(UIElementType elementToUpdate, InputState& inputState);
-    void routeButtonClick(UIElementType elementToUpdate, InputState& inputState);
+    UIElementIdentifier findElementWeAreIn(InputState& inputsReceived);
+    void routeSliderInput(UIElementIdentifier elementToUpdate, InputState& inputState);
+    void routeButtonClick(UIElementIdentifier elementToUpdate, InputState& inputState);
 
   private:
-    bool isSlider(UIElementType typeToCheck);
-    bool isButton(UIElementType typeToCheck);
-    std::unordered_map<UIElementType, UIElement*> allUIElements;
-    UIElementType activeElement = UIElementType::NONE;
+    bool isSlider(UIElementIdentifier typeToCheck);
+    bool isButton(UIElementIdentifier typeToCheck);
+    std::unordered_map<SceneIdentifier, Scene*> allScenes;
+    std::unordered_map<UIElementIdentifier, UIElement*> allUIElements;
+    UIElementIdentifier activeElement = UIElementIdentifier::NONE;
 };

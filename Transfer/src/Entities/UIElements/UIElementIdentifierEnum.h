@@ -1,8 +1,8 @@
-// File: Transfer/src/Entities/UIElementTypeEnum.h
+// File: Transfer/src/Entities/UIElementIdentifierEnum.h
 
 #pragma once
 
-enum UIElementType : int
+enum UIElementIdentifier : int
 {
     NONE = -1,
     FPS_COUNTER_INDEX = 0,

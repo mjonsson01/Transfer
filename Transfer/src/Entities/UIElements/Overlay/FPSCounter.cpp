@@ -6,7 +6,7 @@ FPSCounter::FPSCounter()
 {
     setPosition(10.0f, 10.0f);
     setVisibility(true);
-    UIElementTypeIdentifier = UIElementType::FPS_COUNTER_INDEX;
+    UIElementIdentifierIdentifier = UIElementIdentifier::FPS_COUNTER_INDEX;
 }
 
 void FPSCounter::renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont)

@@ -145,7 +145,7 @@ void Game::UpdateInstantiations() { physicsSystem.UpdateGravBodyInstantiations(g
 void Game::RenderFrame()
 {
     // Dispatch to Renderer System -- renders UI as well.
-    const std::unordered_map<UIElementType, UIElement*>& allUIElements = UISystem.getAllUIElements();
+    const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElements = UISystem.getAllUIElements();
     renderSystem.RenderFullFrame(gameState, UIState, allUIElements);
 }
 
