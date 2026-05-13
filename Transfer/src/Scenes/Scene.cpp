@@ -4,11 +4,16 @@
 Scene::Scene(SceneIdentifier sceneID) : sceneIdentifier(sceneID) {}
 
 Scene::~Scene() {};
+
 void Scene::CleanUpSceneElements()
 {
-    for (auto& scene_element : sceneUIElements)
+    for (auto& [id, UI_element_ptr] : sceneUIElements)
     {
-        delete scene_element.second;
+        if (UI_element_ptr)
+        {
+            delete UI_element_ptr;
+            UI_element_ptr = nullptr;
+        }
     }
     sceneUIElements.clear();
 }

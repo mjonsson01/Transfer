@@ -3,20 +3,22 @@
 #include "UISystem.h"
 
 // Constructor
-UISystem::UISystem() : allUIElements()
+UISystem::UISystem() : allScenes()
 {
-    FPSCounter* fps_counter = new FPSCounter();
-    allUIElements.insert({fps_counter->getUIElementIdentifier(), fps_counter});
-    MassSlider* mass_slider = new MassSlider();
-    allUIElements.insert({mass_slider->getUIElementIdentifier(), mass_slider});
-    RadiusSlider* radius_slider = new RadiusSlider();
-    allUIElements.insert({radius_slider->getUIElementIdentifier(), radius_slider});
-    SimulationSpeedSlider* simulation_speed_slider = new SimulationSpeedSlider();
-    allUIElements.insert({simulation_speed_slider->getUIElementIdentifier(), simulation_speed_slider});
-
-    // fully implemented, but needs to go to a start menu scene or something
+    // FPSCounter* fps_counter = new FPSCounter();
+    // allUIElements.insert({fps_counter->getUIElementIdentifier(), fps_counter});
+    // MassSlider* mass_slider = new MassSlider();
+    // allUIElements.insert({mass_slider->getUIElementIdentifier(), mass_slider});
+    // RadiusSlider* radius_slider = new RadiusSlider();
+    // allUIElements.insert({radius_slider->getUIElementIdentifier(), radius_slider});
+    // SimulationSpeedSlider* simulation_speed_slider = new SimulationSpeedSlider();
+    // allUIElements.insert({simulation_speed_slider->getUIElementIdentifier(), simulation_speed_slider});
     // PlayGameButton* play_button = new PlayGameButton();
     // allGameUIElements.push_back(play_button);
+    allScenes.insert({START_MENU_SCENE, nullptr});
+    allScenes.insert({GAME_SCENE, nullptr});
+    allScenes.insert({PAUSE_SCENE, nullptr});
+    allScenes.insert({TEST_VISUAL_SCENE, nullptr});
 }
 // Destructor
 UISystem::~UISystem()
@@ -42,6 +44,7 @@ void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState)
         return;
     }
 }
+void UISystem::populateScenes() {}
 void UISystem::updateGameUIElements(GameState& gameState, UIState& UIState)
 {
     bool consumed = false;
@@ -93,11 +96,16 @@ void UISystem::updatePauseUIElements(GameState& gameState, UIState& UIState) { r
 
 void UISystem::CleanUp()
 {
-    for (auto& pair : allUIElements)
+    for (auto& [id, scene_ptr] : allScenes)
     {
-        delete pair.second; // delete all UIElement pointers
+        if (scene_ptr)
+        {
+            scene_ptr->CleanUpSceneElements();
+            delete scene_pair.second;
+            scene_ptr = nullptr
+        }
     }
-    allUIElements.clear();
+    allScenes.clear();
 }
 
 void UISystem::routeSliderInput(UIElementIdentifier sliderTypeToUpdate, InputState& inputState)

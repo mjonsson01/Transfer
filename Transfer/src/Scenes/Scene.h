@@ -13,9 +13,10 @@ class Scene
   public:
     Scene(SceneIdentifier sceneID);
     virtual ~Scene();
+    virtual void populateMe() {}; // should be overridden by each child class.
     void CleanUpSceneElements();
 
-  private:
+  protected:
     SceneIdentifier sceneIdentifier;
     std::unordered_map<UIElementIdentifier, UIElement*> sceneUIElements;
 };
