@@ -15,10 +15,12 @@ UISystem::UISystem() : allScenes()
     // allUIElements.insert({simulation_speed_slider->getUIElementIdentifier(), simulation_speed_slider});
     // PlayGameButton* play_button = new PlayGameButton();
     // allGameUIElements.push_back(play_button);
-    allScenes.insert({START_MENU_SCENE, nullptr});
+    // allScenes.insert({START_MENU_SCENE, nullptr});
     allScenes.insert({GAME_SCENE, nullptr});
     allScenes.insert({PAUSE_SCENE, nullptr});
-    allScenes.insert({TEST_VISUAL_SCENE, nullptr});
+    // allScenes.insert({TEST_VISUAL_SCENE, nullptr});
+
+    populateScenes();
 }
 // Destructor
 UISystem::~UISystem()
@@ -42,11 +44,26 @@ void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState)
 }
 void UISystem::populateScenes()
 {
-    for ([ scene_id, scene_ptr ] : allScenes)
+    // std::cout << "populateScenes Called" << std::endl;
+    GameScene* game_scene = new GameScene();
+    PauseScene* pause_scene = new PauseScene();
+    for (auto& [scene_ID, scene_ptr] : allScenes)
     {
-        scene_ptr->populateMe();
+        // std::cout << "hit all scenes for loop" << std::endl;
+        switch (scene_ID)
+        {
+        case SceneIdentifier::GAME_SCENE:
+            scene_ptr = game_scene;
+            scene_ptr->populateMe();
+            break;
+        case SceneIdentifier::PAUSE_SCENE:
+            scene_ptr = pause_scene;
+            scene_ptr->populateMe();
+            break;
+        default:
+            break;
+        }
     }
-    return;
 }
 void UISystem::updateGameUIElements(GameState& gameState, UIState& UIState)
 {
@@ -100,10 +117,11 @@ void UISystem::updatePauseUIElements(GameState& gameState, UIState& UIState) { r
 
 void UISystem::CleanUp()
 {
-    for (auto& [id, scene_ptr] : allScenes)
+    for (auto& [scene_ID, scene_ptr] : allScenes)
     {
         if (scene_ptr)
         {
+            // std::cout << "scene Deleted" << std::endl;
             scene_ptr->CleanUpSceneElements();
             delete scene_ptr;
             scene_ptr = nullptr;

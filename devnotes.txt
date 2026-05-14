@@ -100,3 +100,6 @@ TBI make build just build with the last build config and not run clean?
 
 abstract the clickMe and slideMe into one method called interact, which will check the type and then dispatch at the local ui level?
 
+
+
+NEED TO FIX: MACOS CMAKE LISTS FOR DEBUG IS BROKEN.

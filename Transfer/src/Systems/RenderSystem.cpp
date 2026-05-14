@@ -61,6 +61,7 @@ void RenderSystem::CleanUp()
 void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState,
                                    const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope)
 {
+    std::cout << "UIElements in scope size: " << allUIElementsInScope.size() << std::endl;
     SceneIdentifier current_scene = UIState.getCurrentScene();
     if (current_scene == SceneIdentifier::GAME_SCENE)
     {
@@ -85,7 +86,6 @@ void RenderSystem::renderGameFrame(GameState& gameState, UIState& UIState,
     // render starry background
     updateStars();
     renderStars();
-
     // Render all preview bodies
     renderPreviewBodies(UIState);
     // Render all the bodies (particles)
@@ -321,16 +321,21 @@ void RenderSystem::renderUIElements(UIState& UIState,
                                     const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope)
 {
     if (!UIState.getAllUIVisibility())
-        return;
-
-    for (auto& pair : allUIElementsInScope)
     {
-        if (pair.first == PLAY_GAME_BUTTON_INDEX)
+        return;
+    }
+
+    for (auto& [UI_element_ID, UI_element_ptr] : allUIElementsInScope)
+    {
+        std::cout << "rendering element: " << UI_element_ID << std::endl;
+        if (UI_element_ID == PLAY_GAME_BUTTON_INDEX)
         {
-            pair.second->renderMe(renderer, UIState, UIFontTitle);
+            UI_element_ptr->renderMe(renderer, UIState, UIFontTitle);
         }
         else
-            pair.second->renderMe(renderer, UIState, UIFontRegular);
+        {
+            UI_element_ptr->renderMe(renderer, UIState, UIFontRegular);
+        }
     }
 }
 

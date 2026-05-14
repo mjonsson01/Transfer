@@ -16,8 +16,11 @@
 #include "Entities/UIElements/Sliders/RadiusSlider.h"
 #include "Entities/UIElements/Sliders/SimulationSpeedSlider.h"
 #include "Entities/UIElements/UIElement.h"
+#include "Scenes/GameScene/GameScene.h"
+#include "Scenes/PauseScene/PauseScene.h"
 #include "Scenes/Scene.h"
 // Standard Library Imports
+#include <iostream>
 #include <unordered_map>
 
 // Owns Logic of UI Components and stores the UIElements while dispatching
@@ -31,11 +34,9 @@ class UISystem
     void UpdateUIElements(GameState& gameState, UIState& UIState);
     void updateGameUIElements(GameState& gameState, UIState& UIState);
     std::unordered_map<UIElementIdentifier, UIElement*>& getAllUIElements() { return allUIElements; }
-    // std::vector<UIElement*>& getGameUIElementsMutable() { return allGameUIElements; }
-    // const std::vector<UIElement*>& getGameUIElements() const { return allGameUIElements; }
+    Scene* getScene(SceneIdentifier sceneID) { return allScenes[sceneID]; }
     void updatePauseUIElements(GameState& gameState, UIState& UIState);
-    // std::vector<UIElement*>& getPauseUIElementsMutable() { return allGameUIElements; }
-    // const std::vector<UIElement*>& getPauseUIElements() const { return allGameUIElements; }
+
     UIElementIdentifier findElementWeAreIn(InputState& inputsReceived);
     void routeSliderInput(UIElementIdentifier elementToUpdate, InputState& inputState);
     void routeButtonClick(UIElementIdentifier elementToUpdate, InputState& inputState);
