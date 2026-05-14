@@ -8,10 +8,10 @@
 // Custom Imports
 #include "Core/GameState.h"
 #include "Core/UIState.h"
+#include "Scenes/SceneIdentifierEnum.h"
 #include "Utilities/Constants/EngineConstants.h"
 #include "Utilities/Constants/GameSystemConstants.h"
 #include "Utilities/UserInput/TransferInputs.h"
-
 // Standard Library Imports
 #include <iostream>
 

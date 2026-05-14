@@ -46,6 +46,4 @@ class UISystem
     bool isButton(UIElementIdentifier typeToCheck);
     std::unordered_map<SceneIdentifier, Scene*> allScenes;
     std::unordered_map<UIElementIdentifier, UIElement*> allUIElements;
-    SceneIdentifier currentScene = SceneIdentifier::NO_SCENE;
-    UIElementIdentifier activeElement = UIElementIdentifier::NONE;
 };

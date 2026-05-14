@@ -61,7 +61,24 @@ void RenderSystem::CleanUp()
 void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState,
                                    const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope)
 {
-    Uint64 start = SDL_GetPerformanceCounter();
+    SceneIdentifier current_scene = UIState.getCurrentScene();
+    if (current_scene == SceneIdentifier::GAME_SCENE)
+    {
+        renderGameFrame(gameState, UIState, allUIElementsInScope);
+    }
+    else if (current_scene == SceneIdentifier::PAUSE_SCENE)
+    {
+        renderPauseFrame(gameState, UIState, allUIElementsInScope);
+    }
+    else
+    {
+        return;
+    }
+    SDL_RenderPresent(renderer);
+}
+void RenderSystem::renderGameFrame(GameState& gameState, UIState& UIState,
+                                   const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope)
+{
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // black background
     SDL_RenderClear(renderer);
 
@@ -77,14 +94,16 @@ void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState,
     renderUIElements(UIState, allUIElementsInScope);
 
     // Display the frame
-    Uint64 beforePresent = SDL_GetPerformanceCounter();
-    SDL_RenderPresent(renderer);
-    Uint64 end = SDL_GetPerformanceCounter();
-    double render_ms = (beforePresent - start) * 1000.0 / SDL_GetPerformanceFrequency();
-    double present_ms = (end - beforePresent) * 1000.0 / SDL_GetPerformanceFrequency();
 
     // SDL_Log("PRESENT STALL: %f ms", present_ms);
     // SDL_Log("Render STALL: %f ms", render_ms);
+}
+void RenderSystem::renderPauseFrame(GameState& gameState, UIState& UIState,
+                                    const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope)
+{
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // black background
+    SDL_RenderClear(renderer);
+    renderUIElements(UIState, allUIElementsInScope);
 }
 void RenderSystem::renderPreviewBodies(UIState& UIState)
 {

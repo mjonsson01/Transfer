@@ -43,7 +43,8 @@ class GameState
 
     void incrementMaxIDInstantiated() { maxIDInstantiated += 1; }
     int getMaxIDInstantiated() const { return maxIDInstantiated; }
-  private:
+
+    private:
     // State variables
     bool isPlaying = false;
     bool playMusic = false;

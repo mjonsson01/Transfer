@@ -32,29 +32,12 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState
             // Will ensure the event is not yet consumed by the UI.
             UIState.getMutableInputState().UIInputConsumed = false;
             // First check if in start menu. If so, route input to start menu behaviors
-            if (UIState.getStartMenuActive())
+            SceneIdentifier current_scene = UIState.getCurrentScene();
+            switch (current_scene)
             {
-                // Handle start menu specific input
+            case SceneIdentifier::START_MENU_SCENE:
                 break;
-            }
-            // If not in start menu, double check we are not in a pause menu. If so, route to pause menu behaviors
-            if (UIState.getPauseMenuActive())
-            {
-                // Handle pause menu specific input
-                routeSDL_EventInputInMenu(&event);
-                translateAndPassMenuInputsOff(UIState);
-                break;
-            }
-            // Check if we are in a level editor. Not implemented yet so will never enter for now.
-            if (UIState.getLevelEditorScene())
-            {
-                // Handle level editor specific input
-                break;
-            }
-            // Check if we are in a level. If so, route commands accordingly.
-            if (UIState.getGameScene())
-            {
-                // Handle level scene specific input
+            case SceneIdentifier::GAME_SCENE:
                 routeSDL_EventInputInGame(&event); // writes to internal member transferInputs;
 
                 // UI Only interactible through mouse clicks, but pass through the transfer game inputs so that the
@@ -63,9 +46,15 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState
                 // pass off data to the UIState InputState sub data. UISystem may or may not consume this input. If it
                 // does not, the UISystem will flip flags as necessary to make sure the input is consumed
                 translateAndPassTransferInputsOff(UIState);
-
+                break;
+            case SceneIdentifier::PAUSE_SCENE:
+                routeSDL_EventInputInMenu(&event);
+                translateAndPassMenuInputsOff(UIState);
+                break;
+            default:
                 break;
             }
+            // If not in start menu, double check we are not in a pause menu. If so, route to pause menu behaviors
         }
     }
 
@@ -136,8 +125,8 @@ void InputSystem::routeSDL_EventInputInGame(SDL_Event* e)
     {
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
 
-        // if no mouse buttons are currently being dragged, set the start of the drag location. otherwise just continue
-        // tracking buttons (the start position will remain fixed)
+        // if no mouse buttons are currently being dragged, set the start of the drag location. otherwise just
+        // continue tracking buttons (the start position will remain fixed)
         if (!transferInputs.leftMousePressed && !transferInputs.rightMousePressed && !transferInputs.middleMousePressed)
         {
             // This is a dragging event
@@ -278,7 +267,8 @@ void InputSystem::translateAndPassMenuInputsOff(UIState& UIState)
     updated_input_state.leftMouseButtonJustPressed = transferInputs.leftMouseJustPressed;
     if (transferInputs.escJustPressed)
     {
-        UIState.setPauseMenuActive(false);
+        // UIState.setPauseMenuActive(false);
+        UIState.setCurrentScene(SceneIdentifier::GAME_SCENE);
         transferInputs.resetAllKeyPressedVars();
         transferInputs.resetAllMousePressedVars();
         transferInputs.resetJustPressed();
@@ -301,7 +291,8 @@ void InputSystem::translateAndPassTransferInputsOff(UIState& UIState)
     }
     if (transferInputs.escJustPressed)
     {
-        UIState.setPauseMenuActive(true);
+        // UIState.setPauseMenuActive(true);
+        UIState.setCurrentScene(SceneIdentifier::PAUSE_SCENE);
         transferInputs.resetAllKeyPressedVars();
         transferInputs.resetAllMousePressedVars();
         transferInputs.resetJustPressed();

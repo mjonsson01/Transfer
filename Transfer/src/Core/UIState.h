@@ -7,6 +7,8 @@
 
 // Custom Imports
 #include "Core/InputState.h"
+#include "Entities/UIElements/UIElementIdentifierEnum.h"
+#include "Scenes/SceneIdentifierEnum.h"
 #include "Utilities/Constants/GameSystemConstants.h"
 
 // Standard Library Imports
@@ -24,34 +26,38 @@ class UIState
     bool getAllUIVisibility() { return allUIElementsVisible; }
     void invertUIElementsVisibility() { allUIElementsVisible = !allUIElementsVisible; }
 
-    bool getGameScene() { return levelScene; }
-    void setGameScene(bool ls) { levelScene = ls; }
-    bool getLevelEditorScene() { return levelEditorScene; }
-    void setLevelEditorScene(bool les) { levelEditorScene = les; }
-    bool getLevelSelectScene() { return levelSelectScene; }
-    void setLevelSelectScene(bool lss) { levelEditorScene = lss; }
-    bool getPauseMenuActive() { return pauseMenuActive; }
-    void setPauseMenuActive(bool pma) { pauseMenuActive = pma; }
-    bool getStartMenuActive() { return startMenuActive; }
-    void setStartMenuActive(bool sma) { startMenuActive = sma; }
+    // bool getGameScene() { return levelScene; }
+    // void setGameScene(bool ls) { levelScene = ls; }
+    // bool getLevelEditorScene() { return levelEditorScene; }
+    // void setLevelEditorScene(bool les) { levelEditorScene = les; }
+    // bool getLevelSelectScene() { return levelSelectScene; }
+    // void setLevelSelectScene(bool lss) { levelEditorScene = lss; }
+    // bool getPauseMenuActive() { return pauseMenuActive; }
+    // void setPauseMenuActive(bool pma) { pauseMenuActive = pma; }
+    // bool getStartMenuActive() { return startMenuActive; }
+    // void setStartMenuActive(bool sma) { startMenuActive = sma; }
     bool getRenderDebug() { return renderDebug; }
     void setRenderDebug(bool rd) { renderDebug = rd; }
     float getTimeScaleFactor() const { return static_cast<float>(inputState.selectedSimSpeedScale); }
+    SceneIdentifier getCurrentScene() const { return currentScene; }
+    void setCurrentScene(SceneIdentifier scene_desired) { currentScene = scene_desired; }
 
   private:
     InputState inputState;
     float framesPerSecond = TARGET_FPS;
 
     // Menus
-    bool startMenuActive = false;
-    bool pauseMenuActive = false;
+    // bool startMenuActive = false;
+    // bool pauseMenuActive = false;
 
-    // Scenes
-    bool levelScene = false;
-    bool levelEditorScene = false;
-    bool levelSelectScene = false;
+    // // Scenes
+    // bool levelScene = false;
+    // bool levelEditorScene = false;
+    // bool levelSelectScene = false;
 
     bool renderDebug = VIEW_DEBUG;    // Toggles rendering of debug elements like
                                       // collision boxes, spawn areas, etc.
     bool allUIElementsVisible = true; // Default to true because we want all elements visible.
+
+    SceneIdentifier currentScene = SceneIdentifier::NO_SCENE;
 };

@@ -28,44 +28,48 @@ UISystem::~UISystem()
 
 void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState)
 {
-    if (UIState.getGameScene()) // TODO convert to switch of game scene?
+    SceneIdentifier current_scene = UIState.getCurrentScene();
+    switch (current_scene)
     {
-        if (UIState.getPauseMenuActive())
-        {
-            updatePauseUIElements(gameState, UIState);
-        }
-        else
-        {
-            updateGameUIElements(gameState, UIState);
-        }
-    }
-    else
-    {
-        return;
+    case SceneIdentifier::GAME_SCENE:
+        updateGameUIElements(gameState, UIState);
+        break;
+    case SceneIdentifier::PAUSE_SCENE:
+        updatePauseUIElements(gameState, UIState);
+    default:
+        break;
     }
 }
-void UISystem::populateScenes() {}
+void UISystem::populateScenes()
+{
+    for ([ scene_id, scene_ptr ] : allScenes)
+    {
+        scene_ptr->populateMe();
+    }
+    return;
+}
 void UISystem::updateGameUIElements(GameState& gameState, UIState& UIState)
 {
     bool consumed = false;
+    UIElementIdentifier potential_active_element = UIElementIdentifier::NONE;
     InputState& inputsReceived = UIState.getMutableInputState();
 
     // Grab elements on just pressed
     if (inputsReceived.leftMouseButtonJustPressed)
     {
-        activeElement = findElementWeAreIn(inputsReceived);
+        potential_active_element = findElementWeAreIn(inputsReceived);
     }
     // immediately consume if clicking on an active element
-    if (activeElement != UIElementIdentifier::NONE)
+    if (potential_active_element != UIElementIdentifier::NONE)
     {
         consumed = true;
     }
     // continuously update elements that are draggable
     if (inputsReceived.isClickingLeftMouseButton && inputsReceived.isDragging)
     {
-        if (isSlider(activeElement) && activeElement != FPS_COUNTER_INDEX)
+        if (isSlider(potential_active_element) && potential_active_element != FPS_COUNTER_INDEX)
         {
-            routeSliderInput(activeElement, inputsReceived);
+            routeSliderInput(potential_active_element, inputsReceived);
             consumed = true;
         }
     }
@@ -79,11 +83,11 @@ void UISystem::updateGameUIElements(GameState& gameState, UIState& UIState)
             {
                 consumed = true;
 
-                if (isButton(activeElement))
+                if (isButton(potential_active_element))
                 {
-                    routeButtonClick(activeElement, inputsReceived);
+                    routeButtonClick(potential_active_element, inputsReceived);
                 }
-                activeElement = UIElementIdentifier::NONE; // Reset for next interaction
+                potential_active_element = UIElementIdentifier::NONE; // Reset for next interaction
             }
         }
     }
@@ -101,8 +105,8 @@ void UISystem::CleanUp()
         if (scene_ptr)
         {
             scene_ptr->CleanUpSceneElements();
-            delete scene_pair.second;
-            scene_ptr = nullptr
+            delete scene_ptr;
+            scene_ptr = nullptr;
         }
     }
     allScenes.clear();

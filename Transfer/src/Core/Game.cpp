@@ -31,9 +31,9 @@ void Game::StartGame()
     // implemented yet.
 
     // NEED TO FIX. THIS WILL BE ADJUSTED IN UPDATES TO SCENE MANAGEMENT TBI
-    UIState.setGameScene(true);
+    // UIState.setGameScene(true);
+    UIState.setCurrentScene(SceneIdentifier::GAME_SCENE);
     // UIState.setRenderDebug(true); // default to true for now to help with development
-
     // Start the main game loop
     Game::Run();
 
@@ -79,6 +79,7 @@ void Game::Run()
     {
 
         // Poll for SDL Events and Process Input
+        // std::cout << "UIState.getCurrentScene()" << UIState.getCurrentScene() << std::endl;
         Game::ProcessInput();
         if (!gameState.IsPlaying())
             break; // stop immediately

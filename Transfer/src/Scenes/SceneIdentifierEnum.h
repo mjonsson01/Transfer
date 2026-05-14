@@ -6,7 +6,7 @@ enum SceneIdentifier : int
 {
     NO_SCENE = -1,
     START_MENU_SCENE = 0,
-    GAME_SCENE = 0,
-    PAUSE_SCENE = 1,
-    TEST_VISUAL_SCENE = 2
+    GAME_SCENE = 1,
+    PAUSE_SCENE = 2,
+    TEST_VISUAL_SCENE = 3
 };
