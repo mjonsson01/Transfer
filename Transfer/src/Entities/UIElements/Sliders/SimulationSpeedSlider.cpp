@@ -27,5 +27,5 @@ SimulationSpeedSlider::SimulationSpeedSlider() : Slider()
 
     setVisibility(true);
     setPosition(trackRect.x, trackRect.y);
-    UIElementIdentifierIdentifier = UIElementIdentifier::SIMULATION_SPEED_SLIDER_INDEX;
+    UIElementID = UIElementIdentifier::SIMULATION_SPEED_SLIDER_INDEX;
 }

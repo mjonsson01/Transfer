@@ -28,7 +28,7 @@ MassSlider::MassSlider() : Slider()
 
     setVisibility(true);
     setPosition(trackRect.x, trackRect.y);
-    UIElementIdentifierIdentifier = UIElementIdentifier::MASS_SLIDER_INDEX;
+    UIElementID = UIElementIdentifier::MASS_SLIDER_INDEX;
 }
 
 void MassSlider::slideMe(Vector2D positionOfEvent, double& returnedElementValue)

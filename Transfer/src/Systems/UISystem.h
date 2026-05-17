@@ -10,7 +10,7 @@
 #include "Core/GameState.h"
 #include "Core/InputState.h"
 #include "Core/UIState.h"
-#include "Entities/UIElements/Buttons/PlayGameButton.h"
+#include "Entities/UIElements/Buttons/PlayGameButton/PlayGameButton.h"
 #include "Entities/UIElements/Overlay/FPSCounter.h"
 #include "Entities/UIElements/Sliders/MassSlider.h"
 #include "Entities/UIElements/Sliders/RadiusSlider.h"
@@ -33,8 +33,8 @@ class UISystem
     void CleanUp();
     void UpdateUIElements(GameState& gameState, UIState& UIState);
     void updateGameUIElements(GameState& gameState, UIState& UIState);
-    std::unordered_map<UIElementIdentifier, UIElement*>& getAllUIElements() { return allUIElements; }
     Scene* getScene(SceneIdentifier sceneID) { return allScenes[sceneID]; }
+    void updateUISystemCurrentSceneID(UIState& UIState) { currentSceneID = UIState.getCurrentSceneID(); }
     void updatePauseUIElements(GameState& gameState, UIState& UIState);
 
     UIElementIdentifier findElementWeAreIn(InputState& inputsReceived);
@@ -43,8 +43,9 @@ class UISystem
     void populateScenes();
 
   private:
+    SceneIdentifier currentSceneID = SceneIdentifier::NO_SCENE;
     bool isSlider(UIElementIdentifier typeToCheck);
     bool isButton(UIElementIdentifier typeToCheck);
     std::unordered_map<SceneIdentifier, Scene*> allScenes;
-    std::unordered_map<UIElementIdentifier, UIElement*> allUIElements;
+    UIElementIdentifier activeElementID = UIElementIdentifier::NONE;
 };

@@ -1,6 +1,6 @@
-// File: Transfer/src/Entities/UIElements/Buttons/PlayGameButton.cpp
+// File: Transfer/src/Entities/UIElements/Buttons/PlayGameButton/PlayGameButton.cpp
 
-#include "Entities/UIElements/Buttons/PlayGameButton.h"
+#include "Entities/UIElements/Buttons/PlayGameButton/PlayGameButton.h"
 
 PlayGameButton::PlayGameButton() : Button()
 {
@@ -10,5 +10,5 @@ PlayGameButton::PlayGameButton() : Button()
     displayText = "Play Game";
     altText = "Clicked";
     bool buttonSelected = false;
-    UIElementIdentifierIdentifier = UIElementIdentifier::PLAY_GAME_BUTTON_INDEX;
+    UIElementID = UIElementIdentifier::PLAY_GAME_BUTTON_INDEX;
 }

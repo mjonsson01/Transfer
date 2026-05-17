@@ -13,7 +13,7 @@ UIElementIdentifier UIElement::checkAndReturnIfHit(const Vector2D& positionToChe
     UIElementIdentifier type_hit = UIElementIdentifier::NONE;
     if (SDL_PointInRectFloat(&point, &hotZoneRect))
     {
-        type_hit = UIElementIdentifierIdentifier;
+        type_hit = UIElementID;
     }
     return type_hit;
 }

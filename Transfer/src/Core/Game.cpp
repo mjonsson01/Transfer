@@ -30,8 +30,6 @@ void Game::StartGame()
     // Default to starting in the level scene since other scenes are not
     // implemented yet.
 
-    // NEED TO FIX. THIS WILL BE ADJUSTED IN UPDATES TO SCENE MANAGEMENT TBI
-    // UIState.setGameScene(true);
     UIState.setCurrentScene(SceneIdentifier::GAME_SCENE);
     // UIState.setRenderDebug(true); // default to true for now to help with development
     // Start the main game loop
@@ -79,7 +77,6 @@ void Game::Run()
     {
 
         // Poll for SDL Events and Process Input
-        // std::cout << "UIState.getCurrentScene()" << UIState.getCurrentScene() << std::endl;
         Game::ProcessInput();
         if (!gameState.IsPlaying())
             break; // stop immediately
@@ -91,7 +88,6 @@ void Game::Run()
         if (SDL_GetTicks() - last_slowdown_print_time > slowdown_print_timer)
         {
             // Add slowed down print statements here
-            // std::cout << gameState.getParticles().size() << std::endl;
         }
 
         // Timekeeping
@@ -100,12 +96,22 @@ void Game::Run()
         last_physics_update_time = now;
 
         // Deal with SLOWMO or SPEEDUP
-        scaled_frame_delta = frame_delta * UIState.getTimeScaleFactor(); // Use the new time scale factor
-        physics_time_accumulator += scaled_frame_delta;
+        if (UIState.getCurrentSceneID() == SceneIdentifier::GAME_SCENE)
+        {
+            scaled_frame_delta = frame_delta * UIState.getTimeScaleFactor();
 
+            physics_time_accumulator += scaled_frame_delta;
+        }
+        if (UIState.getCurrentSceneID() != SceneIdentifier::GAME_SCENE)
+        {
+            physics_time_accumulator = 0.0;
+        }
         // Update Physics (remains untouched by time scaling of rendering,
         // maintaining physics accuracy)
-        while (physics_time_accumulator >= PHYSICS_TIME_STEP)
+        // UIState.getCurrentSceneID() != SceneIdentifier::PAUSE_SCENE
+        // This doesn't really work to force scene dependence...
+        while (physics_time_accumulator >= PHYSICS_TIME_STEP &&
+               UIState.getCurrentSceneID() == SceneIdentifier::GAME_SCENE)
         {
             Game::IntegratePhysicsFrame();
             physics_time_accumulator -= PHYSICS_TIME_STEP;
@@ -146,7 +152,7 @@ void Game::UpdateInstantiations() { physicsSystem.UpdateGravBodyInstantiations(g
 void Game::RenderFrame()
 {
     // Dispatch to Renderer System -- renders UI as well.
-    Scene* current_scene = UISystem.getScene(UIState.getCurrentScene());
+    Scene* current_scene = UISystem.getScene(UIState.getCurrentSceneID());
     const std::unordered_map<UIElementIdentifier, UIElement*>& UI_elements_in_scene = current_scene->getSceneElements();
     renderSystem.RenderFullFrame(gameState, UIState, UI_elements_in_scene);
 }

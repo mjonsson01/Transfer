@@ -28,5 +28,5 @@ RadiusSlider::RadiusSlider() : Slider()
 
     setVisibility(true);
     setPosition(trackRect.x, trackRect.y);
-    UIElementIdentifierIdentifier = UIElementIdentifier::RADIUS_SLIDER_INDEX;
+    UIElementID = UIElementIdentifier::RADIUS_SLIDER_INDEX;
 }

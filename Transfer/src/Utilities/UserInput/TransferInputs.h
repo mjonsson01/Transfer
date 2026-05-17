@@ -46,6 +46,26 @@ struct TransferInputs
     bool isDragging = false;
 
     // Helper utilities
+    void resetAllInputsForSceneChange()
+    {
+        this->wPressed = false;
+        this->aPressed = false;
+        this->sPressed = false;
+        this->dPressed = false;
+        this->spacePressed = false;
+        this->clearParticlesPressed = false;
+        this->leftMousePressed = false;
+        this->rightMousePressed = false;
+        this->middleMousePressed = false;
+        this->leftMouseJustReleased = false;
+        this->leftMouseJustPressed = false;
+        this->escPressed = false;
+        this->zeroPressed = false;
+        this->escJustPressed = false;
+        this->shiftPressed = false;
+        this->altPressed = false;
+        this->isDragging = false;
+    }
     void resetAllMousePressedVars()
     {
         this->leftMousePressed = false;

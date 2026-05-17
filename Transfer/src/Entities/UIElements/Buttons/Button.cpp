@@ -12,6 +12,7 @@ Button::Button()
 
 void Button::clickMe(Vector2D positionOfEvent)
 {
+    std::cout << "clickMe called" << std::endl;
     std::string temp = altText;
     altText = displayText;
     displayText = temp;

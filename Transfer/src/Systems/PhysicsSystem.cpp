@@ -58,9 +58,6 @@ static inline GravitationalBodyPair pickMassPair(GravitationalBody& a, Gravitati
 void PhysicsSystem::UpdateSystemFrame(GameState& gameState, UIState& UIState)
 {
     // Check if the Physics System is paused for early exit
-    if (UIState.getInputState().isPhysicsPaused)
-        return;
-
     // ------------------------ MAIN PHYSICS LOOP ------------------------ //
 
     // Handle all the collisions
@@ -82,7 +79,6 @@ void PhysicsSystem::UpdateSystemFrame(GameState& gameState, UIState& UIState)
 
             if (body.lifetime == 0)
             {
-                // std::cout << body.mass / MAX_MASS << std::endl;
                 body.isMarkedForDeletion = true; // flag for removal
                 // body.mass = 0;
                 // body.isCollidable = false;
@@ -104,13 +100,6 @@ void PhysicsSystem::UpdateSystemFrame(GameState& gameState, UIState& UIState)
     // Clean up the marked for deletion particles and macro bodies
     cleanupParticles(gameState);
     cleanupMacroBodies(gameState);
-
-    // auto& particles = gameState.getParticlesMutable();
-    // if (particles.size() > 0)
-    //     std::cout << particles[0].velocity << std::endl;
-    // auto& macro_bodiesPrint = gameState.getMacroBodiesMutable();
-    // if (macro_bodiesPrint.size() > 1)
-    //     std::cout << macro_bodiesPrint[1].netForce << std::endl;
 }
 
 // --------- CLEANUP METHOD --------- //
@@ -392,9 +381,6 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
                 continue;
             }
 
-            // check if going fast enough to blow up
-            // std::cout << "shouldBlowUp: " << collision_info.shouldBlowUp
-            //           << std::endl;
             if (collision_info.shouldBlowUp)
             {
                 if (pair.heavy->isBounce) // even if going fast, should bounce
@@ -451,7 +437,6 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
             // accrete
             else
             {
-                std::cout << pair.ratio << std::endl;
                 if (pair.light->isAccretable && pair.ratio >= MIN_BODY_BODY_ACCRETION_THRESHOLD_RATIO)
                 {
                     // std::cout << "Collision Branch Hit: 12" << std::endl;
@@ -591,6 +576,33 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, Grav
     // Apply
     smallerBody.velocity = v_smaller + v_smaller_change;
     largerBody.velocity = v_larger + v_larger_change;
+
+    double penetration = (smallerBody.radius + largerBody.radius) - distance;
+
+    if (penetration > 0.0)
+    {
+        constexpr double percent = 0.8; // correction strength
+        constexpr double slop = 0.01;   // small tolerance
+
+        double correction_magnitude = std::max(penetration - slop, 0.0) * percent;
+
+        Vector2D correction = normal_vector * correction_magnitude;
+
+        // static handling
+        if (smallerBody.isStatic && !largerBody.isStatic)
+        {
+            largerBody.position += correction;
+        }
+        else if (!smallerBody.isStatic && largerBody.isStatic)
+        {
+            smallerBody.position -= correction;
+        }
+        else if (!smallerBody.isStatic && !largerBody.isStatic)
+        {
+            smallerBody.position -= correction * 0.5;
+            largerBody.position += correction * 0.5;
+        }
+    }
 }
 
 void PhysicsSystem::handleDynamicExplosionCollision(GravitationalBody& macroBody1, GravitationalBody& macroBody2,
@@ -803,7 +815,6 @@ void PhysicsSystem::substituteWithParticles(GravitationalBody& originalBody, Gam
     // Check if we found any pixels (safety)
     if (pixelPositions.empty())
     {
-        // std::cout<<"no pixels"<<std::endl;
         return;
     }
 
@@ -859,7 +870,6 @@ void PhysicsSystem::populateCollisionProxyFromMacroBody(GravitationalBody& origi
     proxyBody.netForce = {0.0, 0.0};
     proxyBody.prevForce = {0.0, 0.0};
     proxyBody.visible = false;
-    // std::cout << proxyBody << std::endl;
 }
 // --------- CLEANUP GRAVITATIONAL BODIES METHODS --------- //
 

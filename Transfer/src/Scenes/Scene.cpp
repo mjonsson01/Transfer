@@ -11,7 +11,6 @@ void Scene::CleanUpSceneElements()
     {
         if (UI_element_ptr)
         {
-            // std::cout << "UIElement Deleted" << std::endl;
             delete UI_element_ptr;
             UI_element_ptr = nullptr;
         }

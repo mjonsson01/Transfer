@@ -1,4 +1,4 @@
-// File: Transfer/src/Entities/UIElements/Buttons/PlayGameButton.h
+// File: Transfer/src/Entities/UIElements/Buttons/PlayGameButton/PlayGameButton.h
 
 #pragma once
 

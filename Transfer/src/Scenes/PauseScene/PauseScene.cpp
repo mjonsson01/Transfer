@@ -9,7 +9,6 @@ PauseScene::PauseScene() : Scene(SceneIdentifier::PAUSE_SCENE)
 
 void PauseScene::populateMe()
 {
-    // std::cout << "gamescenepopulatecalled" << std::endl;
     PlayGameButton* play_game_button = new PlayGameButton();
     for (auto& [UI_element_ID, UI_element_ptr] : sceneUIElements)
     {

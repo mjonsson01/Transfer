@@ -61,8 +61,7 @@ void RenderSystem::CleanUp()
 void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState,
                                    const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope)
 {
-    std::cout << "UIElements in scope size: " << allUIElementsInScope.size() << std::endl;
-    SceneIdentifier current_scene = UIState.getCurrentScene();
+    SceneIdentifier current_scene = UIState.getCurrentSceneID();
     if (current_scene == SceneIdentifier::GAME_SCENE)
     {
         renderGameFrame(gameState, UIState, allUIElementsInScope);
@@ -327,7 +326,6 @@ void RenderSystem::renderUIElements(UIState& UIState,
 
     for (auto& [UI_element_ID, UI_element_ptr] : allUIElementsInScope)
     {
-        std::cout << "rendering element: " << UI_element_ID << std::endl;
         if (UI_element_ID == PLAY_GAME_BUTTON_INDEX)
         {
             UI_element_ptr->renderMe(renderer, UIState, UIFontTitle);

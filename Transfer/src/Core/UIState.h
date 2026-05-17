@@ -25,21 +25,10 @@ class UIState
     void setFPS(float fps) { framesPerSecond = fps; }
     bool getAllUIVisibility() { return allUIElementsVisible; }
     void invertUIElementsVisibility() { allUIElementsVisible = !allUIElementsVisible; }
-
-    // bool getGameScene() { return levelScene; }
-    // void setGameScene(bool ls) { levelScene = ls; }
-    // bool getLevelEditorScene() { return levelEditorScene; }
-    // void setLevelEditorScene(bool les) { levelEditorScene = les; }
-    // bool getLevelSelectScene() { return levelSelectScene; }
-    // void setLevelSelectScene(bool lss) { levelEditorScene = lss; }
-    // bool getPauseMenuActive() { return pauseMenuActive; }
-    // void setPauseMenuActive(bool pma) { pauseMenuActive = pma; }
-    // bool getStartMenuActive() { return startMenuActive; }
-    // void setStartMenuActive(bool sma) { startMenuActive = sma; }
     bool getRenderDebug() { return renderDebug; }
     void setRenderDebug(bool rd) { renderDebug = rd; }
     float getTimeScaleFactor() const { return static_cast<float>(inputState.selectedSimSpeedScale); }
-    SceneIdentifier getCurrentScene() const { return currentScene; }
+    SceneIdentifier getCurrentSceneID() const { return currentScene; }
     void setCurrentScene(SceneIdentifier scene_desired) { currentScene = scene_desired; }
 
   private:

@@ -5,20 +5,8 @@
 // Constructor
 UISystem::UISystem() : allScenes()
 {
-    // FPSCounter* fps_counter = new FPSCounter();
-    // allUIElements.insert({fps_counter->getUIElementIdentifier(), fps_counter});
-    // MassSlider* mass_slider = new MassSlider();
-    // allUIElements.insert({mass_slider->getUIElementIdentifier(), mass_slider});
-    // RadiusSlider* radius_slider = new RadiusSlider();
-    // allUIElements.insert({radius_slider->getUIElementIdentifier(), radius_slider});
-    // SimulationSpeedSlider* simulation_speed_slider = new SimulationSpeedSlider();
-    // allUIElements.insert({simulation_speed_slider->getUIElementIdentifier(), simulation_speed_slider});
-    // PlayGameButton* play_button = new PlayGameButton();
-    // allGameUIElements.push_back(play_button);
-    // allScenes.insert({START_MENU_SCENE, nullptr});
     allScenes.insert({GAME_SCENE, nullptr});
     allScenes.insert({PAUSE_SCENE, nullptr});
-    // allScenes.insert({TEST_VISUAL_SCENE, nullptr});
 
     populateScenes();
 }
@@ -30,26 +18,39 @@ UISystem::~UISystem()
 
 void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState)
 {
-    SceneIdentifier current_scene = UIState.getCurrentScene();
-    switch (current_scene)
+    updateUISystemCurrentSceneID(UIState); // get most up to date current scene
+    switch (currentSceneID)
     {
     case SceneIdentifier::GAME_SCENE:
         updateGameUIElements(gameState, UIState);
         break;
     case SceneIdentifier::PAUSE_SCENE:
         updatePauseUIElements(gameState, UIState);
+        break;
     default:
         break;
     }
 }
+void UISystem::CleanUp()
+{
+    for (auto& [scene_ID, scene_ptr] : allScenes)
+    {
+        if (scene_ptr)
+        {
+            scene_ptr->CleanUpSceneElements();
+            delete scene_ptr;
+            scene_ptr = nullptr;
+        }
+    }
+    allScenes.clear();
+}
+
 void UISystem::populateScenes()
 {
-    // std::cout << "populateScenes Called" << std::endl;
     GameScene* game_scene = new GameScene();
     PauseScene* pause_scene = new PauseScene();
     for (auto& [scene_ID, scene_ptr] : allScenes)
     {
-        // std::cout << "hit all scenes for loop" << std::endl;
         switch (scene_ID)
         {
         case SceneIdentifier::GAME_SCENE:
@@ -65,74 +66,88 @@ void UISystem::populateScenes()
         }
     }
 }
+
 void UISystem::updateGameUIElements(GameState& gameState, UIState& UIState)
 {
     bool consumed = false;
-    UIElementIdentifier potential_active_element = UIElementIdentifier::NONE;
-    InputState& inputsReceived = UIState.getMutableInputState();
+    InputState& inputs_received = UIState.getMutableInputState();
 
-    // Grab elements on just pressed
-    if (inputsReceived.leftMouseButtonJustPressed)
+    if (inputs_received.leftMouseButtonJustPressed)
     {
-        potential_active_element = findElementWeAreIn(inputsReceived);
+        activeElementID = findElementWeAreIn(inputs_received);
     }
-    // immediately consume if clicking on an active element
-    if (potential_active_element != UIElementIdentifier::NONE)
+    if (activeElementID != UIElementIdentifier::NONE)
     {
         consumed = true;
-    }
-    // continuously update elements that are draggable
-    if (inputsReceived.isClickingLeftMouseButton && inputsReceived.isDragging)
-    {
-        if (isSlider(potential_active_element) && potential_active_element != FPS_COUNTER_INDEX)
+        if (inputs_received.isClickingLeftMouseButton)
         {
-            routeSliderInput(potential_active_element, inputsReceived);
-            consumed = true;
-        }
-    }
-    else
-    {
-        // If we just released the mouse
-        if (inputsReceived.leftMouseButtonJustReleased)
-        {
-            UIElementIdentifier releasedOverElement = findElementWeAreIn(inputsReceived);
-            if (releasedOverElement != UIElementIdentifier::NONE)
+            if (isSlider(activeElementID))
             {
-                consumed = true;
-
-                if (isButton(potential_active_element))
-                {
-                    routeButtonClick(potential_active_element, inputsReceived);
-                }
-                potential_active_element = UIElementIdentifier::NONE; // Reset for next interaction
+                routeSliderInput(activeElementID, inputs_received);
             }
         }
-    }
-    inputsReceived.UIInputConsumed = consumed;
-    inputsReceived.isPreviewingMacro = inputsReceived.isClickingLeftMouseButton && !consumed;
-    inputsReceived.isPreviewingWithInitialVelocity = inputsReceived.isPreviewingMacro && inputsReceived.isPressingShift;
-}
-
-void UISystem::updatePauseUIElements(GameState& gameState, UIState& UIState) { return; }
-
-void UISystem::CleanUp()
-{
-    for (auto& [scene_ID, scene_ptr] : allScenes)
-    {
-        if (scene_ptr)
+        if (inputs_received.leftMouseButtonJustReleased)
         {
-            // std::cout << "scene Deleted" << std::endl;
-            scene_ptr->CleanUpSceneElements();
-            delete scene_ptr;
-            scene_ptr = nullptr;
+            UIElementIdentifier releasedOver = findElementWeAreIn(inputs_received);
+
+            if (releasedOver == activeElementID)
+            {
+                if (isButton(activeElementID))
+                {
+                    routeButtonClick(activeElementID, inputs_received);
+                }
+            }
+            activeElementID = UIElementIdentifier::NONE;
         }
     }
-    allScenes.clear();
+    inputs_received.UIInputConsumed = consumed;
+    inputs_received.isPreviewingMacro = inputs_received.isClickingLeftMouseButton && !consumed;
+    inputs_received.isPreviewingWithInitialVelocity =
+        inputs_received.isPreviewingMacro && inputs_received.isPressingShift;
+}
+
+void UISystem::updatePauseUIElements(GameState& gameState, UIState& UIState)
+{
+    bool consumed = false;
+    InputState& inputs_received = UIState.getMutableInputState();
+
+    if (inputs_received.leftMouseButtonJustPressed)
+    {
+        activeElementID = findElementWeAreIn(inputs_received);
+    }
+    if (activeElementID != UIElementIdentifier::NONE)
+    {
+        consumed = true;
+        if (inputs_received.isClickingLeftMouseButton)
+        {
+            if (isSlider(activeElementID))
+            {
+                routeSliderInput(activeElementID, inputs_received);
+            }
+        }
+        if (inputs_received.leftMouseButtonJustReleased)
+        {
+            UIElementIdentifier releasedOver = findElementWeAreIn(inputs_received);
+
+            if (releasedOver == activeElementID)
+            {
+                if (isButton(activeElementID))
+                {
+                    routeButtonClick(activeElementID, inputs_received);
+                }
+            }
+            activeElementID = UIElementIdentifier::NONE;
+        }
+    }
+    inputs_received.UIInputConsumed = consumed;
+    inputs_received.isPreviewingMacro = false;
+    inputs_received.isPreviewingWithInitialVelocity = false;
 }
 
 void UISystem::routeSliderInput(UIElementIdentifier sliderTypeToUpdate, InputState& inputState)
 {
-    UIElement* elementToUpdate = allUIElements.find(sliderTypeToUpdate)->second;
+    std::unordered_map<UIElementIdentifier, UIElement*> allUIElements = allScenes[currentSceneID]->getSceneElements();
+    UIElement* elementToUpdate = allUIElements[sliderTypeToUpdate];
 
     // this could be further abstracted into passing the full input state so
     // that the UIelement decides what it updates, but I want to make the ui
@@ -145,6 +160,7 @@ void UISystem::routeSliderInput(UIElementIdentifier sliderTypeToUpdate, InputSta
         elementToUpdate->slideMe(inputState.mouseCurrPosition, mass_val_to_be_calculated_and_injected);
         inputState.selectedMass = mass_val_to_be_calculated_and_injected;
     }
+
     else if (sliderTypeToUpdate == UIElementIdentifier::RADIUS_SLIDER_INDEX)
     {
         double radius_val_to_be_calculated_and_injected = 0.0; // initialize
@@ -166,7 +182,8 @@ void UISystem::routeSliderInput(UIElementIdentifier sliderTypeToUpdate, InputSta
 
 void UISystem::routeButtonClick(UIElementIdentifier buttonToUpdate, InputState& inputState)
 {
-    UIElement* elementToUpdate = allUIElements.find(buttonToUpdate)->second;
+    std::unordered_map<UIElementIdentifier, UIElement*> allUIElements = allScenes[currentSceneID]->getSceneElements();
+    UIElement* elementToUpdate = allUIElements[buttonToUpdate];
     if (buttonToUpdate == UIElementIdentifier::PLAY_GAME_BUTTON_INDEX)
     {
         elementToUpdate->clickMe(inputState.mouseCurrPosition);
@@ -175,12 +192,13 @@ void UISystem::routeButtonClick(UIElementIdentifier buttonToUpdate, InputState& 
 }
 UIElementIdentifier UISystem::findElementWeAreIn(InputState& inputsReceived)
 {
-    // std::cout<<"findElementWeAreInCalled"<<std::endl;
+
     UIElementIdentifier contacted_element = UIElementIdentifier::NONE; // default result
     Vector2D curr_pos = inputsReceived.mouseCurrPosition;
-    for (auto& pair : allUIElements)
+    std::unordered_map<UIElementIdentifier, UIElement*> allUIElements = allScenes[currentSceneID]->getSceneElements();
+    for (auto& [UI_element_ID, UI_element_ptr] : allUIElements)
     {
-        contacted_element = pair.second->checkAndReturnIfHit(curr_pos);
+        contacted_element = UI_element_ptr->checkAndReturnIfHit(curr_pos);
         if (contacted_element != UIElementIdentifier::NONE)
         {
             break; // stop at the first hit

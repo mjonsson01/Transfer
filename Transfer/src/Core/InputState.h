@@ -22,8 +22,8 @@ struct InputState
     bool leftMouseButtonJustReleased = false;
     bool isPressingShift = false;
 
-    double selectedMass = 0.0;   // spit back up from UI element to UISystem to UIState
-    double selectedRadius = 0.0; // spit back up from UI element to UISystem to UIState
+    double selectedMass = 0.0;          // spit back up from UI element to UISystem to UIState
+    double selectedRadius = 0.0;        // spit back up from UI element to UISystem to UIState
     double selectedSimSpeedScale = 1.0; // spit back up from UI element to UISystem to UIState
 
     bool UIInputConsumed = false; // Does not get reset as a transient flag
@@ -52,9 +52,7 @@ struct InputState
     bool isCreatingWithInitialVelocity = false;
 
     // Managed by player input
-    bool clearAll = false;        // Toggled when screen wipe is requested
-    bool isPhysicsPaused = false; // Toggled when rendering continues but Physics
-                                  // System integration is completely paused
+    bool clearAll = false; // Toggled when screen wipe is requested
     bool isPaused = false;
     bool isPreviewingMacro = false;
     bool isPreviewingWithInitialVelocity = false;
@@ -88,14 +86,44 @@ struct InputState
         return *this;
     }
 
-    // Toggle the pausing of the integrator while still rendering background
-    // elements
-    InputState& togglePhysicsPause()
+    InputState& resetFlagsForSceneChange()
     {
-        isPhysicsPaused = !isPhysicsPaused;
+        // Creation type flags
+        isCreatingMacro = false;
+        isCreatingParticle = false;
+        isCreatingParticleCluster = false;
+
+        // Creation subtype flags -- only one may be true
+        // Need to be implemented and well-defined
+        isCreatingPlanet = false;
+        isCreatingMoon = false;
+        isCreatingGravStar = false;
+        isCreatingDust = false;
+        isCreatingFragment = false;
+        isCreatingGas = false;
+
+        // Attribute enablement flags on creation
+        isCreatingStatic = false;
+        isCreatingShatterable = false;
+        isCreatingAccretable = false;
+        isCreatingCollidable = false;
+        isCreatingMacroGhost = false;
+        isCreatingWithInitialVelocity = false;
+
+        leftMouseButtonJustPressed = false;
+        leftMouseButtonJustReleased = false;
+        isDragging = false;                  // set in Input System
+        isClickingRightMouseButton = false;  // set by transfer inputs
+        isClickingMiddleMouseButton = false; // set by transfer inputs
+        isClickingLeftMouseButton = false;   // set by tranfer inputs
+        leftMouseButtonJustPressed = false;
+        leftMouseButtonJustReleased = false;
+        isPressingShift = false;
         return *this;
     }
 
+    // Toggle the pausing of the integrator while still rendering background
+    // elements
     // Wipe all the bodies from the screen and internal Game State
     InputState& clearAllBodies()
     {

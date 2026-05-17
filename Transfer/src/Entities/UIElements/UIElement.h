@@ -32,7 +32,7 @@ class UIElement
     float getY() const { return posY; }
     void setVisibility(bool desiredVisibility) { visible = desiredVisibility; }
     UIElementIdentifier checkAndReturnIfHit(const Vector2D& positionToCheck);
-    UIElementIdentifier getUIElementIdentifier() const { return UIElementIdentifierIdentifier; }
+    UIElementIdentifier getUIElementID() const { return UIElementID; }
 
   private:
     float posX = 0;
@@ -41,7 +41,7 @@ class UIElement
 
   protected:
     SDL_FRect hotZoneRect;
-    UIElementIdentifier UIElementIdentifierIdentifier;
+    UIElementIdentifier UIElementID;
 };
 
 // Derived UI Element Classes
