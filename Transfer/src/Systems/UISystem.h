@@ -19,6 +19,7 @@
 #include "Scenes/GameScene/GameScene.h"
 #include "Scenes/PauseScene/PauseScene.h"
 #include "Scenes/Scene.h"
+#include "Scenes/StartMenuScene/StartMenuScene.h"
 // Standard Library Imports
 #include <iostream>
 #include <unordered_map>
@@ -32,14 +33,15 @@ class UISystem
     ~UISystem();
     void CleanUp();
     void UpdateUIElements(GameState& gameState, UIState& UIState);
-    void updateGameUIElements(GameState& gameState, UIState& UIState);
     Scene* getScene(SceneIdentifier sceneID) { return allScenes[sceneID]; }
     void updateUISystemCurrentSceneID(UIState& UIState) { currentSceneID = UIState.getCurrentSceneID(); }
+    void updateGameUIElements(GameState& gameState, UIState& UIState);
     void updatePauseUIElements(GameState& gameState, UIState& UIState);
+    void updateStartMenuUIElements(GameState& gameState, UIState& UIState);
 
     UIElementIdentifier findElementWeAreIn(InputState& inputsReceived);
     void routeSliderInput(UIElementIdentifier elementToUpdate, InputState& inputState);
-    void routeButtonClick(UIElementIdentifier elementToUpdate, InputState& inputState);
+    void routeButtonClick(UIElementIdentifier elementToUpdate, UIState& UIState);
     void populateScenes();
 
   private:

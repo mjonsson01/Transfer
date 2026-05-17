@@ -12,3 +12,12 @@ PlayGameButton::PlayGameButton() : Button()
     bool buttonSelected = false;
     UIElementID = UIElementIdentifier::PLAY_GAME_BUTTON_INDEX;
 }
+
+void PlayGameButton::clickMe(Vector2D positionOfEvent, UIState& UIState)
+{
+    UIState.setCurrentScene(GAME_SCENE);
+    // std::string temp = altText;
+    // altText = displayText;
+    // displayText = temp;
+    return;
+}

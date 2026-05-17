@@ -30,7 +30,7 @@ void Game::StartGame()
     // Default to starting in the level scene since other scenes are not
     // implemented yet.
 
-    UIState.setCurrentScene(SceneIdentifier::GAME_SCENE);
+    UIState.setCurrentScene(SceneIdentifier::START_MENU_SCENE);
     // UIState.setRenderDebug(true); // default to true for now to help with development
     // Start the main game loop
     Game::Run();

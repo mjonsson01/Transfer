@@ -20,7 +20,7 @@ class Button : public UIElement
     ~Button() = default;
     void renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) override;
     virtual std::string getDisplayText() const { return displayText; }
-    void clickMe(Vector2D positionOfEvent) override;
+    virtual void clickMe(Vector2D positionOfEvent, UIState& UIState) override;
     double getButtonState() { return buttonSelected; }
 
   protected:

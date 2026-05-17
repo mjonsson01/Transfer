@@ -70,6 +70,10 @@ void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState,
     {
         renderPauseFrame(gameState, UIState, allUIElementsInScope);
     }
+    else if (current_scene == SceneIdentifier::START_MENU_SCENE)
+    {
+        renderStartMenuFrame(gameState, UIState, allUIElementsInScope);
+    }
     else
     {
         return;
@@ -99,6 +103,13 @@ void RenderSystem::renderGameFrame(GameState& gameState, UIState& UIState,
 }
 void RenderSystem::renderPauseFrame(GameState& gameState, UIState& UIState,
                                     const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope)
+{
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // black background
+    SDL_RenderClear(renderer);
+    renderUIElements(UIState, allUIElementsInScope);
+}
+void RenderSystem::renderStartMenuFrame(GameState& gameState, UIState& UIState,
+                                        const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope)
 {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // black background
     SDL_RenderClear(renderer);

@@ -5,8 +5,9 @@
 // Constructor
 UISystem::UISystem() : allScenes()
 {
-    allScenes.insert({GAME_SCENE, nullptr});
-    allScenes.insert({PAUSE_SCENE, nullptr});
+    allScenes.insert({SceneIdentifier::GAME_SCENE, nullptr});
+    allScenes.insert({SceneIdentifier::PAUSE_SCENE, nullptr});
+    allScenes.insert({SceneIdentifier::START_MENU_SCENE, nullptr});
 
     populateScenes();
 }
@@ -26,6 +27,9 @@ void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState)
         break;
     case SceneIdentifier::PAUSE_SCENE:
         updatePauseUIElements(gameState, UIState);
+        break;
+    case SceneIdentifier::START_MENU_SCENE:
+        updateStartMenuUIElements(gameState, UIState);
         break;
     default:
         break;
@@ -49,6 +53,7 @@ void UISystem::populateScenes()
 {
     GameScene* game_scene = new GameScene();
     PauseScene* pause_scene = new PauseScene();
+    StartMenuScene* start_menu_scene = new StartMenuScene();
     for (auto& [scene_ID, scene_ptr] : allScenes)
     {
         switch (scene_ID)
@@ -59,6 +64,10 @@ void UISystem::populateScenes()
             break;
         case SceneIdentifier::PAUSE_SCENE:
             scene_ptr = pause_scene;
+            scene_ptr->populateMe();
+            break;
+        case SceneIdentifier::START_MENU_SCENE:
+            scene_ptr = start_menu_scene;
             scene_ptr->populateMe();
             break;
         default:
@@ -94,7 +103,7 @@ void UISystem::updateGameUIElements(GameState& gameState, UIState& UIState)
             {
                 if (isButton(activeElementID))
                 {
-                    routeButtonClick(activeElementID, inputs_received);
+                    routeButtonClick(activeElementID, UIState);
                 }
             }
             activeElementID = UIElementIdentifier::NONE;
@@ -133,7 +142,45 @@ void UISystem::updatePauseUIElements(GameState& gameState, UIState& UIState)
             {
                 if (isButton(activeElementID))
                 {
-                    routeButtonClick(activeElementID, inputs_received);
+                    routeButtonClick(activeElementID, UIState);
+                }
+            }
+            activeElementID = UIElementIdentifier::NONE;
+        }
+    }
+    inputs_received.UIInputConsumed = consumed;
+    inputs_received.isPreviewingMacro = false;
+    inputs_received.isPreviewingWithInitialVelocity = false;
+}
+
+void UISystem::updateStartMenuUIElements(GameState& gameState, UIState& UIState)
+{
+    bool consumed = false;
+    InputState& inputs_received = UIState.getMutableInputState();
+
+    if (inputs_received.leftMouseButtonJustPressed)
+    {
+        activeElementID = findElementWeAreIn(inputs_received);
+    }
+    if (activeElementID != UIElementIdentifier::NONE)
+    {
+        consumed = true;
+        if (inputs_received.isClickingLeftMouseButton)
+        {
+            if (isSlider(activeElementID))
+            {
+                routeSliderInput(activeElementID, inputs_received);
+            }
+        }
+        if (inputs_received.leftMouseButtonJustReleased)
+        {
+            UIElementIdentifier releasedOver = findElementWeAreIn(inputs_received);
+
+            if (releasedOver == activeElementID)
+            {
+                if (isButton(activeElementID))
+                {
+                    routeButtonClick(activeElementID, UIState);
                 }
             }
             activeElementID = UIElementIdentifier::NONE;
@@ -180,13 +227,14 @@ void UISystem::routeSliderInput(UIElementIdentifier sliderTypeToUpdate, InputSta
     }
 }
 
-void UISystem::routeButtonClick(UIElementIdentifier buttonToUpdate, InputState& inputState)
+void UISystem::routeButtonClick(UIElementIdentifier buttonToUpdate, UIState& UIState)
 {
+    InputState& input_state = UIState.getMutableInputState();
     std::unordered_map<UIElementIdentifier, UIElement*> allUIElements = allScenes[currentSceneID]->getSceneElements();
     UIElement* elementToUpdate = allUIElements[buttonToUpdate];
     if (buttonToUpdate == UIElementIdentifier::PLAY_GAME_BUTTON_INDEX)
     {
-        elementToUpdate->clickMe(inputState.mouseCurrPosition);
+        elementToUpdate->clickMe(input_state.mouseCurrPosition, UIState);
     }
     // Will add other ui elements from in game here? Or maybe should just route to scene elements?
 }

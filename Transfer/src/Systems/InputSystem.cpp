@@ -36,6 +36,7 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState
             switch (current_scene)
             {
             case SceneIdentifier::START_MENU_SCENE:
+                routeSDL_EventInputInMenu(&event);
                 break;
             case SceneIdentifier::GAME_SCENE:
                 routeSDL_EventInputInGame(&event); // writes to internal member transferInputs;
@@ -62,6 +63,9 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState
         translateAndPassTransferInputsOff(UIState);
         break;
     case SceneIdentifier::PAUSE_SCENE:
+        translateAndPassMenuInputsOff(UIState);
+        break;
+    case SceneIdentifier::START_MENU_SCENE:
         translateAndPassMenuInputsOff(UIState);
         break;
     default:
