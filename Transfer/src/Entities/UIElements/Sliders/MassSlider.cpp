@@ -17,10 +17,10 @@ MassSlider::MassSlider() : Slider()
                             trackRect.w + hotzonePaddingX, trackRect.h + hotzonePaddingY};
 
     // Slider range
-    maxValue = MAX_MASS;
+    maxValue = MAX_MASS / 10;
     // minValue = 0.0;
-    minValue = -MAX_MASS; // now supports negative values
-    sliderValue = 0.0;    // start centered
+    minValue = -MAX_MASS / 10; // now supports negative values
+    sliderValue = 0.0;         // start centered
 
     // Position knob based on slider value
     knobRect.x = trackRect.x + (sliderValue - minValue) / (maxValue - minValue) * trackRect.w - knobRect.w / 2.0f;

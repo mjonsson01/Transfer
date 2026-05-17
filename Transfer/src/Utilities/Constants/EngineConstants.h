@@ -6,9 +6,9 @@
 constexpr float PHYSICS_TIME_STEP = 1.0f / 120.0f; // 120Hz physics update rate
 
 // Newtonian Gravitational constant (scaled)
-static const double GRAVITATIONAL_CONSTANT = 6.67430e-9; // in m^3 kg^-1 s^-2
+static const double GRAVITATIONAL_CONSTANT = 6.67430e-9 / 2; // in m^3 kg^-1 s^-2
 
-static const double MAX_MASS = 1e15;
+static const double MAX_MASS = 1e16;
 static const double MAX_RADIUS = 200;
 
 static const double MIN_BODY_BODY_ACCRETION_THRESHOLD_RATIO = 10.0;

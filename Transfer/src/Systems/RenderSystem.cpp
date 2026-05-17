@@ -257,7 +257,7 @@ void RenderSystem::buildCircleTextureCache()
 {
     // Safety cleanup if re-initializing
     clearCachedCircleTextures();
-    int max_radius = static_cast<int>(MAX_RADIUS);
+    int max_radius = static_cast<int>(2 * MAX_RADIUS);
     circleTextureCache.reserve(max_radius);
 
     for (int radius = 1; radius <= max_radius; ++radius)
@@ -339,8 +339,10 @@ SDL_Color RenderSystem::getColorForProperty(const GravitationalBody& body)
 {
     // 1. The "Event Horizon" (Beyond Max Mass)
     double absMass = std::abs(body.mass);
-    // if (absMass > MAX_MASS)
-    //     return SDL_Color{0, 0, 0, 255};
+    // std::cout << "body.mass: " << body.mass << std::endl;
+
+    if (absMass > MAX_MASS)
+        return SDL_Color{0, 0, 0, 255};
 
     // 2. The Scaling Factor
     // Power of 0.1 stretches the scale so 10^3 and 10^12 actually look different.
@@ -368,49 +370,6 @@ SDL_Color RenderSystem::getColorForProperty(const GravitationalBody& body)
     return SDL_Color{r, g, b, opacity};
 }
 
-// Error in here somewhere. funky
-// {
-//     double mass = body.mass;
-//     double absMass = std::abs(mass);
-
-//     // 1. Event Horizon check
-//     if (absMass > MAX_MASS)
-//         return SDL_Color{0, 0, 0, 255};
-
-//     // 2. High-Compression Scaling
-//     // We use a very low exponent (0.07) so that small masses
-//     // stay white/pale longer before turning deep blue/red.
-//     static const double exponent = 0.07;
-//     static const double maxScaled = std::pow(MAX_MASS, exponent);
-
-//     // t goes from 0.0 (massless) to 1.0 (at MAX_MASS)
-//     double t = std::clamp(std::pow(absMass, exponent) / maxScaled, 0.0, 1.0);
-
-//     // 3. Start at White (255, 255, 255)
-//     // As 't' increases, we subtract color from the channels we DON'T want.
-//     Uint8 r, g, b;
-//     Uint8 dropOff = static_cast<Uint8>(255 * t);
-
-//     if (mass < 0)
-//     {
-//         // NEGATIVE: Skew toward RED
-//         // We keep Red high, and pull Green/Blue down toward 0
-//         r = 255;
-//         g = 255 - dropOff;
-//         b = 255 - dropOff;
-//     }
-//     else
-//     {
-//         // POSITIVE: Skew toward BLUE
-//         // We keep Blue high, and pull Red/Green down toward 0
-//         r = 255 - dropOff;
-//         g = 255 - dropOff;
-//         b = 255;
-//     }
-
-//     Uint8 opacity = (body.isMacroGhost || !body.isCollidable) ? 175 : 255;
-//     return SDL_Color{r, g, b, opacity};
-// }
 void RenderSystem::clearCachedCircleTextures()
 {
     for (auto& tex : circleTextureCache)

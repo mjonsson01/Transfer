@@ -17,9 +17,8 @@ RadiusSlider::RadiusSlider() : Slider()
                             trackRect.w + deadzonePaddingX, trackRect.h + deadzonePaddingY};
 
     // Slider range
-    maxValue = 200;
+    maxValue = MAX_RADIUS - 50;
     minValue = 0.0;
-    // minValue = -MAX_MASS; // now supports negative values
     sliderValue = 0.0; // start centered
 
     // Position knob based on slider value

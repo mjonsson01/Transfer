@@ -35,15 +35,6 @@ class UIState
     InputState inputState;
     float framesPerSecond = TARGET_FPS;
 
-    // Menus
-    // bool startMenuActive = false;
-    // bool pauseMenuActive = false;
-
-    // // Scenes
-    // bool levelScene = false;
-    // bool levelEditorScene = false;
-    // bool levelSelectScene = false;
-
     bool renderDebug = VIEW_DEBUG;    // Toggles rendering of debug elements like
                                       // collision boxes, spawn areas, etc.
     bool allUIElementsVisible = true; // Default to true because we want all elements visible.
