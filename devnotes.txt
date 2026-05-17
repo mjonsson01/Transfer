@@ -50,8 +50,7 @@ User Input -> InputSystem -> UIState(inputState on inside) -> UISystem (update a
 NEED TO FIX THE MOUSE BUTTON HOLDING BUG RECAPTURING THE UI ELEMENT
 
 Also need to add easy ui scaling?
-Need to add radius slider
-Need to fix mouse cursor centering of grabbing the slider
+
 need to replace physics spawn time accumulator DTs with the true physics dt.
 
 
@@ -59,47 +58,19 @@ really need to add initial velocity vector instantiation
 
 also add black hole class soon :D
 
-
-
-Adding baseline behavior to blow up both macro colliding bodies as long as the heavier is no more than 40% lighter.
-
-
-
-
-Want to rework collision dynamics so that spread doesn't produce that weird crescent shape.
-
-
-
-
 Add restriction on creating 0 mass bodies unless in dev mode?
 
 probably need to add testing for collision logic :(
 
-Need to rework collision to ensure no bugs when instantiating bodies right on top of each other. 
-
-Should either instantly accrete or correct their positions and put them at boundaries
-
-
-
-Need to rework menus and scenes into enums most likely.
-
-UISystem needs to own and manage the scenes around. That way I can put it in test scene easily.
-
-
 Need to investigate private vs public vs protected methods bc they are bleeding over each other a bit
-
-
-
-
-Changing playback speed causes dropped commands. Need to fit into the loop where input is polled at same time as the physics?
 
 TBI change src to have UI as a full subfolder instead of this entities scenes nonsense?
 
-TBI make build just build with the last build config and not run clean?
+TBI make build just build with the last build config and not run clean? done on windows.
 
 
 abstract the clickMe and slideMe into one method called interact, which will check the type and then dispatch at the local ui level?
 
 
 
-NEED TO FIX: MACOS CMAKE LISTS FOR DEBUG IS BROKEN.
+NEED TO FIX: MACOS CMAKE LISTS FOR DEBUG IS BROKEN ? unknown if just normal error
