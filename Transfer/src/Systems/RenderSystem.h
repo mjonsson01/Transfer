@@ -59,10 +59,9 @@ class RenderSystem
     // Subordinate Rendering Functions
     void renderGameFrame(GameState& gameState, UIState& UIState,
                          const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope);
-    void renderPauseFrame(GameState& gameState, UIState& UIState,
-                          const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope);
-    void renderStartMenuFrame(GameState& gameState, UIState& UIState,
-                              const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope);
+    void renderNonGameFrame(GameState& gameState, UIState& UIState,
+                            const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope);
+
     void renderPreviewBodies(UIState& UIState);
 
     void renderBodies(GameState& gameState); // Renders all the gravitational

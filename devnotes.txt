@@ -103,7 +103,3 @@ abstract the clickMe and slideMe into one method called interact, which will che
 
 
 NEED TO FIX: MACOS CMAKE LISTS FOR DEBUG IS BROKEN.
-
-Need to make sure all input flags are reset instantly on scene change request
-
-Investigate only 1x sim speed slider compatibility with pause menu?

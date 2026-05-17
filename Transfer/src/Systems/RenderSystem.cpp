@@ -28,7 +28,7 @@ RenderSystem::RenderSystem()
     std::string fontPathTitle = Utilities::GetResourcePath("Fonts/SpaceMono-Bold.ttf");
 
     UIFontRegular = TTF_OpenFont(fontPathRegular.c_str(), 18);
-    UIFontTitle = TTF_OpenFont(fontPathTitle.c_str(), 24);
+    UIFontTitle = TTF_OpenFont(fontPathTitle.c_str(), 32);
     buildCircleTextureCache();
     createStarTextures();
     createStarField(STAR_NUM);
@@ -66,18 +66,11 @@ void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState,
     {
         renderGameFrame(gameState, UIState, allUIElementsInScope);
     }
-    else if (current_scene == SceneIdentifier::PAUSE_SCENE)
-    {
-        renderPauseFrame(gameState, UIState, allUIElementsInScope);
-    }
-    else if (current_scene == SceneIdentifier::START_MENU_SCENE)
-    {
-        renderStartMenuFrame(gameState, UIState, allUIElementsInScope);
-    }
     else
     {
-        return;
+        renderNonGameFrame(gameState, UIState, allUIElementsInScope);
     }
+
     SDL_RenderPresent(renderer);
 }
 void RenderSystem::renderGameFrame(GameState& gameState, UIState& UIState,
@@ -95,26 +88,15 @@ void RenderSystem::renderGameFrame(GameState& gameState, UIState& UIState,
     renderBodies(gameState);
 
     renderUIElements(UIState, allUIElementsInScope);
-
-    // Display the frame
-
-    // SDL_Log("PRESENT STALL: %f ms", present_ms);
-    // SDL_Log("Render STALL: %f ms", render_ms);
 }
-void RenderSystem::renderPauseFrame(GameState& gameState, UIState& UIState,
-                                    const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope)
+void RenderSystem::renderNonGameFrame(GameState& gameState, UIState& UIState,
+                                      const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope)
 {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // black background
     SDL_RenderClear(renderer);
     renderUIElements(UIState, allUIElementsInScope);
 }
-void RenderSystem::renderStartMenuFrame(GameState& gameState, UIState& UIState,
-                                        const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope)
-{
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // black background
-    SDL_RenderClear(renderer);
-    renderUIElements(UIState, allUIElementsInScope);
-}
+
 void RenderSystem::renderPreviewBodies(UIState& UIState)
 {
     InputState& input_state = UIState.getMutableInputState();

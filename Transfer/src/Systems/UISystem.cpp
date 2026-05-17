@@ -8,6 +8,7 @@ UISystem::UISystem() : allScenes()
     allScenes.insert({SceneIdentifier::GAME_SCENE, nullptr});
     allScenes.insert({SceneIdentifier::PAUSE_SCENE, nullptr});
     allScenes.insert({SceneIdentifier::START_MENU_SCENE, nullptr});
+    allScenes.insert({SceneIdentifier::TEST_VISUAL_SCENE, nullptr});
 
     populateScenes();
 }
@@ -20,21 +21,16 @@ UISystem::~UISystem()
 void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState)
 {
     updateUISystemCurrentSceneID(UIState); // get most up to date current scene
-    switch (currentSceneID)
+    if (currentSceneID == GAME_SCENE)
     {
-    case SceneIdentifier::GAME_SCENE:
         updateGameUIElements(gameState, UIState);
-        break;
-    case SceneIdentifier::PAUSE_SCENE:
-        updatePauseUIElements(gameState, UIState);
-        break;
-    case SceneIdentifier::START_MENU_SCENE:
-        updateStartMenuUIElements(gameState, UIState);
-        break;
-    default:
-        break;
+    }
+    else
+    {
+        updateMenuUIElements(gameState, UIState);
     }
 }
+
 void UISystem::CleanUp()
 {
     for (auto& [scene_ID, scene_ptr] : allScenes)
@@ -54,6 +50,7 @@ void UISystem::populateScenes()
     GameScene* game_scene = new GameScene();
     PauseScene* pause_scene = new PauseScene();
     StartMenuScene* start_menu_scene = new StartMenuScene();
+    TestVisualScene* test_visual_scene = new TestVisualScene();
     for (auto& [scene_ID, scene_ptr] : allScenes)
     {
         switch (scene_ID)
@@ -68,6 +65,10 @@ void UISystem::populateScenes()
             break;
         case SceneIdentifier::START_MENU_SCENE:
             scene_ptr = start_menu_scene;
+            scene_ptr->populateMe();
+            break;
+        case SceneIdentifier::TEST_VISUAL_SCENE:
+            scene_ptr = test_visual_scene;
             scene_ptr->populateMe();
             break;
         default:
@@ -115,45 +116,7 @@ void UISystem::updateGameUIElements(GameState& gameState, UIState& UIState)
         inputs_received.isPreviewingMacro && inputs_received.isPressingShift;
 }
 
-void UISystem::updatePauseUIElements(GameState& gameState, UIState& UIState)
-{
-    bool consumed = false;
-    InputState& inputs_received = UIState.getMutableInputState();
-
-    if (inputs_received.leftMouseButtonJustPressed)
-    {
-        activeElementID = findElementWeAreIn(inputs_received);
-    }
-    if (activeElementID != UIElementIdentifier::NONE)
-    {
-        consumed = true;
-        if (inputs_received.isClickingLeftMouseButton)
-        {
-            if (isSlider(activeElementID))
-            {
-                routeSliderInput(activeElementID, inputs_received);
-            }
-        }
-        if (inputs_received.leftMouseButtonJustReleased)
-        {
-            UIElementIdentifier releasedOver = findElementWeAreIn(inputs_received);
-
-            if (releasedOver == activeElementID)
-            {
-                if (isButton(activeElementID))
-                {
-                    routeButtonClick(activeElementID, UIState);
-                }
-            }
-            activeElementID = UIElementIdentifier::NONE;
-        }
-    }
-    inputs_received.UIInputConsumed = consumed;
-    inputs_received.isPreviewingMacro = false;
-    inputs_received.isPreviewingWithInitialVelocity = false;
-}
-
-void UISystem::updateStartMenuUIElements(GameState& gameState, UIState& UIState)
+void UISystem::updateMenuUIElements(GameState& gameState, UIState& UIState)
 {
     bool consumed = false;
     InputState& inputs_received = UIState.getMutableInputState();
@@ -236,7 +199,7 @@ void UISystem::routeButtonClick(UIElementIdentifier buttonToUpdate, UIState& UIS
     {
         elementToUpdate->clickMe(input_state.mouseCurrPosition, UIState);
     }
-    else if (buttonToUpdate == UIElementIdentifier::DEFAULT_BUTTON_INDEX)
+    else if (buttonToUpdate == UIElementIdentifier::RESUME_BUTTON_INDEX)
     {
         elementToUpdate->clickMe(input_state.mouseCurrPosition, UIState);
     }
@@ -276,7 +239,7 @@ bool UISystem::isButton(UIElementIdentifier typeToCheck)
 {
     bool conclusion = false;
     if (typeToCheck == UIElementIdentifier::PLAY_GAME_BUTTON_INDEX ||
-        typeToCheck == UIElementIdentifier::DEFAULT_BUTTON_INDEX)
+        typeToCheck == UIElementIdentifier::RESUME_BUTTON_INDEX)
         conclusion = true;
     return conclusion;
 }

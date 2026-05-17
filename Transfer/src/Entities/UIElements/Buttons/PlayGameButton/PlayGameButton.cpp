@@ -4,11 +4,13 @@
 
 PlayGameButton::PlayGameButton() : Button()
 {
-    boundingRect = SDL_FRect{100.0f, 100.0f, 300.0f, 200.0f};
+    float width = 300.0f;
+    float height = 200.0f;
+    boundingRect = SDL_FRect{SCREEN_WIDTH / 2 - width / 2, SCREEN_HEIGHT / 2 - height / 2, width, height};
     hotZoneRect = boundingRect;
     setPosition(boundingRect.x, boundingRect.y);
     displayText = "Play Game";
-    altText = "Clicked";
+    altText = "";
     bool buttonSelected = false;
     UIElementID = UIElementIdentifier::PLAY_GAME_BUTTON_INDEX;
 }
@@ -16,8 +18,5 @@ PlayGameButton::PlayGameButton() : Button()
 void PlayGameButton::clickMe(Vector2D positionOfEvent, UIState& UIState)
 {
     UIState.setCurrentScene(GAME_SCENE);
-    // std::string temp = altText;
-    // altText = displayText;
-    // displayText = temp;
     return;
 }

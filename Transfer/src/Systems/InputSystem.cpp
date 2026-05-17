@@ -18,10 +18,10 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState
     transferInputs.resetJustPressed();
     UIState.getMutableInputState().resetTransientFlags(); // clean the input state before polling for new events.
     SDL_Event event;
-    int eventCount = 0;
+    // int eventCount = 0;
     while (SDL_PollEvent(&event))
     {
-        eventCount++;
+        // eventCount++;
         if (event.type == SDL_EVENT_QUIT)
         {
             gameState.SetPlaying(false);
@@ -33,43 +33,26 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState
             UIState.getMutableInputState().UIInputConsumed = false;
             // First check if in start menu. If so, route input to start menu behaviors
             SceneIdentifier current_scene = UIState.getCurrentSceneID();
-            switch (current_scene)
+
+            if (current_scene == SceneIdentifier::GAME_SCENE)
             {
-            case SceneIdentifier::START_MENU_SCENE:
-                routeSDL_EventInputInMenu(&event);
-                break;
-            case SceneIdentifier::GAME_SCENE:
                 routeSDL_EventInputInGame(&event); // writes to internal member transferInputs;
-
-                // UI Only interactible through mouse clicks, but pass through the transfer game inputs so that the
-                // other systems have knowledge of the desired areas.
-
-                // pass off data to the UIState InputState sub data. UISystem may or may not consume this input. If it
-                // does not, the UISystem will flip flags as necessary to make sure the input is consumed
-                break;
-            case SceneIdentifier::PAUSE_SCENE:
-                routeSDL_EventInputInMenu(&event);
-                break;
-            default:
-                break;
             }
-            // If not in start menu, double check we are not in a pause menu. If so, route to pause menu behaviors
+            else
+            {
+                routeSDL_EventInputInMenu(&event);
+            }
         }
     }
+
     SceneIdentifier current_scene = UIState.getCurrentSceneID();
-    switch (current_scene)
+    if (current_scene == SceneIdentifier::GAME_SCENE)
     {
-    case SceneIdentifier::GAME_SCENE:
         translateAndPassTransferInputsOff(UIState);
-        break;
-    case SceneIdentifier::PAUSE_SCENE:
+    }
+    else
+    {
         translateAndPassMenuInputsOff(UIState);
-        break;
-    case SceneIdentifier::START_MENU_SCENE:
-        translateAndPassMenuInputsOff(UIState);
-        break;
-    default:
-        break;
     }
 }
 

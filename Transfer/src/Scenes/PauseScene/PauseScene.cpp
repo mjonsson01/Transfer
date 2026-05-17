@@ -4,7 +4,7 @@
 
 PauseScene::PauseScene() : Scene(SceneIdentifier::PAUSE_SCENE)
 {
-    sceneUIElements.insert({UIElementIdentifier::DEFAULT_BUTTON_INDEX, nullptr});
+    sceneUIElements.insert({UIElementIdentifier::RESUME_BUTTON_INDEX, nullptr});
 }
 
 void PauseScene::populateMe()
@@ -12,11 +12,11 @@ void PauseScene::populateMe()
     // PlayGameButton* play_game_button = new PlayGameButton();
     for (auto& [UI_element_ID, UI_element_ptr] : sceneUIElements)
     {
-        DefaultButton* default_button = new DefaultButton();
+        ResumeButton* resume_button = new ResumeButton();
         switch (UI_element_ID)
         {
-        case UIElementIdentifier::DEFAULT_BUTTON_INDEX:
-            UI_element_ptr = default_button;
+        case UIElementIdentifier::RESUME_BUTTON_INDEX:
+            UI_element_ptr = resume_button;
             break;
         default:
             break;

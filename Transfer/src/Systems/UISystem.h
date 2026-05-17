@@ -20,6 +20,7 @@
 #include "Scenes/PauseScene/PauseScene.h"
 #include "Scenes/Scene.h"
 #include "Scenes/StartMenuScene/StartMenuScene.h"
+#include "Scenes/TestVisualScene/TestVisualScene.h"
 // Standard Library Imports
 #include <iostream>
 #include <unordered_map>
@@ -36,9 +37,7 @@ class UISystem
     Scene* getScene(SceneIdentifier sceneID) { return allScenes[sceneID]; }
     void updateUISystemCurrentSceneID(UIState& UIState) { currentSceneID = UIState.getCurrentSceneID(); }
     void updateGameUIElements(GameState& gameState, UIState& UIState);
-    void updatePauseUIElements(GameState& gameState, UIState& UIState);
-    void updateStartMenuUIElements(GameState& gameState, UIState& UIState);
-
+    void updateMenuUIElements(GameState& gameState, UIState& UIState);
     UIElementIdentifier findElementWeAreIn(InputState& inputsReceived);
     void routeSliderInput(UIElementIdentifier elementToUpdate, InputState& inputState);
     void routeButtonClick(UIElementIdentifier elementToUpdate, UIState& UIState);
