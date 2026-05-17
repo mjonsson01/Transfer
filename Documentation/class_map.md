@@ -1,19 +1,35 @@
 # Codebase Structure Report
 
-## Header: `Core\Game.h`
-### Class: `Game`
-- `StartGame()`
-- `EndGame()`
-- `Run()`
-- `ProcessInput()`
-- `UpdatePhysicsFrame()`
-- `RenderFrame()`
-- `PlayAudio()`
-- `UpdateFPS()`
-- `LimitFrameRate()`
+## Header: `Scenes/Scene.h`
+### Class: `Scene`
+- `populateMe()`
+- `CleanUpSceneElements()`
+- `getSceneElements()`
 
 ---
-## Header: `Core\GameState.h`
+## Header: `Scenes/TestVisualScene/TestVisualScene.h`
+### Class: `TestVisualScene`
+- *No methods found*
+
+---
+## Header: `Scenes/GameScene/GameScene.h`
+### Class: `GameScene`
+- `populateMe()`
+
+---
+## Header: `Scenes/PauseScene/PauseScene.h`
+### Class: `PauseScene`
+- `populateMe()`
+
+---
+## Header: `Core/InputState.h`
+### Class: `InputState`
+- `resetTransientFlags()`
+- `resetFlagsForSceneChange()`
+- `clearAllBodies()`
+
+---
+## Header: `Core/GameState.h`
 ### Class: `GameState`
 - `IsPlaying()`
 - `SetPlaying()`
@@ -25,25 +41,27 @@
 - `getMacroBodiesMutable()`
 - `getAlpha()`
 - `setAlpha()`
-- `getTimeScaleFactor()`
-- `getToggleSlow()`
-- `invertToggleSlow()`
-- `getToggleFast()`
-- `invertToggleFast()`
 - `getPlayMusic()`
 - `invertPlayMusic()`
 - `incrementMaxIDInstantiated()`
 - `getMaxIDInstantiated()`
 
 ---
-## Header: `Core\InputState.h`
-### Class: `InputState`
-- `resetTransientFlags()`
-- `togglePhysicsPause()`
-- `clearAllBodies()`
+## Header: `Core/Game.h`
+### Class: `Game`
+- `StartGame()`
+- `EndGame()`
+- `Run()`
+- `ProcessInput()`
+- `IntegratePhysicsFrame()`
+- `UpdateInstantiations()`
+- `RenderFrame()`
+- `PlayAudio()`
+- `updateFPS()`
+- `limitFrameRate()`
 
 ---
-## Header: `Core\UIState.h`
+## Header: `Core/UIState.h`
 ### Class: `UIState`
 - `getMutableInputState()`
 - `getInputState()`
@@ -51,98 +69,45 @@
 - `setFPS()`
 - `getAllUIVisibility()`
 - `invertUIElementsVisibility()`
-- `getGameScene()`
-- `setGameScene()`
-- `getLevelEditorScene()`
-- `setLevelEditorScene()`
-- `getLevelSelectScene()`
-- `setLevelSelectScene()`
-- `getPauseMenuActive()`
-- `setPauseMenuActive()`
-- `getStartMenuActive()`
-- `setStartMenuActive()`
 - `getRenderDebug()`
 - `setRenderDebug()`
+- `getTimeScaleFactor()`
+- `getCurrentSceneID()`
+- `setCurrentScene()`
 
 ---
-## Header: `Entities\Physics\GravitationalBody.h`
-### Class: `GravitationalBody`
+## Header: `Utilities/UserInput/TransferInputs.h`
+### Class: `TransferInputs`
+- `operator=()`
+- `resetAllInputsForSceneChange()`
+- `resetAllMousePressedVars()`
+- `resetJustPressed()`
+- `resetAllKeyPressedVars()`
+
+---
+## Header: `Utilities/Math/Vector2D.h`
+### Class: `Vector2D`
+- `operator+()`
+- `operator-()`
+- `operator*()`
+- `operator/()`
+- `operator+=()`
+- `operator-=()`
+- `operator*=()`
+- `operator/=()`
+- `magnitude()`
+- `square_magnitude()`
+- `dot()`
+- `normalizeInPlace()`
+- `normalize()`
+
+---
+## Header: `Utilities/Rendering/Colors.h`
+### Class: `ColorLibrary`
 - *No methods found*
 
 ---
-## Header: `Entities\UIElements\UIElement.h`
-### Class: `UIElement`
-- `renderMe()`
-- `slideMe()`
-- `clickMe()`
-- `setPosition()`
-- `getX()`
-- `getY()`
-- `setVisibility()`
-- `checkAndReturnIfHit()`
-- `getUIElementID()`
-
----
-## Header: `Entities\UIElements\Buttons\Button.h`
-### Class: `Button`
-- `renderMe()`
-- `getDisplayText()`
-- `clickMe()`
-- `getButtonState()`
-
----
-## Header: `Entities\UIElements\Buttons\PlayGameButton.h`
-### Class: `PlayGameButton`
-- *No methods found*
-
----
-## Header: `Entities\UIElements\Checkboxes\Checkbox.h`
-### Class: `Checkbox`
-- *No methods found*
-
----
-## Header: `Entities\UIElements\Overlay\FPSCounter.h`
-### Class: `FPSCounter`
-- `renderMe()`
-
----
-## Header: `Entities\UIElements\Sliders\MassSlider.h`
-### Class: `MassSlider`
-- `getDisplayText()`
-
----
-## Header: `Entities\UIElements\Sliders\RadiusSlider.h`
-### Class: `RadiusSlider`
-- `getDisplayText()`
-
----
-## Header: `Entities\UIElements\Sliders\Slider.h`
-### Class: `Slider`
-- `renderMe()`
-- `getDisplayText()`
-- `slideMe()`
-- `getSliderValue()`
-
----
-## Header: `Entities\VisualElements\TwinklingStars.h`
-### Class: `TwinklingStar`
-- *No methods found*
-
----
-## Header: `Scenes\Scene.h`
-### Class: `Scene`
-- *No methods found*
-
----
-## Header: `Systems\AudioSystem.h`
-### Class: `AudioSystem`
-- `ProcessSystemAudioFrame()`
-- `LoadTrack()`
-- `AddAllMusicToPlaylist()`
-- `CleanUp()`
-
----
-## Header: `Systems\InputSystem.h`
+## Header: `Systems/InputSystem.h`
 ### Class: `InputSystem`
 - `ProcessSystemInputFrame()`
 - `CleanUp()`
@@ -152,7 +117,45 @@
 - `translateAndPassMenuInputsOff()`
 
 ---
-## Header: `Systems\PhysicsSystem.h`
+## Header: `Systems/RenderSystem.h`
+### Class: `RenderSystem`
+- `RenderFullFrame()`
+- `CleanUp()`
+- `getRenderer()`
+- `getUIFontRegular()`
+- `getUIFontTitle()`
+- `renderGameFrame()`
+- `renderPauseFrame()`
+- `renderPreviewBodies()`
+- `renderBodies()`
+- `renderDragLine()`
+- `renderUIElements()`
+- `getColorForProperty()`
+- `buildCircleTextureCache()`
+- `clearCachedCircleTextures()`
+- `createStarField()`
+- `createStarTextures()`
+- `updateStars()`
+- `renderStars()`
+
+---
+## Header: `Systems/UISystem.h`
+### Class: `UISystem`
+- `CleanUp()`
+- `UpdateUIElements()`
+- `updateGameUIElements()`
+- `getScene()`
+- `updateUISystemCurrentSceneID()`
+- `updatePauseUIElements()`
+- `findElementWeAreIn()`
+- `routeSliderInput()`
+- `routeButtonClick()`
+- `populateScenes()`
+- `isSlider()`
+- `isButton()`
+
+---
+## Header: `Systems/PhysicsSystem.h`
 ### Class: `SpawnLimiter`
 - `canSpawn()`
 - `reset()`
@@ -160,7 +163,7 @@
 ### Class: `PhysicsSystem`
 - `UpdateSystemFrame()`
 - `CleanUp()`
-- `updateGravBodyInstantiations()`
+- `UpdateGravBodyInstantiations()`
 - `updateGravityForSystem()`
 - `calculateGravity()`
 - `integrateForwardsPhase1()`
@@ -179,70 +182,82 @@
 - `cleanupMacroBodies()`
 
 ---
-## Header: `Systems\RenderSystem.h`
-### Class: `RenderSystem`
-- `RenderFullFrame()`
+## Header: `Systems/AudioSystem.h`
+### Class: `AudioSystem`
+- `ProcessSystemAudioFrame()`
+- `LoadTrack()`
+- `AddAllMusicToPlaylist()`
 - `CleanUp()`
-- `getRenderer()`
-- `getUIFontRegular()`
-- `getUIFontTitle()`
-- `renderPreviewBodies()`
-- `renderBodies()`
-- `renderDragLine()`
-- `renderUIElements()`
-- `getColorForProperty()`
-- `buildCircleTextureCache()`
-- `clearCachedCircleTextures()`
-- `createStarField()`
-- `createStarTextures()`
-- `updateStars()`
-- `renderStars()`
 
 ---
-## Header: `Systems\UISystem.h`
-### Class: `UISystem`
-- `CleanUp()`
-- `UpdateUIElements()`
-- `updateGameUIElements()`
-- `getGameUIElementsMutable()`
-- `getGameUIElements()`
-- `updatePauseUIElements()`
-- `getPauseUIElementsMutable()`
-- `getPauseUIElements()`
-- `findElementWeAreIn()`
-- `routeSliderInput()`
-- `routeButtonClick()`
-- `isSlider()`
-- `isButton()`
-
----
-## Header: `Utilities\Math\Vector2D.h`
-### Class: `Vector2D`
-- `operator+()`
-- `operator-()`
-- `operator*()`
-- `operator/()`
-- `operator+=()`
-- `operator-=()`
-- `operator*=()`
-- `operator/=()`
-- `magnitude()`
-- `square_magnitude()`
-- `dot()`
-- `normalizeInPlace()`
-- `normalize()`
-
----
-## Header: `Utilities\Rendering\Colors.h`
-### Class: `ColorLibrary`
+## Header: `Entities/Physics/GravitationalBody.h`
+### Class: `GravitationalBody`
 - *No methods found*
 
 ---
-## Header: `Utilities\UserInput\TransferInputs.h`
-### Class: `TransferInputs`
-- `operator=()`
-- `resetAllMousePressedVars()`
-- `resetJustPressed()`
-- `resetAllKeyPressedVars()`
+## Header: `Entities/VisualElements/TwinklingStars.h`
+### Class: `TwinklingStar`
+- *No methods found*
+
+---
+## Header: `Entities/UIElements/UIElement.h`
+### Class: `UIElement`
+- `renderMe()`
+- `slideMe()`
+- `clickMe()`
+- `setPosition()`
+- `getX()`
+- `getY()`
+- `setVisibility()`
+- `checkAndReturnIfHit()`
+- `getUIElementID()`
+
+---
+## Header: `Entities/UIElements/Buttons/Button.h`
+### Class: `Button`
+- `renderMe()`
+- `getDisplayText()`
+- `clickMe()`
+- `getButtonState()`
+
+---
+## Header: `Entities/UIElements/Buttons/PlayGameButton/PlayGameButton.h`
+### Class: `PlayGameButton`
+- *No methods found*
+
+---
+## Header: `Entities/UIElements/Checkboxes/Checkbox.h`
+### Class: `Checkbox`
+- *No methods found*
+
+---
+## Header: `Entities/UIElements/Overlay/FPSCounter.h`
+### Class: `FPSCounter`
+- `renderMe()`
+
+---
+## Header: `Entities/UIElements/Sliders/MassSlider.h`
+### Class: `MassSlider`
+- `getDisplayText()`
+- `slideMe()`
+
+---
+## Header: `Entities/UIElements/Sliders/Slider.h`
+### Class: `Slider`
+- `renderMe()`
+- `getDisplayText()`
+- `slideMe()`
+- `getSliderValue()`
+- `getKnobPosition()`
+
+---
+## Header: `Entities/UIElements/Sliders/SimulationSpeedSlider.h`
+### Class: `SimulationSpeedSlider`
+- `getDisplayText()`
+
+---
+## Header: `Entities/UIElements/Sliders/RadiusSlider.h`
+### Class: `RadiusSlider`
+- `getDisplayText()`
 
 ---
