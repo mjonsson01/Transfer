@@ -7,9 +7,14 @@
 - `getSceneElements()`
 
 ---
+## Header: `Scenes/StartMenuScene/StartMenuScene.h`
+### Class: `StartMenuScene`
+- `populateMe()`
+
+---
 ## Header: `Scenes/TestVisualScene/TestVisualScene.h`
 ### Class: `TestVisualScene`
-- *No methods found*
+- `populateMe()`
 
 ---
 ## Header: `Scenes/GameScene/GameScene.h`
@@ -125,7 +130,7 @@
 - `getUIFontRegular()`
 - `getUIFontTitle()`
 - `renderGameFrame()`
-- `renderPauseFrame()`
+- `renderNonGameFrame()`
 - `renderPreviewBodies()`
 - `renderBodies()`
 - `renderDragLine()`
@@ -143,10 +148,10 @@
 ### Class: `UISystem`
 - `CleanUp()`
 - `UpdateUIElements()`
-- `updateGameUIElements()`
 - `getScene()`
 - `updateUISystemCurrentSceneID()`
-- `updatePauseUIElements()`
+- `updateGameUIElements()`
+- `updateMenuUIElements()`
 - `findElementWeAreIn()`
 - `routeSliderInput()`
 - `routeButtonClick()`
@@ -223,7 +228,12 @@
 ---
 ## Header: `Entities/UIElements/Buttons/PlayGameButton/PlayGameButton.h`
 ### Class: `PlayGameButton`
-- *No methods found*
+- `clickMe()`
+
+---
+## Header: `Entities/UIElements/Buttons/ResumeButton/ResumeButton.h`
+### Class: `ResumeButton`
+- `clickMe()`
 
 ---
 ## Header: `Entities/UIElements/Checkboxes/Checkbox.h`
