@@ -427,21 +427,6 @@ void RenderSystem::renderStars()
     }
 }
 
-// void RenderSystem::createStarTextures()
-// {
-//     const int maxStarRadius = 3;
-//     const int minStarRadius = 1;
-
-//     for (int r = minStarRadius; r <= maxStarRadius; ++r)
-//     {
-//         SDL_Color color = {255, 255, 255, 255};
-//         SDL_Texture* tex = circleTextureCache[r];
-//         SDL_SetTextureColorMod(tex, color.r, color.g, color.b);
-//         SDL_SetTextureAlphaMod(tex, color.a);
-//         twinklingStarTextures.push_back(tex);
-//     }
-// }
-
 void RenderSystem::createStarTextures()
 {
     const int maxStarRadius = 4;

@@ -70,3 +70,7 @@ abstract the clickMe and slideMe into one method called interact, which will che
 
 
 NEED TO FIX: MACOS CMAKE LISTS FOR DEBUG IS BROKEN ? unknown if just normal error
+
+
+
+rework breakapart / substitute with particles mechanics to stop line segmenting issue?
