@@ -236,6 +236,14 @@ void UISystem::routeButtonClick(UIElementIdentifier buttonToUpdate, UIState& UIS
     {
         elementToUpdate->clickMe(input_state.mouseCurrPosition, UIState);
     }
+    else if (buttonToUpdate == UIElementIdentifier::DEFAULT_BUTTON_INDEX)
+    {
+        elementToUpdate->clickMe(input_state.mouseCurrPosition, UIState);
+    }
+    else
+    {
+        return;
+    }
     // Will add other ui elements from in game here? Or maybe should just route to scene elements?
 }
 UIElementIdentifier UISystem::findElementWeAreIn(InputState& inputsReceived)
@@ -267,7 +275,8 @@ bool UISystem::isSlider(UIElementIdentifier typeToCheck)
 bool UISystem::isButton(UIElementIdentifier typeToCheck)
 {
     bool conclusion = false;
-    if (typeToCheck == UIElementIdentifier::PLAY_GAME_BUTTON_INDEX)
+    if (typeToCheck == UIElementIdentifier::PLAY_GAME_BUTTON_INDEX ||
+        typeToCheck == UIElementIdentifier::DEFAULT_BUTTON_INDEX)
         conclusion = true;
     return conclusion;
 }
