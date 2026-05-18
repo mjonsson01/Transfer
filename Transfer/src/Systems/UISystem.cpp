@@ -21,7 +21,7 @@ UISystem::~UISystem()
 void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState)
 {
     updateUISystemCurrentSceneID(UIState); // get most up to date current scene
-    if (currentSceneID == GAME_SCENE)
+    if (currentSceneID == SceneIdentifier::GAME_SCENE)
     {
         updateGameUIElements(gameState, UIState);
     }

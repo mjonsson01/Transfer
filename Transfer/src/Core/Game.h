@@ -6,6 +6,7 @@
 #include "Core/GameState.h"
 #include "Core/InputState.h"
 #include "Core/UIState.h"
+#include "Entities/Sound/MusicModeEnum.h"
 #include "Systems/AudioSystem.h"
 #include "Systems/InputSystem.h"
 #include "Systems/PhysicsSystem.h"

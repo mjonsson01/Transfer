@@ -10,13 +10,17 @@ ResumeButton::ResumeButton() : Button()
     hotZoneRect = boundingRect;
     setPosition(boundingRect.x, boundingRect.y);
     displayText = "Resume";
-    altText = "";
+    altText = "Clicked";
     bool buttonSelected = false;
     UIElementID = UIElementIdentifier::RESUME_BUTTON_INDEX;
 }
 
 void ResumeButton::clickMe(Vector2D positionOfEvent, UIState& UIState)
 {
-    UIState.setCurrentScene(GAME_SCENE);
+    // UIState.setCurrentScene(SceneIdentifier::GAME_SCENE);
+    std::string temp = displayText;
+    displayText = altText;
+    altText = temp;
+    UIState.QueueSoundEffect("ButtonClick");
     return;
 }

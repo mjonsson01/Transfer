@@ -4,6 +4,7 @@
 
 // Custom Imports
 #include "Entities/Physics/GravitationalBody.h"
+#include "Entities/Sound/MusicModeEnum.h"
 #include "Utilities/Constants/GameSystemConstants.h"
 
 // Standard Library Imports
@@ -38,16 +39,12 @@ class GameState
     float getAlpha() const { return alpha; }
     void setAlpha(float alphaIn) { alpha = alphaIn; }
 
-    bool getPlayMusic() const { return playMusic; }
-    void invertPlayMusic() { playMusic = !playMusic; }
-
     void incrementMaxIDInstantiated() { maxIDInstantiated += 1; }
     int getMaxIDInstantiated() const { return maxIDInstantiated; }
 
-    private:
+  private:
     // State variables
     bool isPlaying = false;
-    bool playMusic = false;
     bool isShuttingDownAudioSystem = false;
     // Frame helper vars
     float alpha = 0.0f;

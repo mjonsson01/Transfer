@@ -7,6 +7,7 @@
 
 // Custom Imports
 #include "Core/InputState.h"
+#include "Entities/Sound/MusicModeEnum.h"
 #include "Entities/UIElements/UIElementIdentifierEnum.h"
 #include "Scenes/SceneIdentifierEnum.h"
 #include "Utilities/Constants/GameSystemConstants.h"
@@ -30,14 +31,37 @@ class UIState
     float getTimeScaleFactor() const { return static_cast<float>(inputState.selectedSimSpeedScale); }
     SceneIdentifier getCurrentSceneID() const { return currentScene; }
     void setCurrentScene(SceneIdentifier scene_desired) { currentScene = scene_desired; }
+    void QueueSoundEffect(const std::string& soundName) { pendingSoundEffects.push(soundName); };
+    bool HasPendingSoundEffects() const { return !pendingSoundEffects.empty(); };
+    std::string PopNextSoundEffect()
+    {
+        if (pendingSoundEffects.empty())
+            return "";
+
+        std::string sound = pendingSoundEffects.front();
+        pendingSoundEffects.pop();
+
+        return sound;
+    }
+    MusicMode getRequestedMusicMode() const { return requestedMusicMode; }
+    void setRequestedMusicMode(MusicMode musicMode) { requestedMusicMode = musicMode; }
+    bool getPlayMusic() const { return playMusic; }
+    void setPlayMusic(bool spm) { playMusic = spm; }
+    bool getPlaySoundEffects() const { return playSoundEffects; }
+    void setPlaySoundEffects(bool pse) { playSoundEffects = pse; }
 
   private:
     InputState inputState;
     float framesPerSecond = TARGET_FPS;
 
-    bool renderDebug = VIEW_DEBUG;    // Toggles rendering of debug elements like
-                                      // collision boxes, spawn areas, etc.
+    bool renderDebug = VIEW_DEBUG; // Toggles rendering of debug elements like
+    // collision boxes, spawn areas, etc.
     bool allUIElementsVisible = true; // Default to true because we want all elements visible.
 
-    SceneIdentifier currentScene = SceneIdentifier::NO_SCENE;
+    SceneIdentifier currentScene = SceneIdentifier::NONE;
+    // SOUND STUFF
+    bool playMusic = false;
+    bool playSoundEffects = false;
+    MusicMode requestedMusicMode = MusicMode::NONE;
+    std::queue<std::string> pendingSoundEffects;
 };

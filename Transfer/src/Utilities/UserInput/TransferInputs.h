@@ -2,14 +2,10 @@
 
 #pragma once
 
-// SDL3 Imports
-#include <SDL3/SDL.h>
-
 // Custom Imports
 #include "Utilities/Math/Vector2D.h"
 
 // Standard Library Imports
-#include <iostream>
 
 struct TransferInputs
 {

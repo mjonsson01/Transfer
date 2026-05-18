@@ -10,19 +10,15 @@
 #include "Core/GameState.h"
 #include "Core/InputState.h"
 #include "Core/UIState.h"
-#include "Entities/UIElements/Buttons/PlayGameButton/PlayGameButton.h"
-#include "Entities/UIElements/Overlay/FPSCounter.h"
-#include "Entities/UIElements/Sliders/MassSlider.h"
-#include "Entities/UIElements/Sliders/RadiusSlider.h"
-#include "Entities/UIElements/Sliders/SimulationSpeedSlider.h"
 #include "Entities/UIElements/UIElement.h"
 #include "Scenes/GameScene/GameScene.h"
 #include "Scenes/PauseScene/PauseScene.h"
 #include "Scenes/Scene.h"
+#include "Scenes/SceneIdentifierEnum.h"
 #include "Scenes/StartMenuScene/StartMenuScene.h"
 #include "Scenes/TestVisualScene/TestVisualScene.h"
+
 // Standard Library Imports
-#include <iostream>
 #include <unordered_map>
 
 // Owns Logic of UI Components and stores the UIElements while dispatching
@@ -44,7 +40,7 @@ class UISystem
     void populateScenes();
 
   private:
-    SceneIdentifier currentSceneID = SceneIdentifier::NO_SCENE;
+    SceneIdentifier currentSceneID = SceneIdentifier::NONE;
     bool isSlider(UIElementIdentifier typeToCheck);
     bool isButton(UIElementIdentifier typeToCheck);
     std::unordered_map<SceneIdentifier, Scene*> allScenes;

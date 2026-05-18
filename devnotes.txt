@@ -74,3 +74,5 @@ NEED TO FIX: MACOS CMAKE LISTS FOR DEBUG IS BROKEN ? unknown if just normal erro
 
 
 rework breakapart / substitute with particles mechanics to stop line segmenting issue?
+
+control volume using SDL_SetAudioStreamGain(musicStream, musicVolume)

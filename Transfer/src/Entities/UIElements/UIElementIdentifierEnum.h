@@ -2,7 +2,7 @@
 
 #pragma once
 
-enum UIElementIdentifier : int
+enum class UIElementIdentifier : int
 {
     NONE = -1,
     FPS_COUNTER_INDEX = 0,

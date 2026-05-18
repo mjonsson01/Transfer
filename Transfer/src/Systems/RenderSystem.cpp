@@ -21,7 +21,7 @@ RenderSystem::RenderSystem()
     // SDL_SetRenderVSync(renderer, 1);
     if (TTF_Init() == false)
     {
-        SDL_Log("Failed to initialize SDL_ttf: %s", SDL_GetError());
+        // SDL_Log("Failed to initialize SDL_ttf: %s", SDL_GetError());
         return;
     }
     std::string fontPathRegular = Utilities::GetResourcePath("Fonts/SpaceMono-Regular.ttf");
@@ -269,7 +269,7 @@ void RenderSystem::buildCircleTextureCache()
 
         if (!tex)
         {
-            SDL_Log("Failed to create circle texture: %s", SDL_GetError());
+            // SDL_Log("Failed to create circle texture: %s", SDL_GetError());
             continue;
         }
 
@@ -319,7 +319,7 @@ void RenderSystem::renderUIElements(UIState& UIState,
 
     for (auto& [UI_element_ID, UI_element_ptr] : allUIElementsInScope)
     {
-        if (UI_element_ID == PLAY_GAME_BUTTON_INDEX)
+        if (UI_element_ID == UIElementIdentifier::PLAY_GAME_BUTTON_INDEX)
         {
             UI_element_ptr->renderMe(renderer, UIState, UIFontTitle);
         }

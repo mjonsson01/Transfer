@@ -30,8 +30,8 @@ void Game::StartGame()
     // Default to starting in the level scene since other scenes are not
     // implemented yet.
 
-    UIState.setCurrentScene(SceneIdentifier::START_MENU_SCENE);
-    // UIState.setCurrentScene(SceneIdentifier::TEST_VISUAL_SCENE);
+    // UIState.setCurrentScene(SceneIdentifier::START_MENU_SCENE);
+    UIState.setCurrentScene(SceneIdentifier::TEST_VISUAL_SCENE);
     // UIState.setRenderDebug(true); // default to true for now to help with development
     // Start the main game loop
     Game::Run();
@@ -73,9 +73,13 @@ void Game::Run()
     // slowdown cout output pace timer
     Uint32 slowdown_print_timer = 300;
     Uint32 last_slowdown_print_time = SDL_GetTicks();
+    UIState.setPlaySoundEffects(true);
+    UIState.setPlayMusic(true);
+    UIState.setRequestedMusicMode(MusicMode::TITLE_THEME);
 
     while (gameState.IsPlaying())
     {
+        // std::cout << "UIState.pendingSoundEffects size: " << UIState.pendingSoundEffects.size() << std::endl;
 
         // Poll for SDL Events and Process Input
         Game::ProcessInput();

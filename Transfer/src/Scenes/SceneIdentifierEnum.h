@@ -2,9 +2,9 @@
 
 #pragma once
 
-enum SceneIdentifier : int
+enum class SceneIdentifier : int
 {
-    NO_SCENE = -1,
+    NONE = -1,
     START_MENU_SCENE = 0,
     GAME_SCENE = 1,
     PAUSE_SCENE = 2,

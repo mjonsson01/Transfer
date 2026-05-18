@@ -17,6 +17,7 @@ PlayGameButton::PlayGameButton() : Button()
 
 void PlayGameButton::clickMe(Vector2D positionOfEvent, UIState& UIState)
 {
-    UIState.setCurrentScene(GAME_SCENE);
+    UIState.setCurrentScene(SceneIdentifier::GAME_SCENE);
+    UIState.QueueSoundEffect("ButtonClick");
     return;
 }
