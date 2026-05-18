@@ -54,9 +54,9 @@ class PhysicsSystem
     // contents
     void CleanUp();
     void UpdateGravBodyInstantiations(GameState& gameState, UIState& UIState);
+
   private:
     // Add/remove any user-requested new Gravitational bodies;
-
 
     // Gravity Methods
     void updateGravityForSystem(GameState& gameState); // Gravity calculation dispatch helper
