@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "Entities/UIElements/UIElement.h"
+#include "Entities/UIElements/UIElement.hpp"
 
 class Checkbox : public UIElement
 {

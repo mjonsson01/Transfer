@@ -3,9 +3,9 @@
 #pragma once
 
 // Custom Imports
-#include "Entities/Physics/GravitationalBody.h"
-#include "Entities/Sound/MusicModeEnum.h"
-#include "Utilities/Constants/GameSystemConstants.h"
+#include "Entities/Physics/GravitationalBody.hpp"
+#include "Entities/Sound/MusicModeEnum.hpp"
+#include "Utilities/Constants/GameSystemConstants.hpp"
 
 // Standard Library Imports
 #include <vector>

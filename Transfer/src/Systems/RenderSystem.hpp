@@ -9,14 +9,14 @@
 #include <SDL3_ttf/SDL_ttf.h>
 
 // Custom Imports
-#include "Core/GameState.h"
-#include "Core/UIState.h"
-#include "Entities/UIElements/UIElement.h"
-#include "Entities/VisualElements/TwinklingStars.h"
-#include "Utilities/Constants/EngineConstants.h"
-#include "Utilities/Constants/GameSystemConstants.h"
-#include "Utilities/Rendering/Colors.h"
-#include "Utilities/System/SystemPathUtility.h"
+#include "Core/GameState.hpp"
+#include "Core/UIState.hpp"
+#include "Entities/UIElements/UIElement.hpp"
+#include "Entities/VisualElements/TwinklingStars.hpp"
+#include "Utilities/Constants/EngineConstants.hpp"
+#include "Utilities/Constants/GameSystemConstants.hpp"
+#include "Utilities/Rendering/Colors.hpp"
+#include "Utilities/System/SystemPathUtility.hpp"
 
 // Standard Library Imports
 #include <algorithm>

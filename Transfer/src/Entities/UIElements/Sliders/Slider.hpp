@@ -7,10 +7,10 @@
 #include <SDL3_ttf/SDL_ttf.h>
 
 // Custom Imports
-#include "Core/UIState.h"
-#include "Entities/UIElements/UIElement.h"
-#include "Entities/UIElements/UIElementIdentifierEnum.h"
-#include "Utilities/Math/Vector2D.h"
+#include "Core/UIState.hpp"
+#include "Entities/UIElements/UIElement.hpp"
+#include "Entities/UIElements/UIElementIdentifierEnum.hpp"
+#include "Utilities/Math/Vector2D.hpp"
 
 // Standard Library Imports
 #include <string>

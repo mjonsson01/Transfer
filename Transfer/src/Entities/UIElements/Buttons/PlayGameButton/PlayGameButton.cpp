@@ -1,6 +1,6 @@
 // File: Transfer/src/Entities/UIElements/Buttons/PlayGameButton/PlayGameButton.cpp
 
-#include "Entities/UIElements/Buttons/PlayGameButton/PlayGameButton.h"
+#include "Entities/UIElements/Buttons/PlayGameButton/PlayGameButton.hpp"
 
 PlayGameButton::PlayGameButton() : Button()
 {

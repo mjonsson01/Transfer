@@ -3,17 +3,17 @@
 #pragma once
 
 // Custom Imports
-#include "Core/GameState.h"
-#include "Core/InputState.h"
-#include "Core/UIState.h"
-#include "Entities/Sound/MusicModeEnum.h"
-#include "Systems/AudioSystem.h"
-#include "Systems/InputSystem.h"
-#include "Systems/PhysicsSystem.h"
-#include "Systems/RenderSystem.h"
-#include "Systems/UISystem.h"
-#include "Utilities/Constants/EngineConstants.h"
-#include "Utilities/Constants/GameSystemConstants.h"
+#include "Core/GameState.hpp"
+#include "Core/InputState.hpp"
+#include "Core/UIState.hpp"
+#include "Entities/Sound/MusicModeEnum.hpp"
+#include "Systems/AudioSystem.hpp"
+#include "Systems/InputSystem.hpp"
+#include "Systems/PhysicsSystem.hpp"
+#include "Systems/RenderSystem.hpp"
+#include "Systems/UISystem.hpp"
+#include "Utilities/Constants/EngineConstants.hpp"
+#include "Utilities/Constants/GameSystemConstants.hpp"
 
 // Standard Library Imports
 #include <numeric>

@@ -1,6 +1,6 @@
 // File: Transfer/src/Systems/InputSystem.cpp
 
-#include "Systems/InputSystem.h"
+#include "Systems/InputSystem.hpp"
 
 InputSystem::InputSystem()
 {

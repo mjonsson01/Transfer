@@ -7,16 +7,16 @@
 #include <SDL3_ttf/SDL_ttf.h>
 
 // Custom Imports
-#include "Core/GameState.h"
-#include "Core/InputState.h"
-#include "Core/UIState.h"
-#include "Entities/UIElements/UIElement.h"
-#include "Scenes/GameScene/GameScene.h"
-#include "Scenes/PauseScene/PauseScene.h"
-#include "Scenes/Scene.h"
-#include "Scenes/SceneIdentifierEnum.h"
-#include "Scenes/StartMenuScene/StartMenuScene.h"
-#include "Scenes/TestVisualScene/TestVisualScene.h"
+#include "Core/GameState.hpp"
+#include "Core/InputState.hpp"
+#include "Core/UIState.hpp"
+#include "Entities/UIElements/UIElement.hpp"
+#include "Scenes/GameScene/GameScene.hpp"
+#include "Scenes/PauseScene/PauseScene.hpp"
+#include "Scenes/Scene.hpp"
+#include "Scenes/SceneIdentifierEnum.hpp"
+#include "Scenes/StartMenuScene/StartMenuScene.hpp"
+#include "Scenes/TestVisualScene/TestVisualScene.hpp"
 
 // Standard Library Imports
 #include <unordered_map>

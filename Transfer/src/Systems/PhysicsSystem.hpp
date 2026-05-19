@@ -3,13 +3,13 @@
 #pragma once
 
 // Custom Imports
-#include "Core/GameState.h"
-#include "Core/UIState.h"
-#include "Entities/Physics/GravitationalBody.h"
-#include "Utilities/Constants/EngineConstants.h"
-#include "Utilities/Constants/GameSystemConstants.h"
-#include "Utilities/Math/CustomMathUtilities.h"
-#include "Utilities/Math/Vector2D.h"
+#include "Core/GameState.hpp"
+#include "Core/UIState.hpp"
+#include "Entities/Physics/GravitationalBody.hpp"
+#include "Utilities/Constants/EngineConstants.hpp"
+#include "Utilities/Constants/GameSystemConstants.hpp"
+#include "Utilities/Math/CustomMathUtilities.hpp"
+#include "Utilities/Math/Vector2D.hpp"
 
 // Standard Library Imports
 #include <algorithm>

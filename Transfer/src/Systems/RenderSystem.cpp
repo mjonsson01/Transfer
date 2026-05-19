@@ -1,6 +1,6 @@
 // File: Transfer/src/Systems/RenderSystem.cpp
 
-#include "Systems/RenderSystem.h"
+#include "Systems/RenderSystem.hpp"
 
 // Constructor: Initializes SDL Window and Renderer
 RenderSystem::RenderSystem()

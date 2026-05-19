@@ -1,6 +1,6 @@
 // File: Transfer/src/Entities/UIElements/Sliders/MassSlider.cpp
 
-#include "Entities/UIElements/Sliders/MassSlider.h"
+#include "Entities/UIElements/Sliders/MassSlider.hpp"
 
 MassSlider::MassSlider() : Slider()
 {

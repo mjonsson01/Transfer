@@ -1,6 +1,6 @@
 // File: Transfer/src/Entities/UIElements/UIElement.cpp
 
-#include "UIElement.h"
+#include "UIElement.hpp"
 
 // Base UIElement implementation
 UIElement::UIElement() {}

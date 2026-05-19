@@ -7,8 +7,8 @@
 #include <SDL3_ttf/SDL_ttf.h>
 
 // Custom Imports
-#include "Entities/UIElements/UIElement.h"
-#include "Entities/UIElements/UIElementIdentifierEnum.h"
+#include "Entities/UIElements/UIElement.hpp"
+#include "Entities/UIElements/UIElementIdentifierEnum.hpp"
 
 // Standard Library Imports
 #include <string>

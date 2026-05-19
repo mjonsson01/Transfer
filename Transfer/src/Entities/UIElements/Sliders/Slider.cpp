@@ -1,6 +1,6 @@
 // File: Transfer/Entities/src/UIElements/Sliders/Slider.cpp
 
-#include "Entities/UIElements/Sliders/Slider.h"
+#include "Entities/UIElements/Sliders/Slider.hpp"
 
 Slider::Slider()
 {

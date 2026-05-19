@@ -1,6 +1,6 @@
 // File: Transfer/src/Entities/UIElements/Overlay/FPSCounter.cpp
 
-#include "Entities/UIElements/Overlay/FPSCounter.h"
+#include "Entities/UIElements/Overlay/FPSCounter.hpp"
 
 FPSCounter::FPSCounter()
 {

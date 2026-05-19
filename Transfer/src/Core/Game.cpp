@@ -1,8 +1,8 @@
 // File: Transfer/src/Core/Game.cpp
 
 // Custom Imports
-#include "Core/Game.h"
-#include "Utilities/System/SystemPathUtility.h"
+#include "Core/Game.hpp"
+#include "Utilities/System/SystemPathUtility.hpp"
 
 // Standard Library Imports
 #include <iostream>

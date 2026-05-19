@@ -6,11 +6,11 @@
 #include <SDL3/SDL.h>
 
 // Custom Imports
-#include "Core/GameState.h"
-#include "Core/UIState.h"
-#include "Entities/Sound/MusicModeEnum.h"
-#include "Entities/Sound/SoundEffect.h"
-#include "Utilities/System/SystemPathUtility.h"
+#include "Core/GameState.hpp"
+#include "Core/UIState.hpp"
+#include "Entities/Sound/MusicModeEnum.hpp"
+#include "Entities/Sound/SoundEffect.hpp"
+#include "Utilities/System/SystemPathUtility.hpp"
 
 // Standard Library Imports
 #include <filesystem>

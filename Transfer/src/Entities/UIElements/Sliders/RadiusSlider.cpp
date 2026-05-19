@@ -1,6 +1,6 @@
 // File: Transfer/src/Entities/UIElements/Sliders/RadiusSlider.cpp
 
-#include "Entities/UIElements/Sliders/RadiusSlider.h"
+#include "Entities/UIElements/Sliders/RadiusSlider.hpp"
 
 RadiusSlider::RadiusSlider() : Slider()
 {

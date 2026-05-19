@@ -1,6 +1,6 @@
 // File: Transfer/src/Scenes/TestVisualScene/TestVisualScene.cpp
 
-#include "Scenes/TestVisualScene/TestVisualScene.h"
+#include "Scenes/TestVisualScene/TestVisualScene.hpp"
 
 TestVisualScene::TestVisualScene() : Scene(SceneIdentifier::PAUSE_SCENE)
 {

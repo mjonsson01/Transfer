@@ -6,11 +6,11 @@
 #include <SDL3/SDL.h>
 
 // Custom Imports
-#include "Core/InputState.h"
-#include "Entities/Sound/MusicModeEnum.h"
-#include "Entities/UIElements/UIElementIdentifierEnum.h"
-#include "Scenes/SceneIdentifierEnum.h"
-#include "Utilities/Constants/GameSystemConstants.h"
+#include "Core/InputState.hpp"
+#include "Entities/Sound/MusicModeEnum.hpp"
+#include "Entities/UIElements/UIElementIdentifierEnum.hpp"
+#include "Scenes/SceneIdentifierEnum.hpp"
+#include "Utilities/Constants/GameSystemConstants.hpp"
 
 // Standard Library Imports
 #include <vector>

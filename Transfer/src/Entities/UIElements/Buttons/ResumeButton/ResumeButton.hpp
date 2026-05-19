@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "Entities/UIElements/Buttons/Button.h"
+#include "Entities/UIElements/Buttons/Button.hpp"
 
 class ResumeButton : public Button
 {

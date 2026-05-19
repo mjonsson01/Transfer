@@ -6,12 +6,12 @@
 #include <SDL3/SDL.h>
 
 // Custom Imports
-#include "Core/GameState.h"
-#include "Core/UIState.h"
-#include "Scenes/SceneIdentifierEnum.h"
-#include "Utilities/Constants/EngineConstants.h"
-#include "Utilities/Constants/GameSystemConstants.h"
-#include "Utilities/UserInput/TransferInputs.h"
+#include "Core/GameState.hpp"
+#include "Core/UIState.hpp"
+#include "Scenes/SceneIdentifierEnum.hpp"
+#include "Utilities/Constants/EngineConstants.hpp"
+#include "Utilities/Constants/GameSystemConstants.hpp"
+#include "Utilities/UserInput/TransferInputs.hpp"
 // Standard Library Imports
 #include <iostream>
 

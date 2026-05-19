@@ -1,6 +1,6 @@
 // File: Transfer/src/Entities/UIElements/Buttons/ResumeButton/ResumeButton.cpp
 
-#include "Entities/UIElements/Buttons/ResumeButton/ResumeButton.h"
+#include "Entities/UIElements/Buttons/ResumeButton/ResumeButton.hpp"
 
 ResumeButton::ResumeButton() : Button()
 {
