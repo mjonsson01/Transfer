@@ -28,7 +28,7 @@ class Slider : public UIElement
     ~Slider() = default;
     void renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) override;
     virtual std::string getDisplayText() const { return std::to_string(sliderValue); }
-    virtual void slideMe(Vector2D positionOfEvent, double& returnedElementValue) override;
+    virtual void slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& UIState) override;
     double getSliderValue() { return sliderValue; }
     SDL_FPoint getKnobPosition() const { return {knobRect.x, knobRect.y}; }
 

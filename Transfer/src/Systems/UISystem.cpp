@@ -93,7 +93,7 @@ void UISystem::updateGameUIElements(GameState& gameState, UIState& UIState)
         {
             if (isSlider(activeElementID))
             {
-                routeSliderInput(activeElementID, inputs_received);
+                routeSliderInput(activeElementID, UIState);
             }
         }
         if (inputs_received.leftMouseButtonJustReleased)
@@ -132,7 +132,7 @@ void UISystem::updateMenuUIElements(GameState& gameState, UIState& UIState)
         {
             if (isSlider(activeElementID))
             {
-                routeSliderInput(activeElementID, inputs_received);
+                routeSliderInput(activeElementID, UIState);
             }
         }
         if (inputs_received.leftMouseButtonJustReleased)
@@ -154,11 +154,11 @@ void UISystem::updateMenuUIElements(GameState& gameState, UIState& UIState)
     inputs_received.isPreviewingWithInitialVelocity = false;
 }
 
-void UISystem::routeSliderInput(UIElementIdentifier sliderTypeToUpdate, InputState& inputState)
+void UISystem::routeSliderInput(UIElementIdentifier sliderTypeToUpdate, UIState& UIState)
 {
     std::unordered_map<UIElementIdentifier, UIElement*> allUIElements = allScenes[currentSceneID]->getSceneElements();
     UIElement* elementToUpdate = allUIElements[sliderTypeToUpdate];
-
+    auto& input_state = UIState.getMutableInputState();
     // this could be further abstracted into passing the full input state so
     // that the UIelement decides what it updates, but I want to make the ui
     // element as stupid as possible
@@ -167,21 +167,21 @@ void UISystem::routeSliderInput(UIElementIdentifier sliderTypeToUpdate, InputSta
     if (sliderTypeToUpdate == UIElementIdentifier::MASS_SLIDER_INDEX)
     {
         double mass_val_to_be_calculated_and_injected = 0.0; // initialize
-        elementToUpdate->slideMe(inputState.mouseCurrPosition, mass_val_to_be_calculated_and_injected);
-        inputState.selectedMass = mass_val_to_be_calculated_and_injected;
+        elementToUpdate->slideMe(input_state.mouseCurrPosition, mass_val_to_be_calculated_and_injected, UIState);
+        input_state.selectedMass = mass_val_to_be_calculated_and_injected;
     }
 
     else if (sliderTypeToUpdate == UIElementIdentifier::RADIUS_SLIDER_INDEX)
     {
         double radius_val_to_be_calculated_and_injected = 0.0; // initialize
-        elementToUpdate->slideMe(inputState.mouseCurrPosition, radius_val_to_be_calculated_and_injected);
-        inputState.selectedRadius = radius_val_to_be_calculated_and_injected;
+        elementToUpdate->slideMe(input_state.mouseCurrPosition, radius_val_to_be_calculated_and_injected, UIState);
+        input_state.selectedRadius = radius_val_to_be_calculated_and_injected;
     }
     else if (sliderTypeToUpdate == UIElementIdentifier::SIMULATION_SPEED_SLIDER_INDEX)
     {
         double simulation_speed_val_to_be_calculated_and_injected = 1.0; // initialize to 1
-        elementToUpdate->slideMe(inputState.mouseCurrPosition, simulation_speed_val_to_be_calculated_and_injected);
-        inputState.selectedSimSpeedScale = simulation_speed_val_to_be_calculated_and_injected;
+        elementToUpdate->slideMe(input_state.mouseCurrPosition, simulation_speed_val_to_be_calculated_and_injected, UIState);
+        input_state.selectedSimSpeedScale = simulation_speed_val_to_be_calculated_and_injected;
     }
     else
     {

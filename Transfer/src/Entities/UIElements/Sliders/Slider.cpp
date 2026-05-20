@@ -13,7 +13,7 @@ Slider::Slider()
     maxValue = 0.0;
 }
 
-void Slider::slideMe(Vector2D positionOfEvent, double& returnedElementValue)
+void Slider::slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& UIState)
 {
 
     // Track start positions
@@ -57,6 +57,7 @@ void Slider::slideMe(Vector2D positionOfEvent, double& returnedElementValue)
 
     // Return updated value
     returnedElementValue = sliderValue;
+    // UIState.QueueSoundEffect("SliderTick");
     return;
 }
 

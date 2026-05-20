@@ -21,7 +21,7 @@ class UIElement
     UIElement();
     virtual ~UIElement();
     virtual void renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) {}; // Default does nothing
-    virtual void slideMe(Vector2D positionOfEvent, double& returnedElementValue) {};      // Default does nothing
+    virtual void slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& UIState) {};      // Default does nothing
     virtual void clickMe(Vector2D positionOfEvent, UIState& UIState) {};                  // Default does nothing
     void setPosition(float x, float y)
     {

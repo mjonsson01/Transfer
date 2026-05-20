@@ -29,5 +29,5 @@ class MassSlider : public Slider
     {
         return "Mass: " + std::to_string(sliderValue); // add units?
     }
-    void slideMe(Vector2D positionOfEvent, double& returnedElementValue) override;
+    void slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& UIState) override;
 };

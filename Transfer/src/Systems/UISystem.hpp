@@ -35,7 +35,7 @@ class UISystem
     void updateGameUIElements(GameState& gameState, UIState& UIState);
     void updateMenuUIElements(GameState& gameState, UIState& UIState);
     UIElementIdentifier findElementWeAreIn(InputState& inputsReceived);
-    void routeSliderInput(UIElementIdentifier elementToUpdate, InputState& inputState);
+    void routeSliderInput(UIElementIdentifier elementToUpdate, UIState& UIState);
     void routeButtonClick(UIElementIdentifier elementToUpdate, UIState& UIState);
     void populateScenes();
 
