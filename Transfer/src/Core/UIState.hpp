@@ -13,6 +13,8 @@
 #include "Utilities/Constants/GameSystemConstants.hpp"
 
 // Standard Library Imports
+#include <queue>
+#include <string>
 #include <vector>
 
 class UIState
