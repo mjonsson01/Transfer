@@ -1,6 +1,6 @@
 // File: Transfer/src/Entities/UIElements/Buttons/PlayGameButton/PlayGameButton.cpp
 
-#include "Entities/UIElements/Buttons/PlayGameButton/PlayGameButton.h"
+#include "Entities/UIElements/Buttons/PlayGameButton/PlayGameButton.hpp"
 
 PlayGameButton::PlayGameButton() : Button()
 {
@@ -17,6 +17,7 @@ PlayGameButton::PlayGameButton() : Button()
 
 void PlayGameButton::clickMe(Vector2D positionOfEvent, UIState& UIState)
 {
-    UIState.setCurrentScene(GAME_SCENE);
+    UIState.setCurrentScene(SceneIdentifier::GAME_SCENE);
+    UIState.QueueSoundEffect("ButtonClick");
     return;
 }

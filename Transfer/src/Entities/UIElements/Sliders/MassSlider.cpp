@@ -1,6 +1,6 @@
 // File: Transfer/src/Entities/UIElements/Sliders/MassSlider.cpp
 
-#include "Entities/UIElements/Sliders/MassSlider.h"
+#include "Entities/UIElements/Sliders/MassSlider.hpp"
 
 MassSlider::MassSlider() : Slider()
 {
@@ -31,7 +31,7 @@ MassSlider::MassSlider() : Slider()
     UIElementID = UIElementIdentifier::MASS_SLIDER_INDEX;
 }
 
-void MassSlider::slideMe(Vector2D positionOfEvent, double& returnedElementValue)
+void MassSlider::slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& UIState)
 {
     float track_start_x = trackRect.x;
     float track_length_x = trackRect.w - knobRect.w;
@@ -62,4 +62,6 @@ void MassSlider::slideMe(Vector2D positionOfEvent, double& returnedElementValue)
     knobRect.x = track_start_x + (t * track_length_x);
 
     returnedElementValue = sliderValue;
+    // UIState.QueueSoundEffect("SliderTick");
+    return;
 }

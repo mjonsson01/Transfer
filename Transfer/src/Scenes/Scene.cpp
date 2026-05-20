@@ -1,5 +1,5 @@
 // File: Transfer/src/Scenes/Scene.cpp
-#include "Scene.h"
+#include "Scene.hpp"
 
 Scene::Scene(SceneIdentifier sceneID) : sceneIdentifier(sceneID) {}
 

@@ -1,6 +1,6 @@
 // File: Transfer/src/Utilities/UserInput/TransferInputs.h
 
-#include "TransferInputs.h"
+#include "TransferInputs.hpp"
 
 std::ostream& operator<<(std::ostream& os, const TransferInputs& input)
 {

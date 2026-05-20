@@ -1,6 +1,6 @@
 // File: Transfer/src/Scenes/PauseScene/PauseScene.cpp
 
-#include "Scenes/PauseScene/PauseScene.h"
+#include "Scenes/PauseScene/PauseScene.hpp"
 
 PauseScene::PauseScene() : Scene(SceneIdentifier::PAUSE_SCENE)
 {

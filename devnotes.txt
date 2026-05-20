@@ -74,3 +74,31 @@ NEED TO FIX: MACOS CMAKE LISTS FOR DEBUG IS BROKEN ? unknown if just normal erro
 
 
 rework breakapart / substitute with particles mechanics to stop line segmenting issue?
+
+control volume using SDL_SetAudioStreamGain(musicStream, musicVolume)
+
+add feature to delete most recently created body
+
+Rework rendering into SDL_GPU.
+
+add previous position check into slider to allow for delayed playback of slider ticks.
+
+Rework UIState sound stuff into a SoundState.
+
+reserve probably about 250k into the Particle size and about 256 into the macro body size
+
+Rework into Barnes hutt ? rework math?
+
+Barnes hutt won't be substantially worse than the existing system, but it will be much more accurate and will allow me to combine into a single vector of bodies
+
+
+
+ add sound back to sliders with previous state info
+Order of features to follow -> zoom -> barnes hutt? -> SDL_GPU rewrite ->
+
+Next, add E&M -> boundaries on bodies to indicate class -> rework color system to deal with all
+
+-> load management -> player class -> player IO -> player physics
+
+
+-> +3 music tracks -> add level select scene -> build property checkboxes and overlay display

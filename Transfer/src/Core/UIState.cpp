@@ -1,6 +1,6 @@
 // File: Transfer/src/Core/UIState.cpp
 
-#include "UIState.h"
+#include "UIState.hpp"
 
 UIState::UIState() : framesPerSecond(TARGET_FPS) {}
 

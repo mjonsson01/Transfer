@@ -1,6 +1,6 @@
 // File: Transfer/src/Scenes/StartMenuScene/StartMenuScene.cpp
 
-#include "StartMenuScene.h"
+#include "StartMenuScene.hpp"
 
 StartMenuScene::StartMenuScene() : Scene(SceneIdentifier::GAME_SCENE)
 {

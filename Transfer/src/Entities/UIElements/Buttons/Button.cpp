@@ -1,6 +1,6 @@
 // File: Transfer/src/Entities/UIElements/Buttons/Button.cpp
 
-#include "Entities/UIElements/Buttons/Button.h"
+#include "Entities/UIElements/Buttons/Button.hpp"
 
 Button::Button()
 {
@@ -34,13 +34,13 @@ void Button::renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont
         TTF_RenderText_Blended(UIFont, button_text.c_str(), button_text.length(), ColorLibrary::White);
     if (!text_surface)
     {
-        SDL_Log("Text surface creation failed: %s", SDL_GetError());
+        // SDL_Log("Text surface creation failed: %s", SDL_GetError());
         return;
     }
     SDL_Texture* text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
     if (!text_texture)
     {
-        SDL_Log("Text texture creation failed: %s", SDL_GetError());
+        // SDL_Log("Text texture creation failed: %s", SDL_GetError());
         return;
     }
     float text_width = static_cast<float>(text_surface->w);

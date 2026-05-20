@@ -1,6 +1,6 @@
 // File: Transfer/src/Entities/UIElements/Sliders/SimulationSpeedSlider.cpp
 
-#include "Entities/UIElements/Sliders/SimulationSpeedSlider.h"
+#include "Entities/UIElements/Sliders/SimulationSpeedSlider.hpp"
 
 SimulationSpeedSlider::SimulationSpeedSlider() : Slider()
 {

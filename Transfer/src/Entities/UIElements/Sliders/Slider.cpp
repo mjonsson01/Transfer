@@ -1,6 +1,6 @@
 // File: Transfer/Entities/src/UIElements/Sliders/Slider.cpp
 
-#include "Entities/UIElements/Sliders/Slider.h"
+#include "Entities/UIElements/Sliders/Slider.hpp"
 
 Slider::Slider()
 {
@@ -13,7 +13,7 @@ Slider::Slider()
     maxValue = 0.0;
 }
 
-void Slider::slideMe(Vector2D positionOfEvent, double& returnedElementValue)
+void Slider::slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& UIState)
 {
 
     // Track start positions
@@ -57,6 +57,7 @@ void Slider::slideMe(Vector2D positionOfEvent, double& returnedElementValue)
 
     // Return updated value
     returnedElementValue = sliderValue;
+    // UIState.QueueSoundEffect("SliderTick");
     return;
 }
 
@@ -80,13 +81,13 @@ void Slider::renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont
         TTF_RenderText_Blended(UIFont, slider_text.c_str(), slider_text.length(), ColorLibrary::White);
     if (!text_surface)
     {
-        SDL_Log("Text surface creation failed: %s", SDL_GetError());
+        // SDL_Log("Text surface creation failed: %s", SDL_GetError());
         return;
     }
     SDL_Texture* text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
     if (!text_texture)
     {
-        SDL_Log("Text texture creation failed: %s", SDL_GetError());
+        // SDL_Log("Text texture creation failed: %s", SDL_GetError());
         return;
     }
     float width = static_cast<float>(text_surface->w);
