@@ -1,0 +1,71 @@
+// File: Transfer/src/Entities/UIElements/UIElement.h
+
+#pragma once
+
+// SDL3 Imports
+#include <SDL3/SDL.h>
+#include <SDL3_ttf/SDL_ttf.h>
+
+// Custom Imports
+#include "Core/UIState.hpp"
+#include "Entities/UIElements/UIElementIdentifierEnum.hpp"
+#include "Utilities/Math/Vector2D.hpp"
+#include "Utilities/Rendering/Colors.hpp"
+
+// Standard Library Imports
+#include <string>
+
+class UIElement
+{
+  public:
+    UIElement();
+    virtual ~UIElement();
+    virtual void renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) {}; // Default does nothing
+    virtual void slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& UIState) {};      // Default does nothing
+    virtual void clickMe(Vector2D positionOfEvent, UIState& UIState) {};                  // Default does nothing
+    void setPosition(float x, float y)
+    {
+        posX = x;
+        posY = y;
+    }
+    float getX() const { return posX; }
+    float getY() const { return posY; }
+    void setVisibility(bool desiredVisibility) { visible = desiredVisibility; }
+    UIElementIdentifier checkAndReturnIfHit(const Vector2D& positionToCheck);
+    UIElementIdentifier getUIElementID() const { return UIElementID; }
+
+  private:
+    float posX = 0;
+    float posY = 0;
+    bool visible = false;
+
+  protected:
+    SDL_FRect hotZoneRect;
+    UIElementIdentifier UIElementID;
+};
+
+// Derived UI Element Classes
+// (Each derived class should have its own header file)
+
+// class SimulationSpeedSlider : public UIElement
+// {
+// };
+// class VelocityVectorToggle : public UIElement
+// {
+// };
+
+// class GravityToggle : public UIElement
+// {
+// };
+
+// class MassSlider : public UIElement
+// {
+// };
+
+// class PauseMenu : public UIElement
+// {
+// };
+
+// class SelectionCheckbox : public UIElement
+// {
+// };

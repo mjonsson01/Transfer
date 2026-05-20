@@ -1,6 +1,6 @@
 // File: Transfer/src/Systems/RenderSystem.cpp
 
-#include "Systems/RenderSystem.h"
+#include "Systems/RenderSystem.hpp"
 
 // Constructor: Initializes SDL Window and Renderer
 RenderSystem::RenderSystem()
@@ -21,17 +21,14 @@ RenderSystem::RenderSystem()
     // SDL_SetRenderVSync(renderer, 1);
     if (TTF_Init() == false)
     {
-        SDL_Log("Failed to initialize SDL_ttf: %s", SDL_GetError());
+        // SDL_Log("Failed to initialize SDL_ttf: %s", SDL_GetError());
         return;
     }
-    std::string fontPath = Utilities::GetResourcePath("Fonts/SpaceMono-Regular.ttf");
+    std::string fontPathRegular = Utilities::GetResourcePath("Fonts/SpaceMono-Regular.ttf");
+    std::string fontPathTitle = Utilities::GetResourcePath("Fonts/SpaceMono-Bold.ttf");
 
-    UIFont = TTF_OpenFont(fontPath.c_str(), 18);
-    if (!UIFont)
-    {
-        SDL_Log("Failed to load font: %s", SDL_GetError());
-        return;
-    }
+    UIFontRegular = TTF_OpenFont(fontPathRegular.c_str(), 18);
+    UIFontTitle = TTF_OpenFont(fontPathTitle.c_str(), 32);
     buildCircleTextureCache();
     createStarTextures();
     createStarField(STAR_NUM);
@@ -61,39 +58,56 @@ void RenderSystem::CleanUp()
 
 // --------- RENDER FULL FRAME METHOD --------- //
 
-void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState, const std::vector<UIElement*>& allUIElements)
+void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState,
+                                   const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope)
 {
-    Uint64 start = SDL_GetPerformanceCounter();
+    SceneIdentifier current_scene = UIState.getCurrentSceneID();
+    if (current_scene == SceneIdentifier::GAME_SCENE)
+    {
+        renderGameFrame(gameState, UIState, allUIElementsInScope);
+    }
+    else
+    {
+        renderNonGameFrame(gameState, UIState, allUIElementsInScope);
+    }
+
+    SDL_RenderPresent(renderer);
+}
+void RenderSystem::renderGameFrame(GameState& gameState, UIState& UIState,
+                                   const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope)
+{
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // black background
     SDL_RenderClear(renderer);
 
     // render starry background
     updateStars();
     renderStars();
-
     // Render all preview bodies
     renderPreviewBodies(UIState);
     // Render all the bodies (particles)
     renderBodies(gameState);
 
-    renderUIElements(UIState, allUIElements);
-
-    // Display the frame
-    Uint64 beforePresent = SDL_GetPerformanceCounter();
-    SDL_RenderPresent(renderer);
-    Uint64 end = SDL_GetPerformanceCounter();
-    double render_ms = (beforePresent - start) * 1000.0 / SDL_GetPerformanceFrequency();
-    double present_ms = (end - beforePresent) * 1000.0 / SDL_GetPerformanceFrequency();
-
-    // SDL_Log("PRESENT STALL: %f ms", present_ms);
-    // SDL_Log("Render STALL: %f ms", render_ms);
+    renderUIElements(UIState, allUIElementsInScope);
 }
+void RenderSystem::renderNonGameFrame(GameState& gameState, UIState& UIState,
+                                      const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope)
+{
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // black background
+    SDL_RenderClear(renderer);
+    renderUIElements(UIState, allUIElementsInScope);
+}
+
 void RenderSystem::renderPreviewBodies(UIState& UIState)
 {
     InputState& input_state = UIState.getMutableInputState();
     if (input_state.isPreviewingMacro)
     {
         // create pseudo body.
+        if (input_state.selectedRadius <= 1.0)
+        {
+            // also probably throw an error toast here somehow
+            return;
+        }
         GravitationalBody body = {};
         body.mass = input_state.selectedMass;
         body.radius = input_state.selectedRadius;
@@ -128,59 +142,54 @@ void RenderSystem::renderPreviewBodies(UIState& UIState)
 void RenderSystem::renderBodies(GameState& gameState)
 {
     float alpha = gameState.getAlpha();
-    // Render Particles
-    for (auto& particle : gameState.getParticles())
+    auto& particles = gameState.getParticles();
+
+    // 1. Group points by color to minimize state changes
+    // Using a map of SDL_Color to a vector of points
+    // Note: If you have a fixed set of colors, a fixed-size array is even faster
+    std::map<Uint64, std::vector<SDL_FPoint>> coloredBatches;
+
+    for (const auto& particle : particles)
     {
         if (!particle.visible)
-        {
-            continue; // don't render invisible particles
-        }
-        SDL_Color color = getColorForProperty(particle);
-        SDL_Texture* tex = circleTextureCache[static_cast<int>(particle.radius)];
-        SDL_SetTextureColorMod(tex, color.r, color.g, color.b);
-        SDL_SetTextureAlphaMod(tex, color.a);
+            continue;
 
-        Vector2D current_position = particle.position;
-        Vector2D previous_position = particle.previousPosition;
-        // Alpha Interpolation causes particle flickers for small particles.
-        // Remove for now. Figure out dynamical fix later. Leave interpolation
-        // on for slow mo.
+        // Linear interpolation for smooth movement
+        float render_x = particle.previousPosition.xVal * (1.0f - alpha) + particle.position.xVal * alpha;
+        float render_y = particle.previousPosition.yVal * (1.0f - alpha) + particle.position.yVal * alpha;
 
-        float render_x, render_y;
-        if (particle.radius <= 1.0 && gameState.getToggleSlow() == false)
-        {
-            render_x = particle.position.xVal;
-            render_y = particle.position.yVal;
-            render_x = std::round(render_x);
-            render_y = std::round(render_y);
-        }
-        else
-        {
-            render_x = previous_position.xVal * (1.0f - alpha) + current_position.xVal * alpha;
-            render_y = previous_position.yVal * (1.0f - alpha) + current_position.yVal * alpha;
-        }
-        float r = static_cast<float>(particle.radius);
-        SDL_FRect dstRect = {render_x - r, render_y - r, r * 2, r * 2};
+        SDL_Color c = getColorForProperty(particle);
 
-        SDL_RenderTexture(renderer, tex, nullptr, &dstRect);
+        // Pack color into a Uint32 for easy mapping
+        Uint32 colorKey = (c.r << 24) | (c.g << 16) | (c.b << 8) | c.a;
+        coloredBatches[colorKey].push_back({render_x, render_y});
     }
 
-    // Render Macro Bodies
+    // 2. Render each batch in a single call
+    for (auto& [colorKey, points] : coloredBatches)
+    {
+        Uint8 r = (colorKey >> 24) & 0xFF;
+        Uint8 g = (colorKey >> 16) & 0xFF;
+        Uint8 b = (colorKey >> 8) & 0xFF;
+        Uint8 a = colorKey & 0xFF;
+
+        SDL_SetRenderDrawColor(renderer, r, g, b, a);
+        SDL_RenderPoints(renderer, points.data(), (int)points.size());
+    }
+
+    // 3. Render Macro Bodies (Keep these as textures since they are few and large)
     for (auto& body : gameState.getMacroBodies())
     {
         if (!body.visible)
-        {
             continue;
-        }
+
         SDL_Color color = getColorForProperty(body);
         SDL_Texture* tex = circleTextureCache[static_cast<int>(body.radius)];
         SDL_SetTextureColorMod(tex, color.r, color.g, color.b);
         SDL_SetTextureAlphaMod(tex, color.a);
 
-        Vector2D current_position = body.position;
-        Vector2D previous_position = body.previousPosition;
-        float render_x = previous_position.xVal * (1.0f - alpha) + current_position.xVal * alpha;
-        float render_y = previous_position.yVal * (1.0f - alpha) + current_position.yVal * alpha;
+        float render_x = body.previousPosition.xVal * (1.0f - alpha) + body.position.xVal * alpha;
+        float render_y = body.previousPosition.yVal * (1.0f - alpha) + body.position.yVal * alpha;
         float r = static_cast<float>(body.radius);
         SDL_FRect dstRect = {render_x - r, render_y - r, r * 2, r * 2};
 
@@ -248,7 +257,7 @@ void RenderSystem::buildCircleTextureCache()
 {
     // Safety cleanup if re-initializing
     clearCachedCircleTextures();
-    int max_radius = static_cast<int>(MAX_RADIUS);
+    int max_radius = static_cast<int>(2 * MAX_RADIUS);
     circleTextureCache.reserve(max_radius);
 
     for (int radius = 1; radius <= max_radius; ++radius)
@@ -260,7 +269,7 @@ void RenderSystem::buildCircleTextureCache()
 
         if (!tex)
         {
-            SDL_Log("Failed to create circle texture: %s", SDL_GetError());
+            // SDL_Log("Failed to create circle texture: %s", SDL_GetError());
             continue;
         }
 
@@ -297,68 +306,67 @@ void RenderSystem::buildCircleTextureCache()
 
         circleTextureCache[radius] = tex;
     }
-
-    // SDL_Log("Circle texture cache built: %d radii", max_radius);
 }
 // --------- RENDER UI ELEMENTS METHOD --------- //
 
-void RenderSystem::renderUIElements(UIState& UIState, std::vector<UIElement*> allUIElements)
+void RenderSystem::renderUIElements(UIState& UIState,
+                                    const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope)
 {
     if (!UIState.getAllUIVisibility())
-        return;
-
-    for (auto& element : allUIElements)
     {
-        element->renderMe(renderer, UIState, UIFont);
+        return;
+    }
+
+    for (auto& [UI_element_ID, UI_element_ptr] : allUIElementsInScope)
+    {
+        if (UI_element_ID == UIElementIdentifier::PLAY_GAME_BUTTON_INDEX)
+        {
+            UI_element_ptr->renderMe(renderer, UIState, UIFontTitle);
+        }
+        else
+        {
+            UI_element_ptr->renderMe(renderer, UIState, UIFontRegular);
+        }
     }
 }
 
 // Smooth interpolation color lookup function
 
 // --------- RENDER UTILITY HELPERS --------- //
+// Need to rework to fix constant calls (store color in grav body) and also fix beyond max mass opacity.
 SDL_Color RenderSystem::getColorForProperty(const GravitationalBody& body)
 // NEED TO OPTIMIZE OUT CONSTANT ACCESS
 {
-    // 1. Use Logarithmic scaling so small changes in light bodies are visible
-    // mass + 1.0 avoids log(0)
-    double logMass = std::log10(body.mass + 1.0);
-    double logMax = std::log10(MAX_MASS + 1.0);
-    double t = std::clamp(logMass / logMax, 0.0, 1.0);
-    Uint8 opacity = 255;
+    // 1. The "Event Horizon" (Beyond Max Mass)
+    double absMass = std::abs(body.mass);
+    // std::cout << "body.mass: " << body.mass << std::endl;
 
-    // Ghost mode render
-    if (body.isMacroGhost || !body.isCollidable)
+    if (absMass > MAX_MASS)
+        return SDL_Color{0, 0, 0, 255};
+
+    // 2. The Scaling Factor
+    // Power of 0.1 stretches the scale so 10^3 and 10^12 actually look different.
+    static const double exponent = 0.1;
+    static const double maxScaled = std::pow(MAX_MASS, exponent);
+    double t = std::pow(absMass, exponent) / maxScaled;
+    t = std::clamp(t, 0.0, 1.0);
+
+    Uint8 r = 0, g = 0, b = 0;
+
+    if (body.mass < 0)
     {
-        opacity = 175;
-    }
-    // 2. Multi-stop gradient (Blue -> Cyan -> Green -> Yellow -> Red)
-    Uint8 r, g, b;
-
-    if (t < 0.25)
-    { // Blue to Cyan
-        r = 0;
-        g = static_cast<Uint8>(t * 4.0 * 255);
-        b = 255;
-    }
-    else if (t < 0.5)
-    { // Cyan to Green
-        r = 0;
-        g = 255;
-        b = static_cast<Uint8>((0.5 - t) * 4.0 * 255);
-    }
-    else if (t < 0.75)
-    { // Green to Yellow
-        r = static_cast<Uint8>((t - 0.5) * 4.0 * 255);
-        g = 255;
-        b = 0;
+        r = static_cast<Uint8>(100 + (155 * t));
+        g = static_cast<Uint8>(200 * std::pow(t, 3)); // Adds "heat" (yellowish) at high mass
+        b = static_cast<Uint8>(200 * std::pow(t, 5)); // Becomes white at the very limit
     }
     else
-    { // Yellow to Red
-        r = 255;
-        g = static_cast<Uint8>((1.0 - t) * 4.0 * 255);
-        b = 0;
+    {
+        r = static_cast<Uint8>(200 * std::pow(t, 5));
+        g = static_cast<Uint8>(200 * std::pow(t, 3));
+        b = static_cast<Uint8>(100 + (155 * t));
     }
 
+    Uint8 opacity = (body.isMacroGhost || !body.isCollidable) ? 175 : 255;
     return SDL_Color{r, g, b, opacity};
 }
 
@@ -421,15 +429,32 @@ void RenderSystem::renderStars()
 
 void RenderSystem::createStarTextures()
 {
-    const int maxStarRadius = 3;
+    const int maxStarRadius = 4;
     const int minStarRadius = 1;
 
     for (int r = minStarRadius; r <= maxStarRadius; ++r)
     {
-        SDL_Color color = {255, 255, 255, 255};
-        SDL_Texture* tex = circleTextureCache[r];
-        SDL_SetTextureColorMod(tex, color.r, color.g, color.b);
-        SDL_SetTextureAlphaMod(tex, color.a);
-        twinklingStarTextures.push_back(tex);
+        SDL_Texture* sourceTex = circleTextureCache[r];
+        float w, h;
+        SDL_GetTextureSize(sourceTex, &w, &h);
+
+        // Create a NEW unique texture for this star size
+        SDL_Texture* starTex =
+            SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, (int)w, (int)h);
+
+        // Ensure transparency is enabled for the new texture
+        SDL_SetTextureBlendMode(starTex, SDL_BLENDMODE_BLEND);
+
+        // Copy the circle to the new star texture
+        SDL_SetRenderTarget(renderer, starTex);
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0); // Clear with transparent
+        SDL_RenderClear(renderer);
+        SDL_RenderTexture(renderer, sourceTex, nullptr, nullptr);
+
+        // Reset render target to the screen
+        SDL_SetRenderTarget(renderer, nullptr);
+
+        // Now this texture belongs ONLY to the star system
+        twinklingStarTextures.push_back(starTex);
     }
 }

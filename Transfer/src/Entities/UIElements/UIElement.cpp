@@ -1,19 +1,19 @@
 // File: Transfer/src/Entities/UIElements/UIElement.cpp
 
-#include "UIElement.h"
+#include "UIElement.hpp"
 
 // Base UIElement implementation
 UIElement::UIElement() {}
 
 UIElement::~UIElement() {}
 
-UIElementType UIElement::isInDeadZone(const Vector2D& positionToCheck)
+UIElementIdentifier UIElement::checkAndReturnIfHit(const Vector2D& positionToCheck)
 {
     SDL_FPoint point = {static_cast<float>(positionToCheck.xVal), static_cast<float>(positionToCheck.yVal)};
-    UIElementType type_hit = UIElementType::NONE;
+    UIElementIdentifier type_hit = UIElementIdentifier::NONE;
     if (SDL_PointInRectFloat(&point, &hotZoneRect))
     {
-        type_hit = UIElementTypeIdentifier;
+        type_hit = UIElementID;
     }
     return type_hit;
 }

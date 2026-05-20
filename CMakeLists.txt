@@ -11,7 +11,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # ----------------------------------
 file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/Transfer/src/*.cpp"
-    "${CMAKE_SOURCE_DIR}/Transfer/src/*.h"
+    "${CMAKE_SOURCE_DIR}/Transfer/src/*.hpp"
 )
 
 # ----------------------------------

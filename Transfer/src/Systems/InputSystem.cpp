@@ -1,6 +1,6 @@
 // File: Transfer/src/Systems/InputSystem.cpp
 
-#include "Systems/InputSystem.h"
+#include "Systems/InputSystem.hpp"
 
 InputSystem::InputSystem()
 {
@@ -14,11 +14,14 @@ InputSystem::~InputSystem() {}
 
 void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState)
 {
+
     transferInputs.resetJustPressed();
     UIState.getMutableInputState().resetTransientFlags(); // clean the input state before polling for new events.
     SDL_Event event;
+    // int eventCount = 0;
     while (SDL_PollEvent(&event))
     {
+        // eventCount++;
         if (event.type == SDL_EVENT_QUIT)
         {
             gameState.SetPlaying(false);
@@ -29,52 +32,98 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState
             // Will ensure the event is not yet consumed by the UI.
             UIState.getMutableInputState().UIInputConsumed = false;
             // First check if in start menu. If so, route input to start menu behaviors
-            if (UIState.getStartMenuActive())
+            SceneIdentifier current_scene = UIState.getCurrentSceneID();
+
+            if (current_scene == SceneIdentifier::GAME_SCENE)
             {
-                // Handle start menu specific input
-                break;
-            }
-            // If not in start menu, double check we are not in a pause menu. If so, route to pause menu behaviors
-            if (UIState.getPauseMenuActive())
-            {
-                // Handle pause menu specific input
-                break;
-            }
-            // Check if we are in a level editor. Not implemented yet so will never enter for now.
-            if (UIState.getLevelEditorScene())
-            {
-                // Handle level editor specific input
-                break;
-            }
-            // Check if we are in a level. If so, route commands accordingly.
-            if (UIState.getLevelScene())
-            {
-                // Handle level scene specific input
                 routeSDL_EventInputInGame(&event); // writes to internal member transferInputs;
-
-                // UI Only interactible through mouse clicks, but pass through the transfer game inputs so that the
-                // other systems have knowledge of the desired areas.
-
-                // pass off data to the UIState InputState sub data. UISystem may or may not consume this input. If it
-                // does not, the UISystem will flip flags as necessary to make sure the input is consumed
-                translateAndPassTransferInputsOff(UIState);
-
-                break;
+            }
+            else
+            {
+                routeSDL_EventInputInMenu(&event);
             }
         }
     }
-    // std::cout<< "Transfer Inputs -> " << transferInputs << std::endl;
-    // Now that our event is routed to an InputRoutedEvent (and we haven't quit), we can pass off our details to the UI
-    // for checking first, then to the rest of the game if
+
+    SceneIdentifier current_scene = UIState.getCurrentSceneID();
+    if (current_scene == SceneIdentifier::GAME_SCENE)
+    {
+        translateAndPassTransferInputsOff(UIState);
+    }
+    else
+    {
+        translateAndPassMenuInputsOff(UIState);
+    }
 }
 
+// Only need to worry about clicking
+void InputSystem::routeSDL_EventInputInMenu(SDL_Event* e)
+{
+    switch (e->type)
+    {
+    case SDL_EVENT_MOUSE_BUTTON_DOWN:
+        transferInputs.mouseCurrPosition = {e->button.x, e->button.y};
+
+        switch (e->button.button)
+        {
+        case SDL_BUTTON_LEFT:
+            transferInputs.leftMouseJustPressed = true;
+            transferInputs.leftMousePressed = true;
+            break;
+        default:
+            break;
+        }
+        break;
+    case SDL_EVENT_MOUSE_BUTTON_UP:
+        transferInputs.mouseCurrPosition = {e->button.x, e->button.y};
+
+        switch (e->button.button)
+        {
+        case SDL_BUTTON_LEFT:
+            transferInputs.leftMousePressed = false;
+            transferInputs.leftMouseJustReleased = true;
+            break;
+        default:
+            break;
+        }
+        break;
+    case SDL_EVENT_KEY_DOWN:
+        switch (e->key.scancode)
+        {
+        case SDL_SCANCODE_ESCAPE:
+            if (e->key.repeat == 0)
+            {
+                transferInputs.escJustPressed = true;
+            }
+            transferInputs.escPressed = true;
+            break;
+        default:
+            break;
+        }
+        break;
+    case SDL_EVENT_KEY_UP:
+        switch (e->key.scancode)
+        {
+        case SDL_SCANCODE_ESCAPE:
+            transferInputs.escPressed = false;
+            break;
+        default:
+            break;
+        }
+        break;
+    default:
+        break;
+    }
+}
 void InputSystem::routeSDL_EventInputInGame(SDL_Event* e)
 {
     switch (e->type)
     {
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
-        // if no mouse buttons are currently being dragged, set the start of the drag location. otherwise just continue
-        // tracking buttons (the start position will remain fixed)
+        transferInputs.mouseCurrPosition = {e->button.x, e->button.y};
+
+        // if no mouse buttons are currently being dragged, set the start of the drag location. otherwise just
+        // continue tracking buttons (the start position will remain fixed)
         if (!transferInputs.leftMousePressed && !transferInputs.rightMousePressed && !transferInputs.middleMousePressed)
         {
             // This is a dragging event
@@ -96,6 +145,7 @@ void InputSystem::routeSDL_EventInputInGame(SDL_Event* e)
         }
         break;
     case SDL_EVENT_MOUSE_BUTTON_UP:
+        transferInputs.mouseCurrPosition = {e->button.x, e->button.y};
         transferInputs.isDragging = false;
         switch (e->button.button)
         {
@@ -137,13 +187,25 @@ void InputSystem::routeSDL_EventInputInGame(SDL_Event* e)
             break;
         // Left Shift Preferred
         case SDL_SCANCODE_LSHIFT:
+            // update drag start position if repressing shift
+            if (transferInputs.leftMousePressed || transferInputs.rightMousePressed)
+            {
+                if (transferInputs.isDragging)
+                {
+                    transferInputs.mouseDragStartPosition = transferInputs.mouseCurrPosition;
+                }
+            }
             transferInputs.shiftPressed = true;
             break;
         case SDL_SCANCODE_SPACE:
             transferInputs.spacePressed = true;
             break;
         case SDL_SCANCODE_ESCAPE:
-            transferInputs.escPressed = false;
+            if (e->key.repeat == 0)
+            {
+                transferInputs.escJustPressed = true;
+            }
+            transferInputs.escPressed = true;
             // pause menu flag set?
             break;
         case SDL_SCANCODE_BACKSPACE:
@@ -197,15 +259,8 @@ void InputSystem::routeSDL_EventInputInGame(SDL_Event* e)
     }
 }
 
-void InputSystem::translateAndPassTransferInputsOff(UIState& UIState)
+void InputSystem::translateAndPassMenuInputsOff(UIState& UIState)
 {
-    // Check for clear all particle orders
-    if (transferInputs.clearParticlesPressed)
-    {
-        UIState.getMutableInputState().clearAllBodies();
-        return;
-    }
-    // Always pass off these
     InputState& updated_input_state = UIState.getMutableInputState();
     updated_input_state.mouseCurrPosition = transferInputs.mouseCurrPosition;
     updated_input_state.isDragging = transferInputs.isDragging;
@@ -216,15 +271,55 @@ void InputSystem::translateAndPassTransferInputsOff(UIState& UIState)
     updated_input_state.isPressingShift = transferInputs.shiftPressed;
 
     updated_input_state.leftMouseButtonJustPressed = transferInputs.leftMouseJustPressed;
+    updated_input_state.leftMouseButtonJustReleased = transferInputs.leftMouseJustReleased;
+    if (transferInputs.escJustPressed)
+    {
+        UIState.setCurrentScene(SceneIdentifier::GAME_SCENE);
+        transferInputs.resetAllInputsForSceneChange();
+        updated_input_state.resetFlagsForSceneChange();
+        return;
+    }
+}
+void InputSystem::translateAndPassTransferInputsOff(UIState& UIState)
+{
+    // Check for clear all particle orders
+    InputState& updated_input_state = UIState.getMutableInputState();
+    if (transferInputs.clearParticlesPressed)
+    {
+        updated_input_state.clearAllBodies();
+        transferInputs.resetAllKeyPressedVars();
+        transferInputs.resetAllMousePressedVars();
+        transferInputs.resetJustPressed();
+        updated_input_state.resetTransientFlags();
+        return;
+    }
+    if (transferInputs.escJustPressed)
+    {
+        UIState.setCurrentScene(SceneIdentifier::PAUSE_SCENE);
+        transferInputs.resetAllInputsForSceneChange();
+        updated_input_state.resetFlagsForSceneChange();
+        return;
+    }
+    // Always pass off these
 
+    updated_input_state.mouseCurrPosition = transferInputs.mouseCurrPosition;
+    updated_input_state.isDragging = transferInputs.isDragging;
+    updated_input_state.mouseDragStartPosition = transferInputs.mouseDragStartPosition;
+    updated_input_state.isClickingLeftMouseButton = transferInputs.leftMousePressed;
+    updated_input_state.isClickingRightMouseButton = transferInputs.rightMousePressed;
+    updated_input_state.isClickingMiddleMouseButton = transferInputs.middleMousePressed;
+    updated_input_state.isPressingShift = transferInputs.shiftPressed;
+
+    updated_input_state.leftMouseButtonJustPressed = transferInputs.leftMouseJustPressed;
+    updated_input_state.leftMouseButtonJustReleased = transferInputs.leftMouseJustReleased;
     if (transferInputs.leftMouseJustReleased)
     {
+        updated_input_state.isCreatingCollidable = true;
         if (transferInputs.shiftPressed)
         {
             updated_input_state.isCreatingWithInitialVelocity = true;
         }
         updated_input_state.isCreatingMacro = true;
-        updated_input_state.isCreatingCollidable = true;
     }
 }
 

@@ -1,10 +1,5 @@
 All fully capitalized methods are top level 'master' priority. Other camel case methods are lower level utility type functions.
 
-
-Need to find a way to add rendering on click with velocity line as well
-
-rewrite line to be an arrow, maybe build custom svg?
-
 On pause, maybe display all the internally stored velocity arrows? write function to take arbitrary body and draw the arrow rather than storing all the contents of the thing in a nested struct which is nasty
 
 
@@ -16,6 +11,7 @@ test black/white holes. Should they inherit from grav body?
 
 
 Make scrolling functionality. Should allow smooth panning. Also a play pause to the physics. 
+
 
 Add animation for instantiation. Investigate bloom on stars? add grav body texture, small enough masses should be terrestrial, larges masses should be more beefy.
 
@@ -50,8 +46,7 @@ User Input -> InputSystem -> UIState(inputState on inside) -> UISystem (update a
 NEED TO FIX THE MOUSE BUTTON HOLDING BUG RECAPTURING THE UI ELEMENT
 
 Also need to add easy ui scaling?
-Need to add radius slider
-Need to fix mouse cursor centering of grabbing the slider
+
 need to replace physics spawn time accumulator DTs with the true physics dt.
 
 
@@ -59,12 +54,51 @@ really need to add initial velocity vector instantiation
 
 also add black hole class soon :D
 
+Add restriction on creating 0 mass bodies unless in dev mode?
+
+probably need to add testing for collision logic :(
+
+Need to investigate private vs public vs protected methods bc they are bleeding over each other a bit
+
+TBI change src to have UI as a full subfolder instead of this entities scenes nonsense?
+
+TBI make build just build with the last build config and not run clean? done on windows.
 
 
-Adding baseline behavior to blow up both macro colliding bodies as long as the heavier is no more than 40% lighter.
+abstract the clickMe and slideMe into one method called interact, which will check the type and then dispatch at the local ui level?
 
 
 
+NEED TO FIX: MACOS CMAKE LISTS FOR DEBUG IS BROKEN ? unknown if just normal error
 
-Want to rework collision dynamics so that spread doesn't produce that weird crescent shape.
 
+
+rework breakapart / substitute with particles mechanics to stop line segmenting issue?
+
+control volume using SDL_SetAudioStreamGain(musicStream, musicVolume)
+
+add feature to delete most recently created body
+
+Rework rendering into SDL_GPU.
+
+add previous position check into slider to allow for delayed playback of slider ticks.
+
+Rework UIState sound stuff into a SoundState.
+
+reserve probably about 250k into the Particle size and about 256 into the macro body size
+
+Rework into Barnes hutt ? rework math?
+
+Barnes hutt won't be substantially worse than the existing system, but it will be much more accurate and will allow me to combine into a single vector of bodies
+
+
+
+ add sound back to sliders with previous state info
+Order of features to follow -> zoom -> barnes hutt? -> SDL_GPU rewrite ->
+
+Next, add E&M -> boundaries on bodies to indicate class -> rework color system to deal with all
+
+-> load management -> player class -> player IO -> player physics
+
+
+-> +3 music tracks -> add level select scene -> build property checkboxes and overlay display
