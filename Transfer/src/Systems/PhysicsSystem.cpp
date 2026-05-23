@@ -390,13 +390,13 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
                 {
                     if (pair.light->isShatterable)
                     {
-                        // std::cout << "Collision Branch Hit: 6" << std::endl;
+                        //  std::cout << "Collision Branch Hit: 6" << std::endl;
                         substituteWithParticles(*pair.light, gameState);
                         continue;
                     }
                     else
                     {
-                        // std::cout << "Collision Branch Hit: 7" << std::endl;
+                        //  std::cout << "Collision Branch Hit: 7" << std::endl;
                         handleElasticCollisions(*pair.light, *pair.heavy);
                         continue;
                     }
@@ -405,7 +405,7 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
                 {
                     if (pair.heavy->isShatterable)
                     {
-                        // std::cout << "Collision Branch Hit: 8" << std::endl;
+                        //  std::cout << "Collision Branch Hit: 8" << std::endl;
                         substituteWithParticles(*pair.heavy, gameState);
                         continue;
                     }
@@ -427,7 +427,7 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
                     }
                     else // just blow the smaller one into bits
                     {
-                        // std::cout << "Collision Branch Hit: 11" << std::endl;
+                        //  std::cout << "Collision Branch Hit: 11" << std::endl;
                         substituteWithParticles(*pair.light, gameState);
                         continue;
                     }
@@ -680,8 +680,8 @@ void PhysicsSystem::createMacroBody(GameState& gameState, InputState& inputState
     body.isMacroGhost = inputState.isCreatingMacroGhost;
     body.macroIdentifier = newMacroBodyID;
     body.isAccretable = true;
-    body.radius = 25.0;
-    body.mass = 1e9;
+    body.radius = 50.0;
+    body.mass = 1e13;
 
     if (inputState.isCreatingWithInitialVelocity)
     {

@@ -1,4 +1,4 @@
-// File: Transfer/src/Utilities/Rendering/GPUTypes.hpp
+// File: Transfer/src/Utilities/Rendering/UnifiedBodyVertex.hpp
 
 #pragma once
 
@@ -10,7 +10,7 @@ struct UnifiedBodyVertex
     float radius;       // 4 bytes
 
     // Custom View Attributes
-    float log_mass; // logged mass to allow double range mass to fit within a float.
+    float logMass; // logged mass to allow double range mass to fit within a float.
     float temperature;
     float charge;
 

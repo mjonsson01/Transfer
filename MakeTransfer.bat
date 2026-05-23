@@ -106,7 +106,31 @@ if %DO_CLEAN% EQU 1 (
 )
 
 if not exist "%BUILD_DIR%" mkdir "%BUILD_DIR%"
+REM =====================================================
+REM Compile HLSL -> SPIR-V
+REM =====================================================
 
+echo Compiling shaders...
+
+.\LocalShaderCross\shadercross.exe ^
+    .\Transfer\src\HLSL\Body.vert.hlsl ^
+    -o .\Transfer\Assets\Shaders\Body.vert.spv
+
+if %ERRORLEVEL% NEQ 0 (
+    echo Vertex shader compilation failed!
+    exit /b 1
+)
+
+.\LocalShaderCross\shadercross.exe ^
+    .\Transfer\src\HLSL\Body.frag.hlsl ^
+    -o .\Transfer\Assets\Shaders\Body.frag.spv
+
+if %ERRORLEVEL% NEQ 0 (
+    echo Fragment shader compilation failed!
+    exit /b 1
+)
+
+echo Shaders compiled successfully.
 REM --- Configure and Build ---
 echo Building TransferGame (%CONFIG%)...
 cmake -S . -B %BUILD_DIR% -DCMAKE_BUILD_TYPE=%CONFIG%

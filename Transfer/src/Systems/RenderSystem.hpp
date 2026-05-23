@@ -17,7 +17,7 @@
 #include "Utilities/Constants/GameSystemConstants.hpp"
 #include "Utilities/Rendering/CameraData.hpp"
 #include "Utilities/Rendering/Colors.hpp"
-#include "Utilities/Rendering/GPUTypes.hpp"
+#include "Utilities/Rendering/UnifiedBodyVertex.hpp"
 #include "Utilities/System/SystemPathUtility.hpp"
 
 // Standard Library Imports
@@ -46,7 +46,6 @@ class RenderSystem
     // Main Cleanup method (tears down all the SDL components)
     void CleanUp();
     // Getters for SDL Components
-    SDL_Renderer* getRenderer() const { return renderer; }
     TTF_Font* getUIFontRegular() const { return UIFontRegular; }
     TTF_Font* getUIFontTitle() const { return UIFontTitle; }
 
@@ -72,10 +71,10 @@ class RenderSystem
     void renderNonGameFrame(GameState& gameState, UIState& UIState,
                             const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope);
 
-    void renderPreviewBodies(UIState& UIState);
+    void appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexData, UIState& UIState);
 
-    void renderBodies(GameState& gameState); // Renders all the gravitational
-                                             // bodies (both Macro and Particle)
+    void renderBodies(GameState& gameState, UIState& UIState); // Renders all the gravitational
+                                                               // bodies (both Macro and Particle)
     SDL_GPUShader* LoadShader(SDL_GPUDevice* device, const char* fileName);
 
     // Renders Drag Lines on Preview Bodies

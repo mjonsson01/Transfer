@@ -17,7 +17,7 @@ RenderSystem::RenderSystem()
     if (gpu)
         SDL_ClaimWindowForGPUDevice(gpu, window);
 
-    renderer = SDL_CreateRenderer(window, nullptr);
+    // renderer = SDL_CreateRenderer(window, nullptr);
 
     // 2. Resource/Font Setup
     UIFontRegular = TTF_OpenFont(Utilities::GetResourcePath("Fonts/SpaceMono-Regular.ttf").c_str(), 18);
@@ -71,7 +71,7 @@ RenderSystem::RenderSystem()
     // [3] log_mass, float1
     vertex_attributes[3].location = 3;
     vertex_attributes[3].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT;
-    vertex_attributes[3].offset = offsetof(UnifiedBodyVertex, log_mass);
+    vertex_attributes[3].offset = offsetof(UnifiedBodyVertex, logMass);
     vertex_attributes[3].buffer_slot = 0;
 
     // [4] temperature, float1
@@ -236,7 +236,7 @@ void RenderSystem::renderGameFrame(GameState& gameState, UIState& UIState,
     // Render all preview bodies
     // renderPreviewBodies(UIState);
     // Render all the bodies (particles)
-    renderBodies(gameState);
+    renderBodies(gameState, UIState);
 
     // renderUIElements(UIState, allUIElementsInScope);
 
@@ -276,106 +276,239 @@ void RenderSystem::renderNonGameFrame(GameState& gameState, UIState& UIState,
     renderUIElements(UIState, allUIElementsInScope);
 }
 
-void RenderSystem::renderPreviewBodies(UIState& UIState)
+// void RenderSystem::renderPreviewBodies(UIState& UIState)
+// {
+//     InputState& input_state = UIState.getMutableInputState();
+//     if (input_state.isPreviewingMacro)
+//     {
+//     }
+//     //     // create pseudo body.
+//     //     if (input_state.selectedRadius <= 1.0)
+//     //     {
+//     //         // also probably throw an error toast here somehow
+//     //         return;
+//     //     }
+//     //     GravitationalBody body = {};
+//     //     body.mass = input_state.selectedMass;
+//     //     body.radius = input_state.selectedRadius;
+//     //     // rendering preview body
+//     //     if (input_state.isPreviewingWithInitialVelocity)
+//     //     {
+//     //         body.position = input_state.mouseDragStartPosition;
+//     //     }
+//     //     else
+//     //     {
+//     //         body.position = input_state.mouseCurrPosition;
+//     //     }
+//     //     SDL_Color color = getColorForProperty(body);
+//     //     SDL_Texture* tex = circleTextureCache[static_cast<int>(body.radius)];
+//     //     SDL_SetTextureColorMod(tex, color.r, color.g, color.b);
+//     //     SDL_SetTextureAlphaMod(tex, color.a);
+
+//     //     float render_x = body.position.xVal;
+//     //     float render_y = body.position.yVal;
+//     //     render_x = std::round(render_x);
+//     //     render_y = std::round(render_y);
+//     //     float r = static_cast<float>(body.radius);
+//     //     SDL_FRect dstRect = {render_x - r, render_y - r, r * 2, r * 2};
+//     //     SDL_RenderTexture(renderer, tex, nullptr, &dstRect);
+//     //     if (input_state.isPreviewingWithInitialVelocity)
+//     //     {
+//     //         renderDragLine(body.position, input_state.mouseCurrPosition);
+//     //     }
+//     // }
+// }
+// --------- RENDER GRAVITATIONAL BODIES METHOD --------- //
+// void RenderSystem::renderBodies(GameState& gameState)
+// {
+//     float alpha = gameState.getAlpha();
+//     auto& particles = gameState.getParticles();
+//     auto& bodies = gameState.getMacroBodies();
+//     std::vector<UnifiedBodyVertex> vertex_data;
+//     vertex_data.reserve(gameState.getParticles().size() + gameState.getMacroBodies().size());
+//     for (auto& p : particles)
+//     {
+//         if (p.visible)
+//             vertex_data.push_back(p.toUnifiedVertex());
+//     }
+//     for (auto& b : bodies)
+//     {
+//         if (b.visible)
+//             vertex_data.push_back(b.toUnifiedVertex());
+//     }
+//     if (vertex_data.size() > MAX_UNIFIED_BODIES)
+//     {
+//         printf("Too many bodies! %zu > %d\n", vertex_data.size(), MAX_UNIFIED_BODIES);
+//         return;
+//     }
+//     bool cycle = false;
+//     if (!vertex_data.empty())
+//     {
+//         void* map = SDL_MapGPUTransferBuffer(gpu, body_transfer_buffer, false);
+
+//         SDL_memcpy(map, vertex_data.data(), vertex_data.size() * sizeof(UnifiedBodyVertex));
+
+//         SDL_UnmapGPUTransferBuffer(gpu, body_transfer_buffer);
+//     }
+
+//     SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(gpu);
+//     SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdbuf);
+//     SDL_GPUTransferBufferLocation src = {.transfer_buffer = body_transfer_buffer, .offset = 0};
+//     SDL_GPUBufferRegion dst = {.buffer = unified_body_vertex_buffer,
+//                                .offset = 0,
+//                                .size = (uint32_t)(vertex_data.size() * sizeof(UnifiedBodyVertex))};
+//     SDL_UploadToGPUBuffer(copyPass, &src, &dst, false);
+//     SDL_EndGPUCopyPass(copyPass);
+
+//     // 2. Render Pass
+//     SDL_GPUTexture* swapchainTexture;
+//     Uint32 w, h;
+//     if (SDL_AcquireGPUSwapchainTexture(cmdbuf, window, &swapchainTexture, &w, &h))
+//     {
+//         SDL_GPUColorTargetInfo color_info = {.texture = swapchainTexture,
+//                                              .clear_color = {0.0f, 0.0f, 0.0f, 1.0f},
+//                                              .load_op = SDL_GPU_LOADOP_CLEAR,
+//                                              .store_op = SDL_GPU_STOREOP_STORE};
+//         SDL_GPURenderPass* pass = SDL_BeginGPURenderPass(cmdbuf, &color_info, 1, nullptr);
+
+//         SDL_BindGPUGraphicsPipeline(pass, unified_body_pipeline);
+
+//         SDL_GPUBufferBinding vbo = {.buffer = unified_body_vertex_buffer, .offset = 0};
+//         SDL_BindGPUVertexBuffers(pass, 0, &vbo, 1);
+
+//         // printf("Total bodies: %zu\n", vertex_data.size());
+//         SDL_DrawGPUPrimitives(pass, 6, (uint32_t)vertex_data.size(), 0, 0);
+
+//         SDL_EndGPURenderPass(pass);
+//     }
+//     SDL_SubmitGPUCommandBuffer(cmdbuf);
+// }
+void RenderSystem::renderBodies(GameState& gameState, UIState& UIState)
+{
+    float alpha = gameState.getAlpha();
+
+    auto& particles = gameState.getParticles();
+    auto& bodies = gameState.getMacroBodies();
+
+    std::vector<UnifiedBodyVertex> vertex_data;
+    vertex_data.reserve(particles.size() + bodies.size());
+
+    for (auto& p : particles)
+    {
+        if (p.visible)
+        {
+            vertex_data.push_back(p.toUnifiedVertex());
+        }
+    }
+
+    for (auto& b : bodies)
+    {
+        if (b.visible)
+        {
+            vertex_data.push_back(b.toUnifiedVertex());
+        }
+    }
+
+    appendPreviewBodies(vertex_data, UIState);
+
+    if (vertex_data.size() > MAX_UNIFIED_BODIES)
+    {
+        printf("Too many bodies! %zu > %d\n", vertex_data.size(), MAX_UNIFIED_BODIES);
+        return;
+    }
+
+    SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(gpu);
+
+    //
+    // Upload only when we actually have bodies
+    //
+    if (!vertex_data.empty())
+    {
+        void* map = SDL_MapGPUTransferBuffer(gpu, body_transfer_buffer, false);
+
+        SDL_memcpy(map, vertex_data.data(), vertex_data.size() * sizeof(UnifiedBodyVertex));
+
+        SDL_UnmapGPUTransferBuffer(gpu, body_transfer_buffer);
+
+        SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdbuf);
+
+        SDL_GPUTransferBufferLocation src = {.transfer_buffer = body_transfer_buffer, .offset = 0};
+
+        SDL_GPUBufferRegion dst = {.buffer = unified_body_vertex_buffer,
+                                   .offset = 0,
+                                   .size = (uint32_t)(vertex_data.size() * sizeof(UnifiedBodyVertex))};
+
+        SDL_UploadToGPUBuffer(copyPass, &src, &dst, false);
+
+        SDL_EndGPUCopyPass(copyPass);
+    }
+
+    //
+    // Always render a frame
+    //
+    SDL_GPUTexture* swapchainTexture = nullptr;
+    Uint32 w = 0;
+    Uint32 h = 0;
+
+    if (SDL_AcquireGPUSwapchainTexture(cmdbuf, window, &swapchainTexture, &w, &h))
+    {
+        if (swapchainTexture != nullptr)
+        {
+            SDL_GPUColorTargetInfo color_info = {};
+            color_info.texture = swapchainTexture;
+            color_info.clear_color = {0.0f, 0.0f, 0.0f, 1.0f};
+            color_info.load_op = SDL_GPU_LOADOP_CLEAR;
+            color_info.store_op = SDL_GPU_STOREOP_STORE;
+
+            SDL_GPURenderPass* pass = SDL_BeginGPURenderPass(cmdbuf, &color_info, 1, nullptr);
+
+            //
+            // Draw only when bodies exist
+            //
+            if (!vertex_data.empty())
+            {
+                SDL_BindGPUGraphicsPipeline(pass, unified_body_pipeline);
+
+                SDL_GPUBufferBinding vbo = {.buffer = unified_body_vertex_buffer, .offset = 0};
+
+                SDL_BindGPUVertexBuffers(pass, 0, &vbo, 1);
+
+                SDL_DrawGPUPrimitives(pass,
+                                      6,                            // vertices per quad
+                                      (uint32_t)vertex_data.size(), // instances
+                                      0, 0);
+            }
+
+            SDL_EndGPURenderPass(pass);
+        }
+    }
+
+    SDL_SubmitGPUCommandBuffer(cmdbuf);
+}
+
+void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexData, UIState& UIState)
 {
     InputState& input_state = UIState.getMutableInputState();
     if (input_state.isPreviewingMacro)
     {
-        // create pseudo body.
-        if (input_state.selectedRadius <= 1.0)
-        {
-            // also probably throw an error toast here somehow
-            return;
-        }
-        GravitationalBody body = {};
-        body.mass = input_state.selectedMass;
-        body.radius = input_state.selectedRadius;
-        // rendering preview body
+        // create pseudo body and convert to unified body vertex to pass to rendering pipeline
+        GravitationalBody new_preview_grav_body = {};
+        new_preview_grav_body.mass = input_state.selectedMass;
+        new_preview_grav_body.radius = input_state.selectedRadius;
         if (input_state.isPreviewingWithInitialVelocity)
         {
-            body.position = input_state.mouseDragStartPosition;
+            new_preview_grav_body.position = input_state.mouseDragStartPosition;
         }
         else
         {
-            body.position = input_state.mouseCurrPosition;
+            new_preview_grav_body.position = input_state.mouseCurrPosition;
         }
-        SDL_Color color = getColorForProperty(body);
-        SDL_Texture* tex = circleTextureCache[static_cast<int>(body.radius)];
-        SDL_SetTextureColorMod(tex, color.r, color.g, color.b);
-        SDL_SetTextureAlphaMod(tex, color.a);
+        new_preview_grav_body.isPreview = true;
 
-        float render_x = body.position.xVal;
-        float render_y = body.position.yVal;
-        render_x = std::round(render_x);
-        render_y = std::round(render_y);
-        float r = static_cast<float>(body.radius);
-        SDL_FRect dstRect = {render_x - r, render_y - r, r * 2, r * 2};
-        SDL_RenderTexture(renderer, tex, nullptr, &dstRect);
-        if (input_state.isPreviewingWithInitialVelocity)
-        {
-            renderDragLine(body.position, input_state.mouseCurrPosition);
-        }
+        UnifiedBodyVertex new_preview_unified_body_vertex = new_preview_grav_body.toUnifiedVertex();
+        vertexData.push_back(new_preview_unified_body_vertex);
     }
 }
-// --------- RENDER GRAVITATIONAL BODIES METHOD --------- //
-void RenderSystem::renderBodies(GameState& gameState)
-{
-    float alpha = gameState.getAlpha();
-    auto& particles = gameState.getParticles();
-    auto& bodies = gameState.getMacroBodies();
-    std::vector<UnifiedBodyVertex> vertex_data;
-    vertex_data.reserve(gameState.getParticles().size() + gameState.getMacroBodies().size());
-    for (auto& p : particles)
-    {
-        if (p.visible)
-            vertex_data.push_back(p.toUnifiedVertex());
-    }
-    for (auto& b : bodies)
-    {
-        if (b.visible)
-            vertex_data.push_back(b.toUnifiedVertex());
-    }
-    if (vertex_data.empty())
-        return;
-
-    bool cycle = false;
-    void* map = SDL_MapGPUTransferBuffer(gpu, body_transfer_buffer, cycle);
-    SDL_memcpy(map, vertex_data.data(), vertex_data.size() * sizeof(UnifiedBodyVertex));
-    SDL_UnmapGPUTransferBuffer(gpu, body_transfer_buffer);
-
-    SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(gpu);
-    SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdbuf);
-    SDL_GPUTransferBufferLocation src = {.transfer_buffer = body_transfer_buffer, .offset = 0};
-    SDL_GPUBufferRegion dst = {.buffer = unified_body_vertex_buffer,
-                               .offset = 0,
-                               .size = (uint32_t)(vertex_data.size() * sizeof(UnifiedBodyVertex))};
-    SDL_UploadToGPUBuffer(copyPass, &src, &dst, false);
-    SDL_EndGPUCopyPass(copyPass);
-
-    // 2. Render Pass
-    SDL_GPUTexture* swapchainTexture;
-    Uint32 w, h;
-    if (SDL_AcquireGPUSwapchainTexture(cmdbuf, window, &swapchainTexture, &w, &h))
-    {
-        SDL_GPUColorTargetInfo color_info = {.texture = swapchainTexture,
-                                             .clear_color = {0.0f, 0.0f, 0.0f, 1.0f},
-                                             .load_op = SDL_GPU_LOADOP_CLEAR,
-                                             .store_op = SDL_GPU_STOREOP_STORE};
-        SDL_GPURenderPass* pass = SDL_BeginGPURenderPass(cmdbuf, &color_info, 1, nullptr);
-
-        SDL_BindGPUGraphicsPipeline(pass, unified_body_pipeline);
-
-        SDL_GPUBufferBinding vbo = {.buffer = unified_body_vertex_buffer, .offset = 0};
-        SDL_BindGPUVertexBuffers(pass, 0, &vbo, 1);
-
-        // printf("Total bodies: %zu\n", vertex_data.size());
-        SDL_DrawGPUPrimitives(pass, 6, (uint32_t)vertex_data.size(), 0, 0);
-
-        SDL_EndGPURenderPass(pass);
-    }
-    SDL_SubmitGPUCommandBuffer(cmdbuf);
-}
-
 // --------- RENDER DRAGLINES METHOD --------- //
 
 void RenderSystem::renderDragLine(Vector2D lineStart, Vector2D lineEnd)
