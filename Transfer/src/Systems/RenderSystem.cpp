@@ -5,35 +5,136 @@
 // Constructor: Initializes SDL Window and Renderer
 RenderSystem::RenderSystem()
 {
-    // Add audio later
     SDL_InitSubSystem(SDL_INIT_VIDEO);
     TTF_Init();
-    SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
-    int desired_x_resolution = SCREEN_WIDTH;
-    int desired_y_resolution = SCREEN_HEIGHT;
-    int no_flags = 0;
 
-    // Assign window pointer to instance
-    window = SDL_CreateWindow("Transfer", desired_x_resolution, desired_y_resolution, no_flags);
+    // 1. Window & Device Setup
+    int window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+    window = SDL_CreateWindow("Transfer", SCREEN_WIDTH, SCREEN_HEIGHT, window_flags);
 
-    // Assign renderer pointer to instance. No specific driver, so nullptr.
+    SDL_GPUShaderFormat formats = SDL_GPU_SHADERFORMAT_SPIRV; // Windows standard
+    gpu = SDL_CreateGPUDevice(formats, true, nullptr);
+    if (gpu)
+        SDL_ClaimWindowForGPUDevice(gpu, window);
+
     renderer = SDL_CreateRenderer(window, nullptr);
-    // SDL_SetRenderVSync(renderer, 1);
-    if (TTF_Init() == false)
-    {
-        // SDL_Log("Failed to initialize SDL_ttf: %s", SDL_GetError());
-        return;
-    }
-    std::string fontPathRegular = Utilities::GetResourcePath("Fonts/SpaceMono-Regular.ttf");
-    std::string fontPathTitle = Utilities::GetResourcePath("Fonts/SpaceMono-Bold.ttf");
 
-    UIFontRegular = TTF_OpenFont(fontPathRegular.c_str(), 18);
-    UIFontTitle = TTF_OpenFont(fontPathTitle.c_str(), 32);
-    buildCircleTextureCache();
-    createStarTextures();
-    createStarField(STAR_NUM);
+    // 2. Resource/Font Setup
+    UIFontRegular = TTF_OpenFont(Utilities::GetResourcePath("Fonts/SpaceMono-Regular.ttf").c_str(), 18);
+    UIFontTitle = TTF_OpenFont(Utilities::GetResourcePath("Fonts/SpaceMono-Bold.ttf").c_str(), 32);
+
+    // 3. Create GPU Buffers (VRAM)typedef struct SDL_GPUBufferCreateInfo
+    SDL_GPUBufferCreateInfo;
+
+    SDL_GPUBufferCreateInfo vertex_buffer_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX,
+                                                  .size = MAX_UNIFIED_BODIES * sizeof(UnifiedBodyVertex)};
+    unified_body_vertex_buffer = SDL_CreateGPUBuffer(gpu, &vertex_buffer_info);
+
+    SDL_GPUBufferCreateInfo camera_buffer_info = {.usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
+                                                  .size = sizeof(CameraConstants)};
+    camera_uniform_buffer = SDL_CreateGPUBuffer(gpu, &camera_buffer_info);
+
+    // 4. Create Transfer Buffer (The Loading Dock)
+    SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+                                               .size = MAX_UNIFIED_BODIES * sizeof(UnifiedBodyVertex)};
+    body_transfer_buffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
+
+    // 5. Shader Loading (MUST happen before Pipeline)
+    SDL_GPUShader* vertShader = LoadShader(gpu, "Shaders/Body.vert.spv");
+    SDL_GPUShader* fragShader = LoadShader(gpu, "Shaders/Body.frag.spv");
+
+    // 6. Define Pipeline State
+    SDL_GPUVertexAttribute vertex_attributes[8];
+
+    // for (int i = 0; i < 8; i++)
+    // {
+    //     vertex_attributes[i].instance_step_rate = 1; // IMPORTANT: 1 = Once per body
+    // }
+    // [0] Position, float2
+    vertex_attributes[0].location = 0;
+    vertex_attributes[0].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2;
+    vertex_attributes[0].offset = offsetof(UnifiedBodyVertex, x);
+    vertex_attributes[0].buffer_slot = 0;
+
+    // [1] Prev Position, float2
+    vertex_attributes[1].location = 1;
+    vertex_attributes[1].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2;
+    vertex_attributes[1].offset = offsetof(UnifiedBodyVertex, prevX);
+    vertex_attributes[1].buffer_slot = 0;
+
+    // [2] Radius, float1
+    vertex_attributes[2].location = 2;
+    vertex_attributes[2].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT;
+    vertex_attributes[2].offset = offsetof(UnifiedBodyVertex, radius);
+    vertex_attributes[2].buffer_slot = 0;
+
+    // [3] log_mass, float1
+    vertex_attributes[3].location = 3;
+    vertex_attributes[3].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT;
+    vertex_attributes[3].offset = offsetof(UnifiedBodyVertex, log_mass);
+    vertex_attributes[3].buffer_slot = 0;
+
+    // [4] temperature, float1
+    vertex_attributes[4].location = 4;
+    vertex_attributes[4].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT;
+    vertex_attributes[4].offset = offsetof(UnifiedBodyVertex, temperature);
+    vertex_attributes[4].buffer_slot = 0;
+
+    // [5] charge, float1
+    vertex_attributes[5].location = 5;
+    vertex_attributes[5].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT;
+    vertex_attributes[5].offset = offsetof(UnifiedBodyVertex, charge);
+    vertex_attributes[5].buffer_slot = 0;
+
+    // [6] flags, uint1
+    vertex_attributes[6].location = 6;
+    vertex_attributes[6].format = SDL_GPU_VERTEXELEMENTFORMAT_UINT;
+    vertex_attributes[6].offset = offsetof(UnifiedBodyVertex, flags);
+    vertex_attributes[6].buffer_slot = 0;
+
+    // [7] seed, uint1
+    vertex_attributes[7].location = 7;
+    vertex_attributes[7].format = SDL_GPU_VERTEXELEMENTFORMAT_UINT;
+    vertex_attributes[7].offset = offsetof(UnifiedBodyVertex, seed);
+    vertex_attributes[7].buffer_slot = 0;
+
+    SDL_GPUGraphicsPipelineCreateInfo pipeline_info = {};
+    pipeline_info.target_info.num_color_targets = 1;
+
+    SDL_GPUColorTargetDescription color_target = {};
+    color_target.format = SDL_GetGPUSwapchainTextureFormat(gpu, window);
+    color_target.blend_state.enable_blend = true;
+
+    color_target.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    color_target.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+    color_target.blend_state.src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    color_target.blend_state.dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+
+    // MUST SET THESE EXPLICITLY:
+    color_target.blend_state.color_blend_op = SDL_GPU_BLENDOP_ADD;
+    color_target.blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD;
+
+    pipeline_info.target_info.color_target_descriptions = &color_target;
+    pipeline_info.vertex_shader = vertShader;
+    pipeline_info.fragment_shader = fragShader;
+
+    // Change to TRIANGLESTRIP for your Quads!
+    pipeline_info.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
+
+    pipeline_info.vertex_input_state.vertex_attributes = vertex_attributes;
+    pipeline_info.vertex_input_state.num_vertex_attributes = 8;
+
+    SDL_GPUVertexBufferDescription vbo_desc = {
+        .slot = 0, .pitch = sizeof(UnifiedBodyVertex), .input_rate = SDL_GPU_VERTEXINPUTRATE_INSTANCE};
+    pipeline_info.vertex_input_state.vertex_buffer_descriptions = &vbo_desc;
+    pipeline_info.vertex_input_state.num_vertex_buffers = 1;
+
+    unified_body_pipeline = SDL_CreateGPUGraphicsPipeline(gpu, &pipeline_info);
+
+    // 7. Cleanup temp shader handles
+    SDL_ReleaseGPUShader(gpu, vertShader);
+    SDL_ReleaseGPUShader(gpu, fragShader);
 }
-
 // Destructor: Cleans up SDL Window and Renderer
 RenderSystem::~RenderSystem()
 {
@@ -54,8 +155,58 @@ void RenderSystem::CleanUp()
         SDL_DestroyWindow(window);
         window = nullptr;
     }
+    // 1. Release GPU-specific resources
+    if (unified_body_vertex_buffer != nullptr)
+        SDL_ReleaseGPUBuffer(gpu, unified_body_vertex_buffer);
+    if (camera_uniform_buffer != nullptr)
+        SDL_ReleaseGPUBuffer(gpu, camera_uniform_buffer);
+    if (body_transfer_buffer != nullptr)
+        SDL_ReleaseGPUTransferBuffer(gpu, body_transfer_buffer);
+    if (unified_body_pipeline != nullptr)
+        SDL_ReleaseGPUGraphicsPipeline(gpu, unified_body_pipeline);
+
+    // 2. Finally, destroy the GPU device
+    if (gpu != nullptr)
+        SDL_DestroyGPUDevice(gpu);
+
+    // 3. Clean up legacy stuff
+    if (renderer)
+    {
+        SDL_DestroyRenderer(renderer);
+        renderer = nullptr;
+    }
+    if (window)
+    {
+        SDL_DestroyWindow(window);
+        window = nullptr;
+    }
 }
 
+SDL_GPUShader* RenderSystem::LoadShader(SDL_GPUDevice* device, const char* fileName)
+{
+    size_t size;
+    // Uses SystemPathUtility to find the shader directory
+    std::string fullPath = Utilities::GetResourcePath(fileName);
+    void* code = SDL_LoadFile(fullPath.c_str(), &size);
+
+    if (!code)
+    {
+        std::cerr << "Failed to load shader file: " << fileName << std::endl;
+        return nullptr;
+    }
+
+    SDL_GPUShaderCreateInfo info = {.code_size = size,
+                                    .code = (const uint8_t*)code,
+                                    .entrypoint = "main",
+                                    .format = SDL_GPU_SHADERFORMAT_SPIRV, // Windows default
+                                    .stage = (std::string(fileName).find("vert") != std::string::npos)
+                                                 ? SDL_GPU_SHADERSTAGE_VERTEX
+                                                 : SDL_GPU_SHADERSTAGE_FRAGMENT};
+
+    SDL_GPUShader* shader = SDL_CreateGPUShader(device, &info);
+    SDL_free(code);
+    return shader;
+}
 // --------- RENDER FULL FRAME METHOD --------- //
 
 void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState,
@@ -76,18 +227,46 @@ void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState,
 void RenderSystem::renderGameFrame(GameState& gameState, UIState& UIState,
                                    const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope)
 {
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // black background
-    SDL_RenderClear(renderer);
+    // SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // black background
+    // SDL_RenderClear(renderer);
 
     // render starry background
-    updateStars();
-    renderStars();
+    // updateStars();
+    // renderStars();
     // Render all preview bodies
-    renderPreviewBodies(UIState);
+    // renderPreviewBodies(UIState);
     // Render all the bodies (particles)
     renderBodies(gameState);
 
-    renderUIElements(UIState, allUIElementsInScope);
+    // renderUIElements(UIState, allUIElementsInScope);
+
+    // TEST
+    // SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(gpu);
+    // if (!cmdbuf)
+    //     return;
+
+    // SDL_GPUTexture* swapchainTexture = nullptr;
+    // Uint32 w, h;
+
+    // if (SDL_AcquireGPUSwapchainTexture(cmdbuf, window, &swapchainTexture, &w, &h))
+    // {
+    //     if (swapchainTexture != nullptr)
+    //     {
+    //         SDL_GPUColorTargetInfo color_info = {};
+    //         color_info.texture = swapchainTexture;
+    //         // Set this to something distinct like 1.0, 0.0, 0.0, 1.0 (Bright Red)
+    //         color_info.clear_color = {1.0f, 0.0f, 0.0f, 1.0f};
+    //         color_info.load_op = SDL_GPU_LOADOP_CLEAR;
+    //         color_info.store_op = SDL_GPU_STOREOP_STORE;
+
+    //         SDL_GPURenderPass* render_pass = SDL_BeginGPURenderPass(cmdbuf, &color_info, 1, nullptr);
+
+    //         // Just clear the screen, don't bind pipelines or draw yet
+    //         SDL_EndGPURenderPass(render_pass);
+    //     }
+    // }
+
+    // SDL_SubmitGPUCommandBuffer(cmdbuf);
 }
 void RenderSystem::renderNonGameFrame(GameState& gameState, UIState& UIState,
                                       const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope)
@@ -143,58 +322,58 @@ void RenderSystem::renderBodies(GameState& gameState)
 {
     float alpha = gameState.getAlpha();
     auto& particles = gameState.getParticles();
-
-    // 1. Group points by color to minimize state changes
-    // Using a map of SDL_Color to a vector of points
-    // Note: If you have a fixed set of colors, a fixed-size array is even faster
-    std::map<Uint64, std::vector<SDL_FPoint>> coloredBatches;
-
-    for (const auto& particle : particles)
+    auto& bodies = gameState.getMacroBodies();
+    std::vector<UnifiedBodyVertex> vertex_data;
+    vertex_data.reserve(gameState.getParticles().size() + gameState.getMacroBodies().size());
+    for (auto& p : particles)
     {
-        if (!particle.visible)
-            continue;
-
-        // Linear interpolation for smooth movement
-        float render_x = particle.previousPosition.xVal * (1.0f - alpha) + particle.position.xVal * alpha;
-        float render_y = particle.previousPosition.yVal * (1.0f - alpha) + particle.position.yVal * alpha;
-
-        SDL_Color c = getColorForProperty(particle);
-
-        // Pack color into a Uint32 for easy mapping
-        Uint32 colorKey = (c.r << 24) | (c.g << 16) | (c.b << 8) | c.a;
-        coloredBatches[colorKey].push_back({render_x, render_y});
+        if (p.visible)
+            vertex_data.push_back(p.toUnifiedVertex());
     }
-
-    // 2. Render each batch in a single call
-    for (auto& [colorKey, points] : coloredBatches)
+    for (auto& b : bodies)
     {
-        Uint8 r = (colorKey >> 24) & 0xFF;
-        Uint8 g = (colorKey >> 16) & 0xFF;
-        Uint8 b = (colorKey >> 8) & 0xFF;
-        Uint8 a = colorKey & 0xFF;
-
-        SDL_SetRenderDrawColor(renderer, r, g, b, a);
-        SDL_RenderPoints(renderer, points.data(), (int)points.size());
+        if (b.visible)
+            vertex_data.push_back(b.toUnifiedVertex());
     }
+    if (vertex_data.empty())
+        return;
 
-    // 3. Render Macro Bodies (Keep these as textures since they are few and large)
-    for (auto& body : gameState.getMacroBodies())
+    bool cycle = false;
+    void* map = SDL_MapGPUTransferBuffer(gpu, body_transfer_buffer, cycle);
+    SDL_memcpy(map, vertex_data.data(), vertex_data.size() * sizeof(UnifiedBodyVertex));
+    SDL_UnmapGPUTransferBuffer(gpu, body_transfer_buffer);
+
+    SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(gpu);
+    SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdbuf);
+    SDL_GPUTransferBufferLocation src = {.transfer_buffer = body_transfer_buffer, .offset = 0};
+    SDL_GPUBufferRegion dst = {.buffer = unified_body_vertex_buffer,
+                               .offset = 0,
+                               .size = (uint32_t)(vertex_data.size() * sizeof(UnifiedBodyVertex))};
+    SDL_UploadToGPUBuffer(copyPass, &src, &dst, false);
+    SDL_EndGPUCopyPass(copyPass);
+
+    // 2. Render Pass
+    SDL_GPUTexture* swapchainTexture;
+    Uint32 w, h;
+    if (SDL_AcquireGPUSwapchainTexture(cmdbuf, window, &swapchainTexture, &w, &h))
     {
-        if (!body.visible)
-            continue;
+        SDL_GPUColorTargetInfo color_info = {.texture = swapchainTexture,
+                                             .clear_color = {0.0f, 0.0f, 0.0f, 1.0f},
+                                             .load_op = SDL_GPU_LOADOP_CLEAR,
+                                             .store_op = SDL_GPU_STOREOP_STORE};
+        SDL_GPURenderPass* pass = SDL_BeginGPURenderPass(cmdbuf, &color_info, 1, nullptr);
 
-        SDL_Color color = getColorForProperty(body);
-        SDL_Texture* tex = circleTextureCache[static_cast<int>(body.radius)];
-        SDL_SetTextureColorMod(tex, color.r, color.g, color.b);
-        SDL_SetTextureAlphaMod(tex, color.a);
+        SDL_BindGPUGraphicsPipeline(pass, unified_body_pipeline);
 
-        float render_x = body.previousPosition.xVal * (1.0f - alpha) + body.position.xVal * alpha;
-        float render_y = body.previousPosition.yVal * (1.0f - alpha) + body.position.yVal * alpha;
-        float r = static_cast<float>(body.radius);
-        SDL_FRect dstRect = {render_x - r, render_y - r, r * 2, r * 2};
+        SDL_GPUBufferBinding vbo = {.buffer = unified_body_vertex_buffer, .offset = 0};
+        SDL_BindGPUVertexBuffers(pass, 0, &vbo, 1);
 
-        SDL_RenderTexture(renderer, tex, nullptr, &dstRect);
+        // printf("Total bodies: %zu\n", vertex_data.size());
+        SDL_DrawGPUPrimitives(pass, 6, (uint32_t)vertex_data.size(), 0, 0);
+
+        SDL_EndGPURenderPass(pass);
     }
+    SDL_SubmitGPUCommandBuffer(cmdbuf);
 }
 
 // --------- RENDER DRAGLINES METHOD --------- //

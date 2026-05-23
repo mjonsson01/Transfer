@@ -25,6 +25,6 @@ static const double PI = 3.14159265358979323846;
 
 static const double EPSILON = 1e-30;
 
-static const int MAX_BODY_TIMES_PARTICLE_ALLOWED = 50000; // TBI
+static const uint32_t MAX_UNIFIED_BODIES = 500000;
 
 static const double ELASTIC_LOSS_FACTOR = 0.75; // 85% of Velocity retained after elastic collision

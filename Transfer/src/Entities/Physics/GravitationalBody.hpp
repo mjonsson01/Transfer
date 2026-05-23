@@ -4,9 +4,11 @@
 
 // Custom Imports
 #include "Utilities/Math/Vector2D.hpp"
+#include "Utilities/Rendering/GPUTypes.hpp"
 
 // Standard Library Imports
 #include <SDL3/SDL_stdinc.h>
+#include <cmath>
 #include <iostream>
 #include <vector>
 
@@ -62,6 +64,8 @@ struct GravitationalBody
                               // pass an iterating id based on global state. Only macro
                               // bodies will have an id. Can't just be the number of macro bodies
                               // because then duplicates, so just select +1 on each instantiation.
+                              // ADD THIS LINE HERE:
+    UnifiedBodyVertex toUnifiedVertex() const;
 };
 
 // --------- I/O OPERATOR OVERLOAD --------- //

@@ -15,7 +15,9 @@
 #include "Entities/VisualElements/TwinklingStars.hpp"
 #include "Utilities/Constants/EngineConstants.hpp"
 #include "Utilities/Constants/GameSystemConstants.hpp"
+#include "Utilities/Rendering/CameraData.hpp"
 #include "Utilities/Rendering/Colors.hpp"
+#include "Utilities/Rendering/GPUTypes.hpp"
 #include "Utilities/System/SystemPathUtility.hpp"
 
 // Standard Library Imports
@@ -52,6 +54,13 @@ class RenderSystem
     // SDL Components
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
+
+    SDL_GPUDevice* gpu = nullptr;
+    SDL_GPUBuffer* unified_body_vertex_buffer;
+    SDL_GPUBuffer* camera_uniform_buffer;
+    SDL_GPUGraphicsPipeline* unified_body_pipeline;
+    SDL_GPUTransferBuffer* body_transfer_buffer = nullptr;
+    SDL_GPUTransferBuffer* camera_transfer_buffer = nullptr;
     // Font for UI Elements that require text
     TTF_Font* UIFontRegular = nullptr;
     TTF_Font* UIFontTitle = nullptr;
@@ -67,6 +76,7 @@ class RenderSystem
 
     void renderBodies(GameState& gameState); // Renders all the gravitational
                                              // bodies (both Macro and Particle)
+    SDL_GPUShader* LoadShader(SDL_GPUDevice* device, const char* fileName);
 
     // Renders Drag Lines on Preview Bodies
     void renderDragLine(Vector2D lineStart, Vector2D lineEnd);

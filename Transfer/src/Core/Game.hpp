@@ -2,6 +2,11 @@
 
 #pragma once
 
+// Standard Library Imports
+#include <iostream>
+#include <numeric>
+#include <unordered_map>
+
 // Custom Imports
 #include "Core/GameState.hpp"
 #include "Core/InputState.hpp"
@@ -14,10 +19,7 @@
 #include "Systems/UISystem.hpp"
 #include "Utilities/Constants/EngineConstants.hpp"
 #include "Utilities/Constants/GameSystemConstants.hpp"
-
-// Standard Library Imports
-#include <numeric>
-#include <unordered_map>
+// #include "Utilities/System/SystemPathUtility.hpp"
 
 class Game
 {

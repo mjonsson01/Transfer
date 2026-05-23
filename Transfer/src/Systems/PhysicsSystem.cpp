@@ -655,10 +655,11 @@ void PhysicsSystem::handleAccretion(GravitationalBody& particle, GravitationalBo
 
 void PhysicsSystem::createMacroBody(GameState& gameState, InputState& inputState)
 {
-
+    inputState.selectedRadius = 2.0;
     if (inputState.selectedRadius <= 1.0)
     {
         // need to throw error toast or something somehow
+        std::cout << "early exit" << std::endl;
         return;
     }
     gameState.incrementMaxIDInstantiated();
@@ -668,6 +669,7 @@ void PhysicsSystem::createMacroBody(GameState& gameState, InputState& inputState
     body.mass = inputState.selectedMass;
     body.radius = inputState.selectedRadius;
     body.position = inputState.mouseCurrPosition;
+    // body.position = Vector2D{640.0, 360.0};
     body.previousPosition = body.position;
     // TODO PASS FLAGS HERE
     body.isPlanet = true;
@@ -678,6 +680,8 @@ void PhysicsSystem::createMacroBody(GameState& gameState, InputState& inputState
     body.isMacroGhost = inputState.isCreatingMacroGhost;
     body.macroIdentifier = newMacroBodyID;
     body.isAccretable = true;
+    body.radius = 25.0;
+    body.mass = 1e9;
 
     if (inputState.isCreatingWithInitialVelocity)
     {

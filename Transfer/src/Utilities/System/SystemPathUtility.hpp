@@ -41,4 +41,4 @@ inline std::string GetResourcePath(const std::string& relativePath)
 #endif
 }
 
-} // namespace Utilities
+}; // namespace Utilities
