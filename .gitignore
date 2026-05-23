@@ -4,3 +4,8 @@ build/
 venv/
 # for macOS
 .DS_Store
+
+# from windows workspace
+LocalShaderCross/
+LocalSpirvCross/
+Transfer/Assets/Shaders/
