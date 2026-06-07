@@ -1,4 +1,4 @@
-// File: Transfer/src/Utilities/Rendering/UnifiedBodyVertex.hpp
+// File: Transfer/src/Utilities/Rendering/GPUTypes.hpp
 
 #pragma once
 
@@ -17,4 +17,15 @@ struct UnifiedBodyVertex
     // Identification
     uint32_t flags; // gets all the property bools. room for 16 property bools.
     uint32_t seed;  // used to generate procedural patterns later.
+};
+
+struct TwinklingStarVertex
+{
+    float x, y;
+    float radius;
+
+    float alpha;
+    float twinkleSpeed;
+
+    uint32_t seed;
 };

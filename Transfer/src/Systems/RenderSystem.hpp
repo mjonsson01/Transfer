@@ -17,7 +17,7 @@
 #include "Utilities/Constants/GameSystemConstants.hpp"
 #include "Utilities/Rendering/CameraData.hpp"
 #include "Utilities/Rendering/Colors.hpp"
-#include "Utilities/Rendering/UnifiedBodyVertex.hpp"
+#include "Utilities/Rendering/GPUTypes.hpp"
 #include "Utilities/System/SystemPathUtility.hpp"
 
 // Standard Library Imports
@@ -52,54 +52,45 @@ class RenderSystem
   private:
     // SDL Components
     SDL_Window* window = nullptr;
-    SDL_Renderer* renderer = nullptr;
-
     SDL_GPUDevice* gpu = nullptr;
-    SDL_GPUBuffer* unified_body_vertex_buffer;
-    SDL_GPUBuffer* camera_uniform_buffer;
-    SDL_GPUGraphicsPipeline* unified_body_pipeline;
-    SDL_GPUTransferBuffer* body_transfer_buffer = nullptr;
-    SDL_GPUTransferBuffer* camera_transfer_buffer = nullptr;
+
+    SDL_GPUBuffer* unifiedBodyVertexBuffer;
+    SDL_GPUBuffer* cameraUniformBuffer;
+    SDL_GPUBuffer* twinklingStarVertexBuffer;
+    SDL_GPUGraphicsPipeline* unifiedBodyPipeline;
+    SDL_GPUGraphicsPipeline* twinklingStarPipeline;
+    SDL_GPUTransferBuffer* unifiedBodyTransferBuffer = nullptr;
+    SDL_GPUTransferBuffer* twinklingStarTransferBuffer = nullptr;
+    SDL_GPUTransferBuffer* cameraTransferBuffer = nullptr;
     // Font for UI Elements that require text
     TTF_Font* UIFontRegular = nullptr;
     TTF_Font* UIFontTitle = nullptr;
+    std::vector<TwinklingStarVertex> twinklingStars;
 
   private:
     // Subordinate Rendering Functions
     void renderGameFrame(GameState& gameState, UIState& UIState,
-                         const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope);
+                         const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
+                         SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf);
     void renderNonGameFrame(GameState& gameState, UIState& UIState,
-                            const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope);
+                            const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
+                            SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf);
 
     void appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexData, UIState& UIState);
 
-    void renderBodies(GameState& gameState, UIState& UIState); // Renders all the gravitational
-                                                               // bodies (both Macro and Particle)
+    void renderBodies(GameState& gameState, UIState& UIState, SDL_GPURenderPass* pass,
+                      SDL_GPUCommandBuffer* cmdbuf); // Renders all the gravitational
+                                                     // bodies (both Macro and Particle)
+
+    void uploadBodies(GameState& gameState, UIState& UIState, SDL_GPUCommandBuffer* cmdbuf);
     SDL_GPUShader* LoadShader(SDL_GPUDevice* device, const char* fileName);
 
-    // Renders Drag Lines on Preview Bodies
-    void renderDragLine(Vector2D lineStart, Vector2D lineEnd);
+    void createGravBodyGPUBuffer();
+    void createTwinklingStarGPUBuffer();
 
-    // Renders UI Elements
-    void renderUIElements(UIState& UIState,
-                          const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope);
-
+    void createTwinklingStarField();
+    void uploadTwinklingStarField(SDL_GPUCommandBuffer* cmdbuf);
+    void renderTwinklingStarField(SDL_GPURenderPass* pass);
     // Utility Rendering Helper Functions
     SDL_Color getColorForProperty(const GravitationalBody& body);
-
-    // Container for background twinkling stars
-    std::vector<TwinklingStar> twinklingStars;
-    // Container for textures of all background twinkling stars
-    std::vector<SDL_Texture*> twinklingStarTextures; // pre-created tiny textures (1-3 px)
-    std::vector<SDL_Texture*> circleTextureCache;
-
-    void buildCircleTextureCache();
-    // Texture cleanup helper
-    void clearCachedCircleTextures();
-
-    // Single Call GenerateStar pattern
-    void createStarField(int numStars);
-    void createStarTextures();
-    void updateStars();
-    void renderStars();
 };

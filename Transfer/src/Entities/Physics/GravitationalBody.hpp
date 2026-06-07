@@ -4,7 +4,7 @@
 
 // Custom Imports
 #include "Utilities/Math/Vector2D.hpp"
-#include "Utilities/Rendering/UnifiedBodyVertex.hpp"
+#include "Utilities/Rendering/GPUTypes.hpp"
 
 // Standard Library Imports
 #include <SDL3/SDL_stdinc.h>

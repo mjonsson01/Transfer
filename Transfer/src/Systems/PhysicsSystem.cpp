@@ -680,8 +680,8 @@ void PhysicsSystem::createMacroBody(GameState& gameState, InputState& inputState
     body.isMacroGhost = inputState.isCreatingMacroGhost;
     body.macroIdentifier = newMacroBodyID;
     body.isAccretable = true;
-    body.radius = 50.0;
-    body.mass = 1e13;
+    body.radius = 199.0;
+    body.mass = -1e15;
 
     if (inputState.isCreatingWithInitialVelocity)
     {

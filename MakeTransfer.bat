@@ -113,8 +113,12 @@ REM =====================================================
 echo Compiling shaders...
 
 .\LocalShaderCross\shadercross.exe ^
-    .\Transfer\src\HLSL\Body.vert.hlsl ^
-    -o .\Transfer\Assets\Shaders\Body.vert.spv
+    .\Transfer\src\HLSL\UnifiedGravBody.vert.hlsl ^
+    -o .\Transfer\Assets\Shaders\UnifiedGravBody.vert.spv
+
+.\LocalShaderCross\shadercross.exe ^
+    .\Transfer\src\HLSL\TwinklingStar.vert.hlsl ^
+    -o .\Transfer\Assets\Shaders\TwinklingStar.vert.spv
 
 if %ERRORLEVEL% NEQ 0 (
     echo Vertex shader compilation failed!
@@ -122,9 +126,12 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 .\LocalShaderCross\shadercross.exe ^
-    .\Transfer\src\HLSL\Body.frag.hlsl ^
-    -o .\Transfer\Assets\Shaders\Body.frag.spv
+    .\Transfer\src\HLSL\UnifiedGravBody.frag.hlsl ^
+    -o .\Transfer\Assets\Shaders\UnifiedGravBody.frag.spv
 
+.\LocalShaderCross\shadercross.exe ^
+    .\Transfer\src\HLSL\TwinklingStar.frag.hlsl ^
+    -o .\Transfer\Assets\Shaders\TwinklingStar.frag.spv
 if %ERRORLEVEL% NEQ 0 (
     echo Fragment shader compilation failed!
     exit /b 1
