@@ -10,7 +10,7 @@ UISystem::UISystem() : allScenes()
     allScenes.insert({SceneIdentifier::GAME_SCENE, nullptr});
     allScenes.insert({SceneIdentifier::PAUSE_SCENE, nullptr});
     allScenes.insert({SceneIdentifier::START_MENU_SCENE, nullptr});
-    allScenes.insert({SceneIdentifier::TEST_VISUAL_SCENE, nullptr});
+    // allScenes.insert({SceneIdentifier::TEST_VISUAL_SCENE, nullptr});
 
     populateScenes();
 }
@@ -64,7 +64,7 @@ void UISystem::populateScenes()
     GameScene* game_scene = new GameScene();
     PauseScene* pause_scene = new PauseScene();
     StartMenuScene* start_menu_scene = new StartMenuScene();
-    TestVisualScene* test_visual_scene = new TestVisualScene();
+    // TestVisualScene* test_visual_scene = new TestVisualScene();
     for (auto& [scene_ID, scene_ptr] : allScenes)
     {
         switch (scene_ID)
@@ -81,10 +81,10 @@ void UISystem::populateScenes()
             scene_ptr = start_menu_scene;
             scene_ptr->populateMe();
             break;
-        case SceneIdentifier::TEST_VISUAL_SCENE:
-            scene_ptr = test_visual_scene;
-            scene_ptr->populateMe();
-            break;
+        // case SceneIdentifier::TEST_VISUAL_SCENE:
+        //     scene_ptr = test_visual_scene;
+        //     scene_ptr->populateMe();
+        //     break;
         default:
             break;
         }

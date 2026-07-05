@@ -17,7 +17,7 @@ RadiusSlider::RadiusSlider() : Slider()
                             trackRect.w + deadzonePaddingX, trackRect.h + deadzonePaddingY};
 
     // Slider range
-    maxValue = MAX_RADIUS - 50;
+    maxValue = MAX_RADIUS - 100; // For throttling
     minValue = 0.0;
     sliderValue = 0.0; // start centered
 

@@ -172,11 +172,6 @@ void RenderSystem::renderNonGameFrame(GameState& gameState, UIState& UIState,
                                       const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
                                       SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf)
 {
-    // for (auto& [id, element] : elements)
-    // {
-    //     if (element->isVisible())
-    //         element->buildGeometry(uiVertices, 1, fontAtlas); // hardcoded 1 z index
-    // }
     renderUIElements(pass);
 }
 

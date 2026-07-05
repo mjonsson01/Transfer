@@ -9,6 +9,7 @@ PlayGameButton::PlayGameButton() : Button()
     boundingRect = SDL_FRect{SCREEN_WIDTH / 2 - width / 2, SCREEN_HEIGHT / 2 - height / 2, width, height};
     hotZoneRect = boundingRect;
     setPosition(boundingRect.x, boundingRect.y);
+    setVisibility(true);
     displayText = "Play Game";
     altText = "";
     bool buttonSelected = false;
