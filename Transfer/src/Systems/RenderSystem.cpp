@@ -12,7 +12,11 @@ RenderSystem::RenderSystem()
     int window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
     window = SDL_CreateWindow("Transfer", SCREEN_WIDTH, SCREEN_HEIGHT, window_flags);
 
+#ifdef __APPLE__
+    SDL_GPUShaderFormat formats = SDL_GPU_SHADERFORMAT_MSL;
+#else
     SDL_GPUShaderFormat formats = SDL_GPU_SHADERFORMAT_SPIRV;
+#endif
     gpu = SDL_CreateGPUDevice(formats, true, nullptr);
     if (gpu)
         SDL_ClaimWindowForGPUDevice(gpu, window);
@@ -84,9 +88,20 @@ void RenderSystem::CleanUp()
     }
 }
 
-SDL_GPUShader* RenderSystem::LoadShader(SDL_GPUDevice* device, const char* fileName, uint32_t numSamplers)
+SDL_GPUShader* RenderSystem::LoadShader(SDL_GPUDevice* device, const char* baseFileName, uint32_t numSamplers)
 {
     size_t size;
+
+#ifdef __APPLE__
+    std::string fileName = std::string(baseFileName) + ".msl";
+    const char* entrypoint = "main0"; // spirv-cross renames the MSL entry point away from "main"
+    SDL_GPUShaderFormat format = SDL_GPU_SHADERFORMAT_MSL;
+#else
+    std::string fileName = std::string(baseFileName) + ".spv";
+    const char* entrypoint = "main";
+    SDL_GPUShaderFormat format = SDL_GPU_SHADERFORMAT_SPIRV;
+#endif
+
     // Uses SystemPathUtility to find the shader directory
     std::string fullPath = Utilities::GetResourcePath(fileName);
     void* code = SDL_LoadFile(fullPath.c_str(), &size);
@@ -99,9 +114,9 @@ SDL_GPUShader* RenderSystem::LoadShader(SDL_GPUDevice* device, const char* fileN
 
     SDL_GPUShaderCreateInfo info = {.code_size = size,
                                     .code = (const uint8_t*)code,
-                                    .entrypoint = "main",
-                                    .format = SDL_GPU_SHADERFORMAT_SPIRV, // Windows default
-                                    .stage = (std::string(fileName).find("vert") != std::string::npos)
+                                    .entrypoint = entrypoint,
+                                    .format = format,
+                                    .stage = (fileName.find("vert") != std::string::npos)
                                                  ? SDL_GPU_SHADERSTAGE_VERTEX
                                                  : SDL_GPU_SHADERSTAGE_FRAGMENT,
                                     .num_samplers = numSamplers};
@@ -267,8 +282,8 @@ void RenderSystem::createUIPipeline()
                                                .size = MAX_UI_VERTICES * sizeof(UIElementVertex)};
     uiTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
 
-    SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/UIElement.vert.spv");
-    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/UIElement.frag.spv", 1);
+    SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/UIElement.vert");
+    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/UIElement.frag", 1);
 
     SDL_GPUVertexAttribute attrs[6];
     attrs[0] = {.location = 0,
@@ -499,8 +514,8 @@ void RenderSystem::createGravBodyGPUBuffer()
                                                .size = MAX_UNIFIED_BODIES * sizeof(UnifiedBodyVertex)};
     unifiedBodyTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
 
-    SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/UnifiedGravBody.vert.spv");
-    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/UnifiedGravBody.frag.spv");
+    SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/UnifiedGravBody.vert");
+    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/UnifiedGravBody.frag");
 
     // 6. Define Pipeline State
     SDL_GPUVertexAttribute vertex_attributes[8];
@@ -603,8 +618,8 @@ void RenderSystem::createTwinklingStarGPUBuffer()
 
     twinklingStarTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
 
-    SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/TwinklingStar.vert.spv");
-    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/TwinklingStar.frag.spv");
+    SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/TwinklingStar.vert");
+    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/TwinklingStar.frag");
 
     SDL_GPUVertexAttribute vertex_attributes[5];
 

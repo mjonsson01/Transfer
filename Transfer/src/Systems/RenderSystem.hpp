@@ -92,7 +92,7 @@ class RenderSystem
                                                      // bodies (both Macro and Particle)
 
     void uploadBodies(GameState& gameState, UIState& UIState, SDL_GPUCommandBuffer* cmdbuf);
-    SDL_GPUShader* LoadShader(SDL_GPUDevice* device, const char* fileName, uint32_t numSamplers = 0);
+    SDL_GPUShader* LoadShader(SDL_GPUDevice* device, const char* baseFileName, uint32_t numSamplers = 0);
 
     void createGravBodyGPUBuffer();
     void createTwinklingStarGPUBuffer();
