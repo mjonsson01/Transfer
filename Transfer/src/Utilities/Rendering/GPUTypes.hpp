@@ -29,3 +29,12 @@ struct TwinklingStarVertex
 
     uint32_t seed;
 };
+
+struct UIElementVertex
+{
+    float x, y;       // Screen coords
+    float u, v;       // Texture coordinates
+    float r, g, b, a; // Color and Opacity
+    uint32_t zIndex;
+    uint32_t mode;
+};

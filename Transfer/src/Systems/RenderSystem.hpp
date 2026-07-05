@@ -17,6 +17,7 @@
 #include "Utilities/Constants/GameSystemConstants.hpp"
 #include "Utilities/Rendering/CameraData.hpp"
 #include "Utilities/Rendering/Colors.hpp"
+#include "Utilities/Rendering/FontAtlasUtility.hpp"
 #include "Utilities/Rendering/GPUTypes.hpp"
 #include "Utilities/System/SystemPathUtility.hpp"
 
@@ -29,6 +30,7 @@
 #include <random>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 class RenderSystem
 {
@@ -62,6 +64,13 @@ class RenderSystem
     SDL_GPUTransferBuffer* unifiedBodyTransferBuffer = nullptr;
     SDL_GPUTransferBuffer* twinklingStarTransferBuffer = nullptr;
     SDL_GPUTransferBuffer* cameraTransferBuffer = nullptr;
+    SDL_GPUBuffer* uiVertexBuffer = nullptr;
+    SDL_GPUTransferBuffer* uiTransferBuffer = nullptr;
+    SDL_GPUGraphicsPipeline* uiPipeline = nullptr;
+    SDL_GPUTexture* fontAtlasTexture = nullptr;
+    SDL_GPUSampler* fontAtlasSampler = nullptr;
+    FontAtlasUtility fontAtlas; // TBI
+    std::vector<UIElementVertex> uiVertices;
     // Font for UI Elements that require text
     TTF_Font* UIFontRegular = nullptr;
     TTF_Font* UIFontTitle = nullptr;
@@ -83,10 +92,16 @@ class RenderSystem
                                                      // bodies (both Macro and Particle)
 
     void uploadBodies(GameState& gameState, UIState& UIState, SDL_GPUCommandBuffer* cmdbuf);
-    SDL_GPUShader* LoadShader(SDL_GPUDevice* device, const char* fileName);
+    SDL_GPUShader* LoadShader(SDL_GPUDevice* device, const char* fileName, uint32_t numSamplers = 0);
 
     void createGravBodyGPUBuffer();
     void createTwinklingStarGPUBuffer();
+
+    void createUIPipeline();
+    void createFontAtlasTexture(); // bakes fontAtlas from UIFontRegular and uploads it to the GPU
+    void uploadUIVertices(const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
+                          SDL_GPUCommandBuffer* cmdbuf);
+    void renderUIElements(SDL_GPURenderPass* pass);
 
     void createTwinklingStarField();
     void uploadTwinklingStarField(SDL_GPUCommandBuffer* cmdbuf);

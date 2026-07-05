@@ -9,9 +9,11 @@
 // Custom Imports
 #include "Entities/UIElements/UIElement.hpp"
 #include "Entities/UIElements/UIElementIdentifierEnum.hpp"
+#include "Utilities/Rendering/GPUTypes.hpp"
 
 // Standard Library Imports
 #include <string>
+#include <vector>
 
 class Button : public UIElement
 {
@@ -19,6 +21,9 @@ class Button : public UIElement
     Button();
     ~Button() = default;
     void renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) override;
+    void buildGeometry(std::vector<UIElementVertex>& vertexBuffer, uint32_t zIndex,
+                       const FontAtlasUtility& fontAtlas) override;
+
     virtual std::string getDisplayText() const { return displayText; }
     virtual void clickMe(Vector2D positionOfEvent, UIState& UIState) override;
     double getButtonState() { return buttonSelected; }

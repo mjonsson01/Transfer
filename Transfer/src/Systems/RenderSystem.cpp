@@ -23,6 +23,8 @@ RenderSystem::RenderSystem()
 
     createGravBodyGPUBuffer();
     createTwinklingStarGPUBuffer();
+    createUIPipeline();
+    createFontAtlasTexture();
     createTwinklingStarField();
     if (gpu)
     {
@@ -60,6 +62,16 @@ void RenderSystem::CleanUp()
         SDL_ReleaseGPUGraphicsPipeline(gpu, unifiedBodyPipeline);
     if (twinklingStarPipeline != nullptr)
         SDL_ReleaseGPUGraphicsPipeline(gpu, twinklingStarPipeline);
+    if (uiVertexBuffer != nullptr)
+        SDL_ReleaseGPUBuffer(gpu, uiVertexBuffer);
+    if (uiTransferBuffer != nullptr)
+        SDL_ReleaseGPUTransferBuffer(gpu, uiTransferBuffer);
+    if (uiPipeline != nullptr)
+        SDL_ReleaseGPUGraphicsPipeline(gpu, uiPipeline);
+    if (fontAtlasTexture != nullptr)
+        SDL_ReleaseGPUTexture(gpu, fontAtlasTexture);
+    if (fontAtlasSampler != nullptr)
+        SDL_ReleaseGPUSampler(gpu, fontAtlasSampler);
 
     // 2. Finally, destroy the GPU device
     if (gpu != nullptr)
@@ -72,7 +84,7 @@ void RenderSystem::CleanUp()
     }
 }
 
-SDL_GPUShader* RenderSystem::LoadShader(SDL_GPUDevice* device, const char* fileName)
+SDL_GPUShader* RenderSystem::LoadShader(SDL_GPUDevice* device, const char* fileName, uint32_t numSamplers)
 {
     size_t size;
     // Uses SystemPathUtility to find the shader directory
@@ -91,7 +103,8 @@ SDL_GPUShader* RenderSystem::LoadShader(SDL_GPUDevice* device, const char* fileN
                                     .format = SDL_GPU_SHADERFORMAT_SPIRV, // Windows default
                                     .stage = (std::string(fileName).find("vert") != std::string::npos)
                                                  ? SDL_GPU_SHADERSTAGE_VERTEX
-                                                 : SDL_GPU_SHADERSTAGE_FRAGMENT};
+                                                 : SDL_GPU_SHADERSTAGE_FRAGMENT,
+                                    .num_samplers = numSamplers};
 
     SDL_GPUShader* shader = SDL_CreateGPUShader(device, &info);
     SDL_free(code);
@@ -111,6 +124,7 @@ void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState,
     {
         uploadBodies(gameState, UIState, cmdbuf);
     }
+    uploadUIVertices(allUIElementsInScope, cmdbuf);
     // Acquire the display target
     SDL_GPUTexture* swapchainTexture = nullptr;
     Uint32 w = 0, h = 0;
@@ -152,11 +166,18 @@ void RenderSystem::renderGameFrame(GameState& gameState, UIState& UIState,
 {
     renderTwinklingStarField(pass);
     renderBodies(gameState, UIState, pass, cmdbuf);
+    renderUIElements(pass);
 }
 void RenderSystem::renderNonGameFrame(GameState& gameState, UIState& UIState,
                                       const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
                                       SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf)
 {
+    // for (auto& [id, element] : elements)
+    // {
+    //     if (element->isVisible())
+    //         element->buildGeometry(uiVertices, 1, fontAtlas); // hardcoded 1 z index
+    // }
+    renderUIElements(pass);
 }
 
 void RenderSystem::uploadBodies(GameState& gameState, UIState& UIState, SDL_GPUCommandBuffer* cmdbuf)
@@ -241,6 +262,169 @@ void RenderSystem::renderBodies(GameState& gameState, UIState& UIState, SDL_GPUR
     }
 }
 
+void RenderSystem::createUIPipeline()
+{
+    SDL_GPUBufferCreateInfo vb_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX,
+                                       .size = MAX_UI_VERTICES * sizeof(UIElementVertex)};
+
+    uiVertexBuffer = SDL_CreateGPUBuffer(gpu, &vb_info);
+    SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+                                               .size = MAX_UI_VERTICES * sizeof(UIElementVertex)};
+    uiTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
+
+    SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/UIElement.vert.spv");
+    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/UIElement.frag.spv", 1);
+
+    SDL_GPUVertexAttribute attrs[6];
+    attrs[0] = {.location = 0,
+                .buffer_slot = 0,
+                .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
+                .offset = offsetof(UIElementVertex, x)};
+    attrs[1] = {.location = 1,
+                .buffer_slot = 0,
+                .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
+                .offset = offsetof(UIElementVertex, u)};
+    attrs[2] = {.location = 2,
+                .buffer_slot = 0,
+                .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4,
+                .offset = offsetof(UIElementVertex, r)};
+    attrs[3] = {.location = 3,
+                .buffer_slot = 0,
+                .format = SDL_GPU_VERTEXELEMENTFORMAT_UINT,
+                .offset = offsetof(UIElementVertex, zIndex)};
+    attrs[4] = {.location = 4,
+                .buffer_slot = 0,
+                .format = SDL_GPU_VERTEXELEMENTFORMAT_UINT,
+                .offset = offsetof(UIElementVertex, mode)};
+    SDL_GPUGraphicsPipelineCreateInfo pipeline_info = {};
+    pipeline_info.target_info.num_color_targets = 1;
+
+    SDL_GPUColorTargetDescription color_target = {};
+    color_target.format = SDL_GetGPUSwapchainTextureFormat(gpu, window);
+    color_target.blend_state.enable_blend = true;
+    color_target.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    color_target.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+    color_target.blend_state.src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    color_target.blend_state.dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+    color_target.blend_state.color_blend_op = SDL_GPU_BLENDOP_ADD;
+    color_target.blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD;
+
+    pipeline_info.target_info.color_target_descriptions = &color_target;
+    pipeline_info.vertex_shader = vert_shader;
+    pipeline_info.fragment_shader = frag_shader;
+    pipeline_info.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
+    pipeline_info.vertex_input_state.vertex_attributes = attrs;
+    pipeline_info.vertex_input_state.num_vertex_attributes = 5;
+
+    SDL_GPUVertexBufferDescription vbo_desc = {
+        .slot = 0, .pitch = sizeof(UIElementVertex), .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX};
+    pipeline_info.vertex_input_state.vertex_buffer_descriptions = &vbo_desc;
+    pipeline_info.vertex_input_state.num_vertex_buffers = 1;
+
+    uiPipeline = SDL_CreateGPUGraphicsPipeline(gpu, &pipeline_info);
+    SDL_ReleaseGPUShader(gpu, vert_shader);
+    SDL_ReleaseGPUShader(gpu, frag_shader);
+}
+
+void RenderSystem::createFontAtlasTexture()
+{
+    SDL_Surface* atlasSurface = fontAtlas.BuildAtlas(UIFontRegular);
+    if (!atlasSurface)
+    {
+        std::cerr << "Failed to bake font atlas" << std::endl;
+        return;
+    }
+
+    SDL_GPUTextureCreateInfo tex_info = {.type = SDL_GPU_TEXTURETYPE_2D,
+                                         .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+                                         .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER,
+                                         .width = (Uint32)atlasSurface->w,
+                                         .height = (Uint32)atlasSurface->h,
+                                         .layer_count_or_depth = 1,
+                                         .num_levels = 1};
+    fontAtlasTexture = SDL_CreateGPUTexture(gpu, &tex_info);
+
+    SDL_GPUSamplerCreateInfo sampler_info = {.min_filter = SDL_GPU_FILTER_LINEAR,
+                                             .mag_filter = SDL_GPU_FILTER_LINEAR,
+                                             .address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
+                                             .address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE};
+    fontAtlasSampler = SDL_CreateGPUSampler(gpu, &sampler_info);
+
+    Uint32 pixelDataSize = (Uint32)(atlasSurface->w * atlasSurface->h * 4);
+    SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD, .size = pixelDataSize};
+    SDL_GPUTransferBuffer* atlasTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
+
+    // Copy row by row in case the surface pitch isn't tightly packed.
+    Uint8* dst = (Uint8*)SDL_MapGPUTransferBuffer(gpu, atlasTransferBuffer, false);
+    Uint8* src = (Uint8*)atlasSurface->pixels;
+    Uint32 rowBytes = (Uint32)atlasSurface->w * 4;
+    for (int row = 0; row < atlasSurface->h; row++)
+    {
+        SDL_memcpy(dst + row * rowBytes, src + row * atlasSurface->pitch, rowBytes);
+    }
+    SDL_UnmapGPUTransferBuffer(gpu, atlasTransferBuffer);
+
+    SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(gpu);
+    SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdbuf);
+
+    SDL_GPUTextureTransferInfo src_info = {.transfer_buffer = atlasTransferBuffer,
+                                           .offset = 0,
+                                           .pixels_per_row = (Uint32)atlasSurface->w,
+                                           .rows_per_layer = (Uint32)atlasSurface->h};
+    SDL_GPUTextureRegion dst_region = {.texture = fontAtlasTexture,
+                                       .mip_level = 0,
+                                       .layer = 0,
+                                       .x = 0,
+                                       .y = 0,
+                                       .z = 0,
+                                       .w = (Uint32)atlasSurface->w,
+                                       .h = (Uint32)atlasSurface->h,
+                                       .d = 1};
+    SDL_UploadToGPUTexture(copyPass, &src_info, &dst_region, false);
+
+    SDL_EndGPUCopyPass(copyPass);
+    SDL_SubmitGPUCommandBuffer(cmdbuf);
+
+    SDL_ReleaseGPUTransferBuffer(gpu, atlasTransferBuffer);
+    SDL_DestroySurface(atlasSurface);
+}
+
+void RenderSystem::uploadUIVertices(const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
+                                    SDL_GPUCommandBuffer* cmdbuf)
+{
+    uiVertices.clear();
+    for (auto& [id, element] : allUIElementsInScope)
+        if (element->isVisible())
+        {
+            element->buildGeometry(uiVertices, 1, fontAtlas);
+        }
+
+    if (uiVertices.empty())
+        return;
+
+    void* map = SDL_MapGPUTransferBuffer(gpu, uiTransferBuffer, false);
+    SDL_memcpy(map, uiVertices.data(), uiVertices.size() * sizeof(UIElementVertex));
+    SDL_UnmapGPUTransferBuffer(gpu, uiTransferBuffer);
+
+    SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdbuf);
+    SDL_GPUTransferBufferLocation src = {.transfer_buffer = uiTransferBuffer, .offset = 0};
+    SDL_GPUBufferRegion dst = {
+        .buffer = uiVertexBuffer, .offset = 0, .size = (uint32_t)(uiVertices.size() * sizeof(UIElementVertex))};
+    SDL_UploadToGPUBuffer(copyPass, &src, &dst, false);
+    SDL_EndGPUCopyPass(copyPass);
+}
+
+void RenderSystem::renderUIElements(SDL_GPURenderPass* pass)
+{
+    if (uiVertices.empty())
+        return;
+    SDL_BindGPUGraphicsPipeline(pass, uiPipeline);
+    SDL_GPUBufferBinding vbo = {.buffer = uiVertexBuffer, .offset = 0};
+    SDL_BindGPUVertexBuffers(pass, 0, &vbo, 1);
+    SDL_GPUTextureSamplerBinding texBinding = {.texture = fontAtlasTexture, .sampler = fontAtlasSampler};
+    SDL_BindGPUFragmentSamplers(pass, 0, &texBinding, 1);
+    SDL_DrawGPUPrimitives(pass, (uint32_t)uiVertices.size(), 1, 0, 0);
+}
 void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexData, UIState& UIState)
 {
     InputState& input_state = UIState.getMutableInputState();

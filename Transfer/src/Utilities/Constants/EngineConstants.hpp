@@ -28,3 +28,5 @@ static const double EPSILON = 1e-30;
 static const uint32_t MAX_UNIFIED_BODIES = 500000;
 
 static const double ELASTIC_LOSS_FACTOR = 0.75; // 85% of Velocity retained after elastic collision
+
+static const uint32_t MAX_UI_VERTICES = 65536;

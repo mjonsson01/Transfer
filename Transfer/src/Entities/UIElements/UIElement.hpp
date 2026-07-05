@@ -11,9 +11,12 @@
 #include "Entities/UIElements/UIElementIdentifierEnum.hpp"
 #include "Utilities/Math/Vector2D.hpp"
 #include "Utilities/Rendering/Colors.hpp"
+#include "Utilities/Rendering/FontAtlasUtility.hpp"
+#include "Utilities/Rendering/GPUTypes.hpp"
 
 // Standard Library Imports
 #include <string>
+#include <vector>
 
 class UIElement
 {
@@ -21,8 +24,9 @@ class UIElement
     UIElement();
     virtual ~UIElement();
     virtual void renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) {}; // Default does nothing
-    virtual void slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& UIState) {};      // Default does nothing
-    virtual void clickMe(Vector2D positionOfEvent, UIState& UIState) {};                  // Default does nothing
+    virtual void slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& UIState) {
+    }; // Default does nothing
+    virtual void clickMe(Vector2D positionOfEvent, UIState& UIState) {}; // Default does nothing
     void setPosition(float x, float y)
     {
         posX = x;
@@ -31,8 +35,12 @@ class UIElement
     float getX() const { return posX; }
     float getY() const { return posY; }
     void setVisibility(bool desiredVisibility) { visible = desiredVisibility; }
+    bool isVisible() const { return visible; }
     UIElementIdentifier checkAndReturnIfHit(const Vector2D& positionToCheck);
     UIElementIdentifier getUIElementID() const { return UIElementID; }
+    virtual void buildGeometry(std::vector<UIElementVertex>& vertexBuffer, uint32_t zIndex,
+                               const FontAtlasUtility& fontAtlas) {}; // Default does nothing
+    virtual void updateMe(UIState& UIState) {};                       // Default does nothing
 
   private:
     float posX = 0;

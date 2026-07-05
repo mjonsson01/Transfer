@@ -2,6 +2,8 @@
 
 #include "UISystem.hpp"
 
+#include <iostream>
+
 // Constructor
 UISystem::UISystem() : allScenes()
 {
@@ -21,6 +23,18 @@ UISystem::~UISystem()
 void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState)
 {
     updateUISystemCurrentSceneID(UIState); // get most up to date current scene
+
+    // Clunky fix but whatever
+    std::unordered_map<UIElementIdentifier, UIElement*> allUIElements = allScenes[currentSceneID]->getSceneElements();
+    for (auto& [UI_element_ID, UI_element_ptr] : allUIElements)
+    {
+        if (UI_element_ID == UIElementIdentifier::FPS_COUNTER_INDEX)
+        {
+            UI_element_ptr->updateMe(UIState);
+            break;
+        }
+    }
+
     if (currentSceneID == SceneIdentifier::GAME_SCENE)
     {
         updateGameUIElements(gameState, UIState);
@@ -180,7 +194,8 @@ void UISystem::routeSliderInput(UIElementIdentifier sliderTypeToUpdate, UIState&
     else if (sliderTypeToUpdate == UIElementIdentifier::SIMULATION_SPEED_SLIDER_INDEX)
     {
         double simulation_speed_val_to_be_calculated_and_injected = 1.0; // initialize to 1
-        elementToUpdate->slideMe(input_state.mouseCurrPosition, simulation_speed_val_to_be_calculated_and_injected, UIState);
+        elementToUpdate->slideMe(input_state.mouseCurrPosition, simulation_speed_val_to_be_calculated_and_injected,
+                                 UIState);
         input_state.selectedSimSpeedScale = simulation_speed_val_to_be_calculated_and_injected;
     }
     else
