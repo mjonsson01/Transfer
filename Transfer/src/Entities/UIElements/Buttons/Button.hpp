@@ -20,7 +20,6 @@ class Button : public UIElement
   public:
     Button();
     ~Button() = default;
-    void renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) override;
     void buildGeometry(std::vector<UIElementVertex>& vertexBuffer, uint32_t zIndex,
                        const FontAtlasUtility& fontAtlas) override;
 

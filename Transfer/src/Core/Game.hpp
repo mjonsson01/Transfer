@@ -28,7 +28,7 @@ class Game
     Game();
     ~Game();
 
-    // Initializes SDL windows, renderer, and starts the main game loop by
+    // Initializes SDL windows and starts the main game loop by
     // calling Run()
     void StartGame();
     // Tears down the 'systems' and cleans up allocated resources.

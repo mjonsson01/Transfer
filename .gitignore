@@ -9,3 +9,5 @@ venv/
 LocalShaderCross/
 LocalSpirvCross/
 Transfer/Assets/Shaders/
+
+*.md

@@ -17,7 +17,7 @@ Game::~Game()
     SDL_Quit();
 }
 
-// Initializes SDL windows, renderer, and starts the main game loop
+// Initializes SDL windows and starts the main game loop
 void Game::StartGame()
 {
     // Initialize any other useful gameState variables here.
@@ -26,13 +26,12 @@ void Game::StartGame()
     // Default to starting in the level scene since other scenes are not
     // implemented yet.
 
-    // UIState.setCurrentScene(SceneIdentifier::START_MENU_SCENE);
-    UIState.setCurrentScene(SceneIdentifier::GAME_SCENE);
+    UIState.setCurrentScene(SceneIdentifier::START_MENU_SCENE);
+    // UIState.setCurrentScene(SceneIdentifier::GAME_SCENE);
     // UIState.setCurrentScene(SceneIdentifier::TEST_VISUAL_SCENE);
     UIState.setPlaySoundEffects(true);
     UIState.setPlayMusic(true);
     UIState.setRequestedMusicMode(MusicMode::TITLE_THEME);
-    // UIState.setRenderDebug(true); // default to true for now to help with development
     // Start the main game loop
     Game::Run();
 
@@ -154,7 +153,7 @@ void Game::IntegratePhysicsFrame()
 void Game::UpdateInstantiations() { physicsSystem.UpdateGravBodyInstantiations(gameState, UIState); }
 void Game::RenderFrame()
 {
-    // Dispatch to Renderer System -- renders UI as well.
+    // Dispatch to Render System -- renders UI as well.
     Scene* current_scene = UISystem.getScene(UIState.getCurrentSceneID());
     const std::unordered_map<UIElementIdentifier, UIElement*>& UI_elements_in_scene = current_scene->getSceneElements();
     renderSystem.RenderFullFrame(gameState, UIState, UI_elements_in_scene);

@@ -27,7 +27,6 @@ class Slider : public UIElement
   public:
     Slider();
     ~Slider() = default;
-    void renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) override;
     void buildGeometry(std::vector<UIElementVertex>& vertexBuffer, uint32_t zIndex,
                        const FontAtlasUtility& fontAtlas) override;
     virtual std::string getDisplayText() const { return std::to_string(sliderValue); }

@@ -21,7 +21,6 @@ class FPSCounter : public UIElement
   public:
     FPSCounter();
     ~FPSCounter() = default;
-    virtual void renderMe(SDL_Renderer* renderer, UIState& UIState, TTF_Font* UIFont) override;
     virtual void buildGeometry(std::vector<UIElementVertex>& vertexBuffer, uint32_t zIndex,
                                const FontAtlasUtility& fontAtlas) override;
     virtual void updateMe(UIState& UIState) override;
