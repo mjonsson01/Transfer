@@ -48,7 +48,7 @@ void MassSlider::slideMe(Vector2D positionOfEvent, double& returnedElementValue,
     knobRect.x = track_start_x + (t * track_length_x);
 
     returnedElementValue = sliderValue;
-    // UIState.QueueSoundEffect("SliderTick");
+    playTickSoundIfMoved(UIState);
     return;
 }
 
@@ -79,4 +79,26 @@ void MassSlider::updateLayout(float windowWidth, float windowHeight)
     knobRect.y = trackRect.y - (knobRect.h - trackRect.h) / 2.0f;
 
     setPosition(trackRect.x, trackRect.y);
+}
+
+void MassSlider::playTickSoundIfMoved(UIState& UIState)
+{
+    double centered_t;
+    if (sliderValue == 0.0)
+    {
+        centered_t = 0.0;
+    }
+    else
+    {
+        double sign = (sliderValue < 0) ? -1.0 : 1.0;
+        centered_t = sign * (std::log10(std::abs(sliderValue)) / 15.0);
+    }
+
+    int currentTick = static_cast<int>(std::round(centered_t * NUM_SLIDER_TICKS));
+
+    if (currentTick != lastTickIndex)
+    {
+        UIState.QueueSoundEffect("SliderTick");
+        lastTickIndex = currentTick;
+    }
 }
