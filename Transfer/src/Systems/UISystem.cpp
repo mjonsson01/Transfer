@@ -24,6 +24,9 @@ void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState)
 {
     updateUISystemCurrentSceneID(UIState); // get most up to date current scene
 
+    const CameraState& cam = gameState.getCameraState();
+    updateAllUILayouts(cam.windowWidth, cam.windowHeight);
+
     // Clunky fix but whatever
     std::unordered_map<UIElementIdentifier, UIElement*> allUIElements = allScenes[currentSceneID]->getSceneElements();
     for (auto& [UI_element_ID, UI_element_ptr] : allUIElements)
@@ -166,6 +169,19 @@ void UISystem::updateMenuUIElements(GameState& gameState, UIState& UIState)
     inputs_received.UIInputConsumed = consumed;
     inputs_received.isPreviewingMacro = false;
     inputs_received.isPreviewingWithInitialVelocity = false;
+}
+
+void UISystem::updateAllUILayouts(float windowWidth, float windowHeight)
+{
+    for (auto& [scene_ID, scene_ptr] : allScenes)
+    {
+        if (!scene_ptr)
+            continue;
+        for (auto& [UI_element_ID, UI_element_ptr] : scene_ptr->getSceneElements())
+        {
+            UI_element_ptr->updateLayout(windowWidth, windowHeight);
+        }
+    }
 }
 
 void UISystem::routeSliderInput(UIElementIdentifier sliderTypeToUpdate, UIState& UIState)

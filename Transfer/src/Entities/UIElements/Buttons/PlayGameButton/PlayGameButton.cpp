@@ -4,11 +4,7 @@
 
 PlayGameButton::PlayGameButton() : Button()
 {
-    float width = 300.0f;
-    float height = 200.0f;
-    boundingRect = SDL_FRect{SCREEN_WIDTH / 2 - width / 2, SCREEN_HEIGHT / 2 - height / 2, width, height};
-    hotZoneRect = boundingRect;
-    setPosition(boundingRect.x, boundingRect.y);
+    updateLayout(SCREEN_HEIGHT, SCREEN_WIDTH);
     setVisibility(true);
     displayText = "Play Game";
     altText = "";
@@ -21,4 +17,13 @@ void PlayGameButton::clickMe(Vector2D positionOfEvent, UIState& UIState)
     UIState.setCurrentScene(SceneIdentifier::GAME_SCENE);
     UIState.QueueSoundEffect("ButtonClick");
     return;
+}
+
+void PlayGameButton::updateLayout(float windowWidth, float windowHeight)
+{
+    float width = 300.0f;
+    float height = 200.0f;
+    boundingRect = SDL_FRect{windowWidth / 2 - width / 2, windowHeight / 2 - height / 2, width, height};
+    setPosition(boundingRect.x, boundingRect.y);
+    hotZoneRect = boundingRect;
 }

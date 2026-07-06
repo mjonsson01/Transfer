@@ -6,7 +6,7 @@
 constexpr float PHYSICS_TIME_STEP = 1.0f / 120.0f; // 120Hz physics update rate
 
 // Newtonian Gravitational constant (scaled)
-static const double GRAVITATIONAL_CONSTANT = 6.67430e-9 / 2; // in m^3 kg^-1 s^-2
+static const double GRAVITATIONAL_CONSTANT = 6.67430e-7 / 5; // in m^3 kg^-1 s^-2
 
 static const double MAX_MASS = 1e16;
 static const double MAX_RADIUS = 200;
@@ -23,9 +23,9 @@ static const double MIN_SHATTER_SPEED = 90.0;             // in px/s need to res
 
 static const double PI = 3.14159265358979323846;
 
-static const double EPSILON = 1e-30;
+static const double EPSILON = 1e-8;
 
-static const uint32_t MAX_UNIFIED_BODIES = 500000;
+static const uint32_t MAX_UNIFIED_BODIES = 200000;
 
 static const double ELASTIC_LOSS_FACTOR = 0.75; // 85% of Velocity retained after elastic collision
 

@@ -4,11 +4,7 @@
 
 ResumeButton::ResumeButton() : Button()
 {
-    float width = 200.0f;
-    float height = 100.0f;
-    boundingRect = SDL_FRect{SCREEN_WIDTH / 2 - width / 2, SCREEN_HEIGHT / 2 - height / 2, width, height};
-    hotZoneRect = boundingRect;
-    setPosition(boundingRect.x, boundingRect.y);
+    updateLayout(SCREEN_WIDTH, SCREEN_HEIGHT);
     setVisibility(true);
     displayText = "Resume";
     altText = "Clicked";
@@ -24,4 +20,13 @@ void ResumeButton::clickMe(Vector2D positionOfEvent, UIState& UIState)
     altText = temp;
     UIState.QueueSoundEffect("ButtonClick");
     return;
+}
+
+void ResumeButton::updateLayout(float windowWidth, float windowHeight)
+{
+    float width = 200.0f;
+    float height = 100.0f;
+    boundingRect = SDL_FRect{windowWidth / 2 - width / 2, windowHeight / 2 - height / 2, width, height};
+    hotZoneRect = boundingRect;
+    setPosition(boundingRect.x, boundingRect.y);
 }

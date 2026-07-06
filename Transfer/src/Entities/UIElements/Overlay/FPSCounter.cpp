@@ -4,7 +4,7 @@
 
 FPSCounter::FPSCounter()
 {
-    setPosition(10.0f, 10.0f);
+    updateLayout(SCREEN_WIDTH, SCREEN_HEIGHT);
     setVisibility(true);
     UIElementID = UIElementIdentifier::FPS_COUNTER_INDEX;
 }
@@ -47,4 +47,9 @@ void FPSCounter::buildGeometry(std::vector<UIElementVertex>& vertexBuffer, uint3
     std::string fps_root = getDisplayText();
     std::string fps_text = "FPS: " + fps_root;
     pushText(vertexBuffer, fps_text, getX(), getY(), fontAtlas, zIndex);
+}
+
+void FPSCounter::updateLayout(float windowWidth, float windowHeight)
+{
+    setPosition(windowWidth / SCREEN_WIDTH * 10, windowHeight / SCREEN_HEIGHT * 10);
 }

@@ -3,9 +3,8 @@
 // Custom Imports
 #include "Core/Game.hpp"
 
-// Likely change the resolution to be scalable in the future? default 1920x1080
-// for now. Will be inside the Render system eventually.
-Game::Game() : gameState(), UIState(), inputSystem(), physicsSystem(), renderSystem(), audioSystem(), UISystem()
+Game::Game()
+    : gameState(), UIState(), inputSystem(), physicsSystem(), renderSystem(gameState), audioSystem(), UISystem()
 {
     // fill in imp here
 }
@@ -128,8 +127,9 @@ void Game::Run()
         float physics_time = (float)((phys_total_end - phys_total_start) * 1000) / perf_freq;
         float rendering_time = (float)((render_end - render_start) * 1000) / perf_freq;
 
-        printf("N=%zu | Rend: %.3f | Phys: %.3f\n", gameState.getParticles().size() + gameState.getMacroBodies().size(),
-               rendering_time, physics_time);
+        // printf("N=%zu | Rend: %.3f | Phys: %.3f\n", gameState.getParticles().size() +
+        // gameState.getMacroBodies().size(),
+        //        rendering_time, physics_time);
         // printf("Profile Time [ms] | Input: %.3f | Inst: %.3f | Audio: %.3f | Phys: %.3f | Rend: %.3f\n", input_time,
         //        instantiation_time, audio_playback_time, physics_time, rendering_time);
     }
@@ -216,5 +216,6 @@ void Game::limitFrameRate(Uint64 renderStart, Uint64 renderEnd, Uint64 perfFreq)
         {
             // Do nothing, just wait out the remaining microseconds
         }
+        std::cout << "Camera Zoom" << gameState.getCameraState().zoom << std::endl;
     }
 }

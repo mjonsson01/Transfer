@@ -27,6 +27,12 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState
             gameState.SetPlaying(false);
             gameState.setIsShuttingDownAudioSystem(true);
         }
+        else if (event.type == SDL_EVENT_WINDOW_RESIZED)
+        {
+            CameraState& camera_state_local = gameState.getCameraStateMutable();
+            camera_state_local.windowWidth = (float)event.window.data1;
+            camera_state_local.windowHeight = (float)event.window.data2;
+        }
         else
         {
             // Will ensure the event is not yet consumed by the UI.
@@ -48,6 +54,61 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState
     SceneIdentifier current_scene = UIState.getCurrentSceneID();
     if (current_scene == SceneIdentifier::GAME_SCENE)
     {
+        CameraState& camera_state = gameState.getCameraStateMutable();
+
+        if (!firstWithinEpsilonOfSecond(transferInputs.pendingScrollData, 0.0f))
+        {
+            Vector2D worldUnderCursor = ScreenToWorldCoordinates(transferInputs.mouseCurrPosition, camera_state);
+            Vector2D starWorldUnderCursor =
+                transferInputs.mouseCurrPosition / camera_state.zoom - camera_state.twinklingStarOffset;
+
+            camera_state.zoom *= std::pow(1.1, transferInputs.pendingScrollData);
+            camera_state.zoom = std::clamp(camera_state.zoom, MIN_ZOOM, MAX_ZOOM);
+
+            camera_state.offset = transferInputs.mouseCurrPosition / camera_state.zoom - worldUnderCursor;
+            camera_state.twinklingStarOffset =
+                transferInputs.mouseCurrPosition / camera_state.zoom - starWorldUnderCursor;
+            transferInputs.pendingScrollData = 0.0f;
+        }
+
+        if (transferInputs.middleMouseJustPressed)
+        {
+            transferInputs.previousMiddleDragPosition = transferInputs.mouseCurrPosition;
+        }
+        else if (transferInputs.middleMousePressed)
+        {
+            Vector2D dragDelta = transferInputs.mouseCurrPosition - transferInputs.previousMiddleDragPosition;
+            camera_state.offset += dragDelta / camera_state.zoom;
+            camera_state.twinklingStarOffset += (dragDelta / camera_state.zoom) * STAR_PARALLAX_FACTOR;
+            transferInputs.previousMiddleDragPosition = transferInputs.mouseCurrPosition;
+        }
+        // Prevent panning (and the star field's own independent pan) past the edge of
+        // the generated star field.
+        double starFieldHalfWidth = camera_state.maxDisplayWidth / (2.0 * MIN_ZOOM);
+        double starFieldHalfHeight = camera_state.maxDisplayHeight / (2.0 * MIN_ZOOM);
+        Vector2D starFieldCenter = {SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0};
+
+        double viewHalfWidth = (camera_state.windowWidth / 2.0) / camera_state.zoom;
+        double viewHalfHeight = (camera_state.windowHeight / 2.0) / camera_state.zoom;
+
+        double slackX = std::max(0.0, starFieldHalfWidth - viewHalfWidth);
+        double slackY = std::max(0.0, starFieldHalfHeight - viewHalfHeight);
+
+        auto clampOffsetToStarField = [&](Vector2D& offsetToClamp)
+        {
+            Vector2D viewCenterWorld = {viewHalfWidth - offsetToClamp.xVal, viewHalfHeight - offsetToClamp.yVal};
+
+            viewCenterWorld.xVal =
+                std::clamp(viewCenterWorld.xVal, starFieldCenter.xVal - slackX, starFieldCenter.xVal + slackX);
+            viewCenterWorld.yVal =
+                std::clamp(viewCenterWorld.yVal, starFieldCenter.yVal - slackY, starFieldCenter.yVal + slackY);
+
+            offsetToClamp.xVal = viewHalfWidth - viewCenterWorld.xVal;
+            offsetToClamp.yVal = viewHalfHeight - viewCenterWorld.yVal;
+        };
+
+        clampOffsetToStarField(camera_state.offset);
+        clampOffsetToStarField(camera_state.twinklingStarOffset);
         translateAndPassTransferInputsOff(UIState);
     }
     else
@@ -141,6 +202,7 @@ void InputSystem::routeSDL_EventInputInGame(SDL_Event* e)
             break;
         case SDL_BUTTON_MIDDLE:
             transferInputs.middleMousePressed = true;
+            transferInputs.middleMouseJustPressed = true;
             break;
         }
         break;
@@ -255,6 +317,16 @@ void InputSystem::routeSDL_EventInputInGame(SDL_Event* e)
             break;
         }
         break;
+    case SDL_EVENT_MOUSE_WHEEL:
+    {
+        float scroll_y = e->wheel.y;
+        if (e->wheel.direction == SDL_MOUSEWHEEL_FLIPPED)
+        {
+            scroll_y *= -1.0f;
+        }
+        transferInputs.pendingScrollData += scroll_y;
+        break;
+    }
     default:
         // no fall through behavior necessary
         break;

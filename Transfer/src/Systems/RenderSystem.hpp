@@ -9,6 +9,7 @@
 #include <SDL3_ttf/SDL_ttf.h>
 
 // Custom Imports
+#include "Core/CameraState.hpp"
 #include "Core/GameState.hpp"
 #include "Core/UIState.hpp"
 #include "Entities/UIElements/UIElement.hpp"
@@ -16,6 +17,7 @@
 #include "Utilities/Constants/EngineConstants.hpp"
 #include "Utilities/Constants/GameSystemConstants.hpp"
 #include "Utilities/Rendering/CameraData.hpp"
+#include "Utilities/Rendering/CameraTransform.hpp"
 #include "Utilities/Rendering/Colors.hpp"
 #include "Utilities/Rendering/FontAtlasUtility.hpp"
 #include "Utilities/Rendering/GPUTypes.hpp"
@@ -38,7 +40,7 @@ class RenderSystem
     // Constructor and Destructor
     //  No arguments for now, but will need to pass through resolution and other
     //  info later
-    RenderSystem();
+    RenderSystem(GameState& gameState);
     ~RenderSystem(); // make sure to teardown destructor and window
 
     // Main Loop Rendering Function, renders engine state and UI state
@@ -57,13 +59,11 @@ class RenderSystem
     SDL_GPUDevice* gpu = nullptr;
 
     SDL_GPUBuffer* unifiedBodyVertexBuffer;
-    SDL_GPUBuffer* cameraUniformBuffer;
     SDL_GPUBuffer* twinklingStarVertexBuffer;
     SDL_GPUGraphicsPipeline* unifiedBodyPipeline;
     SDL_GPUGraphicsPipeline* twinklingStarPipeline;
     SDL_GPUTransferBuffer* unifiedBodyTransferBuffer = nullptr;
     SDL_GPUTransferBuffer* twinklingStarTransferBuffer = nullptr;
-    SDL_GPUTransferBuffer* cameraTransferBuffer = nullptr;
     SDL_GPUBuffer* uiVertexBuffer = nullptr;
     SDL_GPUTransferBuffer* uiTransferBuffer = nullptr;
     SDL_GPUGraphicsPipeline* uiPipeline = nullptr;
@@ -76,6 +76,11 @@ class RenderSystem
     TTF_Font* UIFontTitle = nullptr;
     std::vector<TwinklingStarVertex> twinklingStars;
 
+    SDL_GPUBuffer* velocityVectorVertexBuffer = nullptr;
+    SDL_GPUTransferBuffer* velocityVectorTransferBuffer = nullptr;
+    SDL_GPUGraphicsPipeline* velocityVectorPipeline = nullptr;
+    std::vector<VelocityVectorVertex> velocityVectorVertices;
+
   private:
     // Subordinate Rendering Functions
     void renderGameFrame(GameState& gameState, UIState& UIState,
@@ -85,27 +90,36 @@ class RenderSystem
                             const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
                             SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf);
 
-    void appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexData, UIState& UIState);
+    void appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexData, UIState& UIState,
+                             const CameraState& cameraState);
 
     void renderBodies(GameState& gameState, UIState& UIState, SDL_GPURenderPass* pass,
                       SDL_GPUCommandBuffer* cmdbuf); // Renders all the gravitational
                                                      // bodies (both Macro and Particle)
 
     void uploadBodies(GameState& gameState, UIState& UIState, SDL_GPUCommandBuffer* cmdbuf);
-    SDL_GPUShader* LoadShader(SDL_GPUDevice* device, const char* baseFileName, uint32_t numSamplers = 0);
+    SDL_GPUShader* LoadShader(SDL_GPUDevice* device, const char* baseFileName, uint32_t numSamplers = 0,
+                              uint32_t numUniformBuffers = 0);
 
     void createGravBodyGPUBuffer();
     void createTwinklingStarGPUBuffer();
 
     void createUIPipeline();
-    void createFontAtlasTexture(); // bakes fontAtlas from UIFontRegular and uploads it to the GPU
+    void createVelocityVectorPipeline(); // creates pipeline for Velocity vectors in preview body.
+    void createFontAtlasTexture();       // bakes fontAtlas from UIFontRegular and uploads it to the GPU
     void uploadUIVertices(const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
                           SDL_GPUCommandBuffer* cmdbuf);
-    void renderUIElements(SDL_GPURenderPass* pass);
+    void renderUIElements(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf, const CameraState& cameraState);
 
-    void createTwinklingStarField();
+    void createTwinklingStarField(float fieldMaxWidth, float fieldMaxHeight);
     void uploadTwinklingStarField(SDL_GPUCommandBuffer* cmdbuf);
-    void renderTwinklingStarField(SDL_GPURenderPass* pass);
+    void renderTwinklingStarField(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
+                                  const CameraState& cameraState);
+
+    CameraConstants buildCameraConstants(const CameraState& cameraState, const Vector2D& offset);
     // Utility Rendering Helper Functions
+    void buildVelocityVectorGeometry(Vector2D lineStart, Vector2D lineEnd);
+    void uploadVelocityVectorVertices(SDL_GPUCommandBuffer* cmdbuf);
+    void renderVelocityVector(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf, const CameraState& cameraState);
     SDL_Color getColorForProperty(const GravitationalBody& body);
 };

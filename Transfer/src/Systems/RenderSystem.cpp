@@ -3,7 +3,7 @@
 #include "Systems/RenderSystem.hpp"
 
 // Constructor: Initializes SDL Window and GPU
-RenderSystem::RenderSystem()
+RenderSystem::RenderSystem(GameState& gameState)
 {
     SDL_InitSubSystem(SDL_INIT_VIDEO);
     TTF_Init();
@@ -11,6 +11,14 @@ RenderSystem::RenderSystem()
     // 1. Window & Device Setup
     int window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
     window = SDL_CreateWindow("Transfer", SCREEN_WIDTH, SCREEN_HEIGHT, window_flags);
+
+    SDL_DisplayID displayID = SDL_GetDisplayForWindow(window);
+    const SDL_DisplayMode* desktopMode = SDL_GetDesktopDisplayMode(displayID);
+    if (desktopMode)
+    {
+        gameState.getCameraStateMutable().maxDisplayWidth = (float)desktopMode->w;
+        gameState.getCameraStateMutable().maxDisplayHeight = (float)desktopMode->h;
+    }
 
 #ifdef __APPLE__
     SDL_GPUShaderFormat formats = SDL_GPU_SHADERFORMAT_MSL;
@@ -20,16 +28,16 @@ RenderSystem::RenderSystem()
     gpu = SDL_CreateGPUDevice(formats, true, nullptr);
     if (gpu)
         SDL_ClaimWindowForGPUDevice(gpu, window);
-
     // 2. Resource/Font Setup
     UIFontRegular = TTF_OpenFont(Utilities::GetResourcePath("Fonts/SpaceMono-Regular.ttf").c_str(), 18);
     UIFontTitle = TTF_OpenFont(Utilities::GetResourcePath("Fonts/SpaceMono-Bold.ttf").c_str(), 32);
 
     createGravBodyGPUBuffer();
     createTwinklingStarGPUBuffer();
+    createVelocityVectorPipeline();
     createUIPipeline();
     createFontAtlasTexture();
-    createTwinklingStarField();
+    createTwinklingStarField(gameState.getCameraState().maxDisplayWidth, gameState.getCameraState().maxDisplayHeight);
     if (gpu)
     {
         SDL_GPUCommandBuffer* initCmdBuf = SDL_AcquireGPUCommandBuffer(gpu);
@@ -56,8 +64,6 @@ void RenderSystem::CleanUp()
         SDL_ReleaseGPUBuffer(gpu, unifiedBodyVertexBuffer);
     if (twinklingStarVertexBuffer != nullptr)
         SDL_ReleaseGPUBuffer(gpu, twinklingStarVertexBuffer);
-    if (cameraUniformBuffer != nullptr)
-        SDL_ReleaseGPUBuffer(gpu, cameraUniformBuffer);
     if (unifiedBodyTransferBuffer != nullptr)
         SDL_ReleaseGPUTransferBuffer(gpu, unifiedBodyTransferBuffer);
     if (twinklingStarTransferBuffer != nullptr)
@@ -76,6 +82,12 @@ void RenderSystem::CleanUp()
         SDL_ReleaseGPUTexture(gpu, fontAtlasTexture);
     if (fontAtlasSampler != nullptr)
         SDL_ReleaseGPUSampler(gpu, fontAtlasSampler);
+    if (velocityVectorVertexBuffer != nullptr)
+        SDL_ReleaseGPUBuffer(gpu, velocityVectorVertexBuffer);
+    if (velocityVectorTransferBuffer != nullptr)
+        SDL_ReleaseGPUTransferBuffer(gpu, velocityVectorTransferBuffer);
+    if (velocityVectorPipeline != nullptr)
+        SDL_ReleaseGPUGraphicsPipeline(gpu, velocityVectorPipeline);
 
     // 2. Finally, destroy the GPU device
     if (gpu != nullptr)
@@ -88,7 +100,8 @@ void RenderSystem::CleanUp()
     }
 }
 
-SDL_GPUShader* RenderSystem::LoadShader(SDL_GPUDevice* device, const char* baseFileName, uint32_t numSamplers)
+SDL_GPUShader* RenderSystem::LoadShader(SDL_GPUDevice* device, const char* baseFileName, uint32_t numSamplers,
+                                        uint32_t numUniformBuffers)
 {
     size_t size;
 
@@ -119,7 +132,8 @@ SDL_GPUShader* RenderSystem::LoadShader(SDL_GPUDevice* device, const char* baseF
                                     .stage = (fileName.find("vert") != std::string::npos)
                                                  ? SDL_GPU_SHADERSTAGE_VERTEX
                                                  : SDL_GPU_SHADERSTAGE_FRAGMENT,
-                                    .num_samplers = numSamplers};
+                                    .num_samplers = numSamplers,
+                                    .num_uniform_buffers = numUniformBuffers};
 
     SDL_GPUShader* shader = SDL_CreateGPUShader(device, &info);
     SDL_free(code);
@@ -179,15 +193,16 @@ void RenderSystem::renderGameFrame(GameState& gameState, UIState& UIState,
                                    const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
                                    SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf)
 {
-    renderTwinklingStarField(pass);
+    renderTwinklingStarField(pass, cmdbuf, gameState.getCameraState());
     renderBodies(gameState, UIState, pass, cmdbuf);
-    renderUIElements(pass);
+    renderVelocityVector(pass, cmdbuf, gameState.getCameraState());
+    renderUIElements(pass, cmdbuf, gameState.getCameraState());
 }
 void RenderSystem::renderNonGameFrame(GameState& gameState, UIState& UIState,
                                       const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
                                       SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf)
 {
-    renderUIElements(pass);
+    renderUIElements(pass, cmdbuf, gameState.getCameraState());
 }
 
 void RenderSystem::uploadBodies(GameState& gameState, UIState& UIState, SDL_GPUCommandBuffer* cmdbuf)
@@ -214,7 +229,8 @@ void RenderSystem::uploadBodies(GameState& gameState, UIState& UIState, SDL_GPUC
         }
     }
 
-    appendPreviewBodies(vertex_data, UIState);
+    appendPreviewBodies(vertex_data, UIState, gameState.getCameraState());
+    uploadVelocityVectorVertices(cmdbuf);
 
     if (vertex_data.size() > MAX_UNIFIED_BODIES)
     {
@@ -261,6 +277,9 @@ void RenderSystem::renderBodies(GameState& gameState, UIState& UIState, SDL_GPUR
     if (instance_count > 0 && instance_count <= MAX_UNIFIED_BODIES)
     {
         SDL_BindGPUGraphicsPipeline(pass, unifiedBodyPipeline);
+        CameraConstants camera_constants =
+            buildCameraConstants(gameState.getCameraState(), gameState.getCameraState().offset);
+        SDL_PushGPUVertexUniformData(cmdbuf, 0, &camera_constants, sizeof(camera_constants));
 
         SDL_GPUBufferBinding vbo = {.buffer = unifiedBodyVertexBuffer, .offset = 0};
         SDL_BindGPUVertexBuffers(pass, 0, &vbo, 1);
@@ -282,7 +301,7 @@ void RenderSystem::createUIPipeline()
                                                .size = MAX_UI_VERTICES * sizeof(UIElementVertex)};
     uiTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
 
-    SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/UIElement.vert");
+    SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/UIElement.vert", 0, 1);
     SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/UIElement.frag", 1);
 
     SDL_GPUVertexAttribute attrs[6];
@@ -424,20 +443,27 @@ void RenderSystem::uploadUIVertices(const std::unordered_map<UIElementIdentifier
     SDL_EndGPUCopyPass(copyPass);
 }
 
-void RenderSystem::renderUIElements(SDL_GPURenderPass* pass)
+void RenderSystem::renderUIElements(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
+                                    const CameraState& cameraState)
 {
     if (uiVertices.empty())
         return;
     SDL_BindGPUGraphicsPipeline(pass, uiPipeline);
+
+    float screen_size[2] = {cameraState.windowWidth, cameraState.windowHeight};
+    SDL_PushGPUVertexUniformData(cmdbuf, 0, screen_size, sizeof(screen_size));
+
     SDL_GPUBufferBinding vbo = {.buffer = uiVertexBuffer, .offset = 0};
     SDL_BindGPUVertexBuffers(pass, 0, &vbo, 1);
     SDL_GPUTextureSamplerBinding texBinding = {.texture = fontAtlasTexture, .sampler = fontAtlasSampler};
     SDL_BindGPUFragmentSamplers(pass, 0, &texBinding, 1);
     SDL_DrawGPUPrimitives(pass, (uint32_t)uiVertices.size(), 1, 0, 0);
 }
-void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexData, UIState& UIState)
+void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexData, UIState& UIState,
+                                       const CameraState& cameraState)
 {
     InputState& input_state = UIState.getMutableInputState();
+    velocityVectorVertices.clear();
     if (input_state.isPreviewingMacro)
     {
         // create pseudo body and convert to unified body vertex to pass to rendering pipeline
@@ -446,11 +472,13 @@ void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexDat
         new_preview_grav_body.radius = input_state.selectedRadius;
         if (input_state.isPreviewingWithInitialVelocity)
         {
-            new_preview_grav_body.position = input_state.mouseDragStartPosition;
+            new_preview_grav_body.position = ScreenToWorldCoordinates(input_state.mouseDragStartPosition, cameraState);
+            Vector2D arrow_end = ScreenToWorldCoordinates(input_state.mouseCurrPosition, cameraState);
+            buildVelocityVectorGeometry(new_preview_grav_body.position, arrow_end);
         }
         else
         {
-            new_preview_grav_body.position = input_state.mouseCurrPosition;
+            new_preview_grav_body.position = ScreenToWorldCoordinates(input_state.mouseCurrPosition, cameraState);
         }
         new_preview_grav_body.isPreview = true;
 
@@ -459,6 +487,19 @@ void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexDat
     }
 }
 
+CameraConstants RenderSystem::buildCameraConstants(const CameraState& cameraState, const Vector2D& offset)
+{
+    CameraConstants camera_constants = {};
+    camera_constants.screenWidth = cameraState.windowWidth;
+    camera_constants.screenHeight = cameraState.windowHeight;
+    camera_constants.zoom = (float)cameraState.zoom;
+    camera_constants.offsetX = (float)offset.xVal;
+    camera_constants.offsetY = (float)offset.yVal;
+    camera_constants.viewMode = 0;
+    camera_constants._padding[0] = 0.0f;
+    camera_constants._padding[1] = 0.0f;
+    return camera_constants;
+}
 // Smooth interpolation color lookup function
 
 // --------- RENDER UTILITY HELPERS --------- //
@@ -506,15 +547,11 @@ void RenderSystem::createGravBodyGPUBuffer()
                                                   .size = MAX_UNIFIED_BODIES * sizeof(UnifiedBodyVertex)};
     unifiedBodyVertexBuffer = SDL_CreateGPUBuffer(gpu, &vertex_buffer_info);
 
-    SDL_GPUBufferCreateInfo camera_buffer_info = {.usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
-                                                  .size = sizeof(CameraConstants)};
-    cameraUniformBuffer = SDL_CreateGPUBuffer(gpu, &camera_buffer_info);
-
     SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
                                                .size = MAX_UNIFIED_BODIES * sizeof(UnifiedBodyVertex)};
     unifiedBodyTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
 
-    SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/UnifiedGravBody.vert");
+    SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/UnifiedGravBody.vert", 0, 1);
     SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/UnifiedGravBody.frag");
 
     // 6. Define Pipeline State
@@ -618,8 +655,8 @@ void RenderSystem::createTwinklingStarGPUBuffer()
 
     twinklingStarTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
 
-    SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/TwinklingStar.vert");
-    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/TwinklingStar.frag");
+    SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/TwinklingStar.vert", 0, 1);
+    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/TwinklingStar.frag", 0, 1);
 
     SDL_GPUVertexAttribute vertex_attributes[5];
 
@@ -686,17 +723,21 @@ void RenderSystem::createTwinklingStarGPUBuffer()
     SDL_ReleaseGPUShader(gpu, frag_shader);
 }
 
-void RenderSystem::createTwinklingStarField()
+void RenderSystem::createTwinklingStarField(float fieldMaxWidth, float fieldMaxHeight)
 {
     twinklingStars.clear();
     twinklingStars.reserve(STAR_NUM);
 
     std::mt19937 rng(12345);
 
-    std::uniform_real_distribution<float> posX(0, SCREEN_WIDTH);
-    std::uniform_real_distribution<float> posY(0, SCREEN_HEIGHT);
+    double field_width = fieldMaxWidth / MIN_ZOOM;
+    double field_height = fieldMaxHeight / MIN_ZOOM;
+    double marginX = (field_width - SCREEN_WIDTH) / 2.0;
+    double marginY = (field_height - SCREEN_HEIGHT) / 2.0;
+    std::uniform_real_distribution<float> posX((float)(-marginX), (float)(field_width + marginX));
+    std::uniform_real_distribution<float> posY((float)(-marginY), (float)(field_height + marginY));
 
-    std::uniform_real_distribution<float> radiusDist(1.0f, 4.0f);
+    std::uniform_real_distribution<float> radiusDist(8.0f, 24.0f);
 
     std::uniform_real_distribution<float> alphaDist(0.3f, 1.0f);
 
@@ -705,17 +746,12 @@ void RenderSystem::createTwinklingStarField()
     for (uint32_t i = 0; i < STAR_NUM; i++)
     {
         TwinklingStarVertex star;
-
         star.x = posX(rng);
         star.y = posY(rng);
-
         star.radius = radiusDist(rng);
         star.alpha = alphaDist(rng);
-
         star.twinkleSpeed = twinkleDist(rng);
-
         star.seed = rng();
-
         twinklingStars.push_back(star);
     }
 }
@@ -742,11 +778,155 @@ void RenderSystem::uploadTwinklingStarField(SDL_GPUCommandBuffer* cmdbuf)
     SDL_EndGPUCopyPass(copyPass);
 }
 
-void RenderSystem::renderTwinklingStarField(SDL_GPURenderPass* pass)
+void RenderSystem::renderTwinklingStarField(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
+                                            const CameraState& cameraState)
 {
     SDL_BindGPUGraphicsPipeline(pass, twinklingStarPipeline);
 
+    CameraConstants camera_constants = buildCameraConstants(cameraState, cameraState.twinklingStarOffset);
+
+    SDL_PushGPUVertexUniformData(cmdbuf, 0, &camera_constants, sizeof(camera_constants));
+
+    float elapsedSeconds = (float)SDL_GetTicks() / 1000.0f;
+    SDL_PushGPUFragmentUniformData(cmdbuf, 0, &elapsedSeconds, sizeof(elapsedSeconds));
     SDL_GPUBufferBinding vbo = {.buffer = twinklingStarVertexBuffer, .offset = 0};
     SDL_BindGPUVertexBuffers(pass, 0, &vbo, 1);
     SDL_DrawGPUPrimitives(pass, 6, STAR_NUM, 0, 0);
+}
+
+void RenderSystem::createVelocityVectorPipeline()
+{
+    SDL_GPUBufferCreateInfo vb_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX,
+                                       .size = MAX_VELOCITY_VECTOR_VERTICES * sizeof(VelocityVectorVertex)};
+    velocityVectorVertexBuffer = SDL_CreateGPUBuffer(gpu, &vb_info);
+
+    SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+                                               .size = MAX_VELOCITY_VECTOR_VERTICES * sizeof(VelocityVectorVertex)};
+    velocityVectorTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
+
+    SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/VelocityVector.vert", 0, 1);
+    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/VelocityVector.frag");
+
+    SDL_GPUVertexAttribute vertex_attributes[2];
+    vertex_attributes[0].location = 0;
+    vertex_attributes[0].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2;
+    vertex_attributes[0].offset = offsetof(VelocityVectorVertex, x);
+    vertex_attributes[0].buffer_slot = 0;
+
+    vertex_attributes[1].location = 1;
+    vertex_attributes[1].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4;
+    vertex_attributes[1].offset = offsetof(VelocityVectorVertex, r);
+    vertex_attributes[1].buffer_slot = 0;
+
+    SDL_GPUGraphicsPipelineCreateInfo pipeline_info = {};
+    pipeline_info.target_info.num_color_targets = 1;
+
+    SDL_GPUColorTargetDescription color_target = {};
+    color_target.format = SDL_GetGPUSwapchainTextureFormat(gpu, window);
+    color_target.blend_state.enable_blend = true;
+    color_target.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    color_target.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+    color_target.blend_state.src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    color_target.blend_state.dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+    color_target.blend_state.color_blend_op = SDL_GPU_BLENDOP_ADD;
+    color_target.blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD;
+
+    pipeline_info.target_info.color_target_descriptions = &color_target;
+    pipeline_info.vertex_shader = vert_shader;
+    pipeline_info.fragment_shader = frag_shader;
+    pipeline_info.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
+
+    pipeline_info.vertex_input_state.vertex_attributes = vertex_attributes;
+    pipeline_info.vertex_input_state.num_vertex_attributes = 2;
+
+    SDL_GPUVertexBufferDescription vbo_desc = {
+        .slot = 0, .pitch = sizeof(VelocityVectorVertex), .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX};
+    pipeline_info.vertex_input_state.vertex_buffer_descriptions = &vbo_desc;
+    pipeline_info.vertex_input_state.num_vertex_buffers = 1;
+
+    velocityVectorPipeline = SDL_CreateGPUGraphicsPipeline(gpu, &pipeline_info);
+
+    SDL_ReleaseGPUShader(gpu, vert_shader);
+    SDL_ReleaseGPUShader(gpu, frag_shader);
+}
+
+void RenderSystem::buildVelocityVectorGeometry(Vector2D lineStart, Vector2D lineEnd)
+{
+    velocityVectorVertices.clear();
+
+    float dx = static_cast<float>(lineEnd.xVal - lineStart.xVal);
+    float dy = static_cast<float>(lineEnd.yVal - lineStart.yVal);
+    float length = static_cast<float>((lineEnd - lineStart).magnitude());
+    if (length <= EPSILON)
+    {
+        return;
+    }
+    dx /= length;
+    dy /= length;
+    float px = -dy;
+    float py = dx;
+
+    const float thickness = 12.0f;
+    const float arrow_length = 30.0f;
+    const float arrow_width = 36.0f;
+    float half_T = thickness / 2.0f;
+
+    // Shorten the shaft so the arrowhead has room at the tip
+    Vector2D line_end = {lineEnd.xVal - dx * arrow_length, lineEnd.yVal - dy * arrow_length};
+
+    float r = 1.0f, g = 1.0f, b = 1.0f, a = 1.0f; // white, matching the original
+
+    // Shaft quad, expanded into 2 raw triangles
+    float v0x = float(lineStart.xVal) + px * half_T, v0y = float(lineStart.yVal) + py * half_T;
+    float v1x = float(lineStart.xVal) - px * half_T, v1y = float(lineStart.yVal) - py * half_T;
+    float v2x = float(line_end.xVal) - px * half_T, v2y = float(line_end.yVal) - py * half_T;
+    float v3x = float(line_end.xVal) + px * half_T, v3y = float(line_end.yVal) + py * half_T;
+
+    velocityVectorVertices.push_back({v0x, v0y, r, g, b, a});
+    velocityVectorVertices.push_back({v1x, v1y, r, g, b, a});
+    velocityVectorVertices.push_back({v2x, v2y, r, g, b, a});
+    velocityVectorVertices.push_back({v0x, v0y, r, g, b, a});
+    velocityVectorVertices.push_back({v2x, v2y, r, g, b, a});
+    velocityVectorVertices.push_back({v3x, v3y, r, g, b, a});
+
+    // Arrowhead triangle
+    velocityVectorVertices.push_back({float(lineEnd.xVal), float(lineEnd.yVal), r, g, b, a});
+    velocityVectorVertices.push_back({float(line_end.xVal) + px * (arrow_width / 2.0f),
+                                      float(line_end.yVal) + py * (arrow_width / 2.0f), r, g, b, a});
+    velocityVectorVertices.push_back({float(line_end.xVal) - px * (arrow_width / 2.0f),
+                                      float(line_end.yVal) - py * (arrow_width / 2.0f), r, g, b, a});
+}
+
+void RenderSystem::uploadVelocityVectorVertices(SDL_GPUCommandBuffer* cmdbuf)
+{
+    if (velocityVectorVertices.empty())
+        return;
+
+    void* map = SDL_MapGPUTransferBuffer(gpu, velocityVectorTransferBuffer, false);
+    SDL_memcpy(map, velocityVectorVertices.data(), velocityVectorVertices.size() * sizeof(VelocityVectorVertex));
+    SDL_UnmapGPUTransferBuffer(gpu, velocityVectorTransferBuffer);
+
+    SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdbuf);
+    SDL_GPUTransferBufferLocation src = {.transfer_buffer = velocityVectorTransferBuffer, .offset = 0};
+    SDL_GPUBufferRegion dst = {.buffer = velocityVectorVertexBuffer,
+                               .offset = 0,
+                               .size = (uint32_t)(velocityVectorVertices.size() * sizeof(VelocityVectorVertex))};
+    SDL_UploadToGPUBuffer(copyPass, &src, &dst, false);
+    SDL_EndGPUCopyPass(copyPass);
+}
+
+void RenderSystem::renderVelocityVector(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
+                                        const CameraState& cameraState)
+{
+    if (velocityVectorVertices.empty())
+        return;
+
+    SDL_BindGPUGraphicsPipeline(pass, velocityVectorPipeline);
+
+    CameraConstants camera_constants = buildCameraConstants(cameraState, cameraState.offset);
+    SDL_PushGPUVertexUniformData(cmdbuf, 0, &camera_constants, sizeof(camera_constants));
+
+    SDL_GPUBufferBinding vbo = {.buffer = velocityVectorVertexBuffer, .offset = 0};
+    SDL_BindGPUVertexBuffers(pass, 0, &vbo, 1);
+    SDL_DrawGPUPrimitives(pass, (uint32_t)velocityVectorVertices.size(), 1, 0, 0);
 }

@@ -51,8 +51,8 @@ echo Compiling shaders...
     -o .\Transfer\Assets\Shaders\UIElement.vert.spv
 
 .\LocalShaderCross\shadercross.exe ^
-.\Transfer\src\HLSL\UIElement.frag.hlsl ^
- -o .\Transfer\Assets\Shaders\UIElement.frag.spv
+    .\Transfer\src\HLSL\VelocityVector.vert.hlsl ^
+    -o .\Transfer\Assets\Shaders\VelocityVector.vert.spv
 
 if %ERRORLEVEL% NEQ 0 (
     echo Vertex shader compilation failed!
@@ -66,6 +66,16 @@ if %ERRORLEVEL% NEQ 0 (
 .\LocalShaderCross\shadercross.exe ^
     .\Transfer\src\HLSL\TwinklingStar.frag.hlsl ^
     -o .\Transfer\Assets\Shaders\TwinklingStar.frag.spv
+
+.\LocalShaderCross\shadercross.exe ^
+    .\Transfer\src\HLSL\UIElement.frag.hlsl ^
+     -o .\Transfer\Assets\Shaders\UIElement.frag.spv
+
+.\LocalShaderCross\shadercross.exe ^
+    .\Transfer\src\HLSL\VelocityVector.frag.hlsl ^
+    -o .\Transfer\Assets\Shaders\VelocityVector.frag.spv
+
+
 if %ERRORLEVEL% NEQ 0 (
     echo Fragment shader compilation failed!
     exit /b 1

@@ -6,15 +6,19 @@
 #include <SDL3/SDL.h>
 
 // Custom Imports
+#include "Core/CameraState.hpp"
 #include "Core/GameState.hpp"
 #include "Core/UIState.hpp"
 #include "Scenes/SceneIdentifierEnum.hpp"
 #include "Utilities/Constants/EngineConstants.hpp"
 #include "Utilities/Constants/GameSystemConstants.hpp"
+#include "Utilities/Math/CustomMathUtilities.hpp"
+#include "Utilities/Rendering/CameraTransform.hpp"
 #include "Utilities/UserInput/TransferInputs.hpp"
 // Standard Library Imports
+#include <algorithm>
+#include <cmath>
 #include <iostream>
-
 // struct LevelEditorInputs. TBI
 
 class InputSystem

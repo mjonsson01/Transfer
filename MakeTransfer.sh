@@ -31,7 +31,7 @@ SHADER_SRC="Transfer/src/HLSL"
 SHADER_OUT="Transfer/Assets/Shaders"
 mkdir -p "$SHADER_OUT"
 
-SHADERS=(UnifiedGravBody TwinklingStar UIElement)
+SHADERS=(UnifiedGravBody TwinklingStar UIElement VelocityVector)
 
 for name in "${SHADERS[@]}"; do
     ./LocalShaderCross/shadercross "$SHADER_SRC/$name.vert.hlsl" -o "$SHADER_OUT/$name.vert.msl"

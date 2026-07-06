@@ -108,3 +108,7 @@ Rework populate collision proxy to just take in both bodies. that way I can give
 
 
 TODO fix the slow mo slider to properly interpolate the positions of the particles
+
+
+
+TODO: fix sliders locking max and min position beyond the bounds of the slider rail?

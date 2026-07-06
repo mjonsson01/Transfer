@@ -667,7 +667,7 @@ void PhysicsSystem::createMacroBody(GameState& gameState, InputState& inputState
     GravitationalBody body;
     body.mass = inputState.selectedMass;
     body.radius = inputState.selectedRadius;
-    body.position = inputState.mouseCurrPosition;
+    body.position = ScreenToWorldCoordinates(inputState.mouseCurrPosition, gameState.getCameraState());
     body.previousPosition = body.position;
     // TODO PASS FLAGS HERE
     body.isPlanet = true;
@@ -681,9 +681,10 @@ void PhysicsSystem::createMacroBody(GameState& gameState, InputState& inputState
 
     if (inputState.isCreatingWithInitialVelocity)
     {
-        body.position = inputState.mouseDragStartPosition;
+        body.position = ScreenToWorldCoordinates(inputState.mouseDragStartPosition, gameState.getCameraState());
         body.previousPosition = body.position;
-        body.velocity = inputState.mouseCurrPosition - inputState.mouseDragStartPosition;
+        body.velocity =
+            (inputState.mouseCurrPosition - inputState.mouseDragStartPosition) / gameState.getCameraState().zoom;
     }
     // Nudge fragments out of the new body's radius
     auto& particles = gameState.getParticlesMutable();
@@ -725,7 +726,7 @@ void PhysicsSystem::createParticle(GameState& gameState, InputState& inputState)
     GravitationalBody body;
     body.mass = inputState.selectedMass;
     body.radius = inputState.selectedRadius;
-    body.position = inputState.mouseCurrPosition;
+    body.position = ScreenToWorldCoordinates(inputState.mouseCurrPosition, gameState.getCameraState());
     body.previousPosition = body.position;
     body.isDust = inputState.isCreatingDust;
     body.isStatic = inputState.isCreatingStatic;
@@ -739,7 +740,7 @@ void PhysicsSystem::createParticleCluster(GameState& gameState, InputState& inpu
     GravitationalBody body;
     body.mass = inputState.selectedMass;
     body.radius = inputState.selectedRadius;
-    body.position = inputState.mouseCurrPosition;
+    body.position = ScreenToWorldCoordinates(inputState.mouseCurrPosition, gameState.getCameraState());
     body.previousPosition = body.position;
     body.isPlanet = true;
     body.isStatic = inputState.isCreatingStatic;

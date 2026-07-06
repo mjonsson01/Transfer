@@ -38,3 +38,9 @@ struct UIElementVertex
     uint32_t zIndex;
     uint32_t mode;
 };
+
+struct VelocityVectorVertex
+{
+    float x, y;
+    float r, g, b, a;
+};

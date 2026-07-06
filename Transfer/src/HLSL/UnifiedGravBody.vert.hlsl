@@ -1,3 +1,14 @@
+cbuffer CameraConstants : register(b0, space1)
+{
+    float screenWidth;
+    float screenHeight;
+    float zoom;
+    float offsetX;
+    float offsetY;
+    uint viewMode;
+    float _padding0;
+    float _padding1;
+}
 struct VertexOutput
 {
     float4 clipPos : SV_POSITION;
@@ -39,11 +50,11 @@ VertexOutput main(
 
     float2 local = offsets[vertexId % 6];
 
-    float2 finalPos = pos + local * radius;
+    float2 worldPos = pos + local * radius;
+    float2 screenPos = (worldPos + float2(offsetX, offsetY))*zoom;
 
-    float2 normalizedPos =
-        (finalPos / float2(1280.0, 720.0)) * 2.0 - 1.0;
-
+    float2 normalizedPos = (screenPos / (float2(screenWidth, screenHeight)))* 2 - 1.0;
+    
     normalizedPos.y *= -1.0;
 
     output.clipPos = float4(normalizedPos, 0.0, 1.0);

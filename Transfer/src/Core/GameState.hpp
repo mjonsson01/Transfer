@@ -3,6 +3,7 @@
 #pragma once
 
 // Custom Imports
+#include "Core/CameraState.hpp"
 #include "Entities/Physics/GravitationalBody.hpp"
 #include "Entities/Sound/MusicModeEnum.hpp"
 #include "Utilities/Constants/GameSystemConstants.hpp"
@@ -42,6 +43,9 @@ class GameState
     void incrementMaxIDInstantiated() { maxIDInstantiated += 1; }
     int getMaxIDInstantiated() const { return maxIDInstantiated; }
 
+    CameraState& getCameraStateMutable() { return cameraState; }
+    const CameraState& getCameraState() const { return cameraState; }
+
   private:
     // State variables
     bool isPlaying = false;
@@ -54,4 +58,6 @@ class GameState
     int maxIDInstantiated = 0;
     // Database for all the Particle Bodies
     std::vector<GravitationalBody> particles;
+
+    CameraState cameraState;
 };

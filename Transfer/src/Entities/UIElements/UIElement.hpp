@@ -38,8 +38,9 @@ class UIElement
     UIElementIdentifier checkAndReturnIfHit(const Vector2D& positionToCheck);
     UIElementIdentifier getUIElementID() const { return UIElementID; }
     virtual void buildGeometry(std::vector<UIElementVertex>& vertexBuffer, uint32_t zIndex,
-                               const FontAtlasUtility& fontAtlas) {}; // Default does nothing
-    virtual void updateMe(UIState& UIState) {};                       // Default does nothing
+                               const FontAtlasUtility& fontAtlas) {};    // Default does nothing
+    virtual void updateMe(UIState& UIState) {};                          // Default does nothing
+    virtual void updateLayout(float windowWidth, float windowHeight) {}; // Default does nothing
 
   private:
     float posX = 0;

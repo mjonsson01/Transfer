@@ -23,7 +23,8 @@ class FPSCounter : public UIElement
     ~FPSCounter() = default;
     virtual void buildGeometry(std::vector<UIElementVertex>& vertexBuffer, uint32_t zIndex,
                                const FontAtlasUtility& fontAtlas) override;
-    virtual void updateMe(UIState& UIState) override;
+    void updateMe(UIState& UIState) override;
+    void updateLayout(float windowWidth, float windowHeight) override;
     std::string getDisplayText() const
     {
         return std::to_string(fps);
