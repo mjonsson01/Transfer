@@ -390,13 +390,13 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
                 {
                     if (pair.light->isShatterable)
                     {
-                        // std::cout << "Collision Branch Hit: 6" << std::endl;
+                        //  std::cout << "Collision Branch Hit: 6" << std::endl;
                         substituteWithParticles(*pair.light, gameState);
                         continue;
                     }
                     else
                     {
-                        // std::cout << "Collision Branch Hit: 7" << std::endl;
+                        //  std::cout << "Collision Branch Hit: 7" << std::endl;
                         handleElasticCollisions(*pair.light, *pair.heavy);
                         continue;
                     }
@@ -405,7 +405,7 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
                 {
                     if (pair.heavy->isShatterable)
                     {
-                        // std::cout << "Collision Branch Hit: 8" << std::endl;
+                        //  std::cout << "Collision Branch Hit: 8" << std::endl;
                         substituteWithParticles(*pair.heavy, gameState);
                         continue;
                     }
@@ -427,7 +427,7 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
                     }
                     else // just blow the smaller one into bits
                     {
-                        // std::cout << "Collision Branch Hit: 11" << std::endl;
+                        //  std::cout << "Collision Branch Hit: 11" << std::endl;
                         substituteWithParticles(*pair.light, gameState);
                         continue;
                     }
@@ -655,10 +655,10 @@ void PhysicsSystem::handleAccretion(GravitationalBody& particle, GravitationalBo
 
 void PhysicsSystem::createMacroBody(GameState& gameState, InputState& inputState)
 {
-
     if (inputState.selectedRadius <= 1.0)
     {
         // need to throw error toast or something somehow
+        std::cout << "early exit" << std::endl;
         return;
     }
     gameState.incrementMaxIDInstantiated();
@@ -667,7 +667,7 @@ void PhysicsSystem::createMacroBody(GameState& gameState, InputState& inputState
     GravitationalBody body;
     body.mass = inputState.selectedMass;
     body.radius = inputState.selectedRadius;
-    body.position = inputState.mouseCurrPosition;
+    body.position = ScreenToWorldCoordinates(inputState.mouseCurrPosition, gameState.getCameraState());
     body.previousPosition = body.position;
     // TODO PASS FLAGS HERE
     body.isPlanet = true;
@@ -681,9 +681,10 @@ void PhysicsSystem::createMacroBody(GameState& gameState, InputState& inputState
 
     if (inputState.isCreatingWithInitialVelocity)
     {
-        body.position = inputState.mouseDragStartPosition;
+        body.position = ScreenToWorldCoordinates(inputState.mouseDragStartPosition, gameState.getCameraState());
         body.previousPosition = body.position;
-        body.velocity = inputState.mouseCurrPosition - inputState.mouseDragStartPosition;
+        body.velocity =
+            (inputState.mouseCurrPosition - inputState.mouseDragStartPosition) / gameState.getCameraState().zoom;
     }
     // Nudge fragments out of the new body's radius
     auto& particles = gameState.getParticlesMutable();
@@ -725,7 +726,7 @@ void PhysicsSystem::createParticle(GameState& gameState, InputState& inputState)
     GravitationalBody body;
     body.mass = inputState.selectedMass;
     body.radius = inputState.selectedRadius;
-    body.position = inputState.mouseCurrPosition;
+    body.position = ScreenToWorldCoordinates(inputState.mouseCurrPosition, gameState.getCameraState());
     body.previousPosition = body.position;
     body.isDust = inputState.isCreatingDust;
     body.isStatic = inputState.isCreatingStatic;
@@ -739,7 +740,7 @@ void PhysicsSystem::createParticleCluster(GameState& gameState, InputState& inpu
     GravitationalBody body;
     body.mass = inputState.selectedMass;
     body.radius = inputState.selectedRadius;
-    body.position = inputState.mouseCurrPosition;
+    body.position = ScreenToWorldCoordinates(inputState.mouseCurrPosition, gameState.getCameraState());
     body.previousPosition = body.position;
     body.isPlanet = true;
     body.isStatic = inputState.isCreatingStatic;

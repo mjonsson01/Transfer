@@ -21,7 +21,7 @@ if(WIN32)
     message(STATUS "Configuring for Windows")
 
     # SDL paths
-    set(SDL3_DIR "${CMAKE_SOURCE_DIR}/../../SDL3")
+    set(SDL3_DIR "C:/SDL3")
     set(SDL3_TTF_DIR "${CMAKE_SOURCE_DIR}/../../SDL3_TTF")
 
     set(SDL3_INCLUDE_DIRS
@@ -30,13 +30,13 @@ if(WIN32)
     )
 
     set(SDL3_LIBS
-        "${SDL3_DIR}/lib/x64/SDL3.lib"
+        "${SDL3_DIR}/lib/SDL3.lib"
         "${SDL3_TTF_DIR}/lib/x64/SDL3_ttf.lib"
     )
 
     # DLLs to copy
     set(SDL3_DLLS
-        "${SDL3_DIR}/lib/x64/SDL3.dll"
+        "${SDL3_DIR}/bin/SDL3.dll"
         "${SDL3_TTF_DIR}/lib/x64/SDL3_ttf.dll"
     )
     list(APPEND SRC_FILES "${CMAKE_SOURCE_DIR}/Transfer/Assets/Transfer.rc")

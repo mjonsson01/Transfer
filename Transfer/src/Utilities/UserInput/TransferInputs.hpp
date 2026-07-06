@@ -26,6 +26,7 @@ struct TransferInputs
     bool middleMousePressed = false;
     bool leftMouseJustReleased = false;
     bool leftMouseJustPressed = false;
+    bool middleMouseJustPressed = false;
 
     // Menu and Media controls
     bool escPressed = false;
@@ -39,6 +40,11 @@ struct TransferInputs
 
     Vector2D mouseCurrPosition = {0, 0};
     Vector2D mouseDragStartPosition = {0, 0};
+
+    // Camera vars
+    Vector2D previousMiddleDragPosition = {0, 0};
+    float pendingScrollData = 0.0f;
+
     bool isDragging = false;
 
     // Helper utilities
@@ -72,6 +78,7 @@ struct TransferInputs
     {
         leftMouseJustPressed = false;
         leftMouseJustReleased = false;
+        middleMouseJustPressed = false;
         escJustPressed = false;
     }
     void resetAllKeyPressedVars()

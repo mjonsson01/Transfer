@@ -10,6 +10,7 @@
 #include "Utilities/Constants/GameSystemConstants.hpp"
 #include "Utilities/Math/CustomMathUtilities.hpp"
 #include "Utilities/Math/Vector2D.hpp"
+#include "Utilities/Rendering/CameraTransform.hpp"
 
 // Standard Library Imports
 #include <algorithm>

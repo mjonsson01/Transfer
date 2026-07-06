@@ -4,9 +4,11 @@
 
 // Custom Imports
 #include "Utilities/Math/Vector2D.hpp"
+#include "Utilities/Rendering/GPUTypes.hpp"
 
 // Standard Library Imports
 #include <SDL3/SDL_stdinc.h>
+#include <cmath>
 #include <iostream>
 #include <vector>
 
@@ -48,9 +50,10 @@ struct GravitationalBody
     bool isCollidable = false;  // makes the body a ghost
     bool isMacroGhost = false;  // makes the body a ghost to macro bodies, but
                                 // does not ghost for micro particles.
-    bool visible = true;        // particles and macros should be visible by default
-                                // but if instantiated specifically for collision
-                                // purposes, maybe toggle visibility off
+    bool isPreview = false;
+    bool visible = true; // particles and macros should be visible by default
+                         // but if instantiated specifically for collision
+                         // purposes, maybe toggle visibility off
     // Control flag to send to cleanup function
     bool isTransient = false; // for bodies that are bounce artifacts of collisions
     Uint32 lifetime = 0;
@@ -62,6 +65,8 @@ struct GravitationalBody
                               // pass an iterating id based on global state. Only macro
                               // bodies will have an id. Can't just be the number of macro bodies
                               // because then duplicates, so just select +1 on each instantiation.
+                              // ADD THIS LINE HERE:
+    UnifiedBodyVertex toUnifiedVertex() const;
 };
 
 // --------- I/O OPERATOR OVERLOAD --------- //

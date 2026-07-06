@@ -5,29 +5,15 @@
 MassSlider::MassSlider() : Slider()
 {
     orientation = Orientation::Horizontal;
-
-    // Track size and position
-    // trackRect = SDL_FRect{1200, 650, 300, 12};
-    trackRect = SDL_FRect{17 * SCREEN_WIDTH / 24, 2 * SCREEN_HEIGHT / 3, 300, 12};
     knobRect = SDL_FRect{0, 0, 20, 30}; // will set x,y below
-
-    float hotzonePaddingX = 30.0f;
-    float hotzonePaddingY = 60.0f;
-    hotZoneRect = SDL_FRect{trackRect.x - hotzonePaddingX / 2.0f, trackRect.y - hotzonePaddingY / 2.0f,
-                            trackRect.w + hotzonePaddingX, trackRect.h + hotzonePaddingY};
+    updateLayout(SCREEN_WIDTH, SCREEN_HEIGHT);
 
     // Slider range
     maxValue = MAX_MASS / 10;
     // minValue = 0.0;
     minValue = -MAX_MASS / 10; // now supports negative values
     sliderValue = 0.0;         // start centered
-
-    // Position knob based on slider value
-    knobRect.x = trackRect.x + (sliderValue - minValue) / (maxValue - minValue) * trackRect.w - knobRect.w / 2.0f;
-    knobRect.y = trackRect.y - (knobRect.h - trackRect.h) / 2.0f;
-
     setVisibility(true);
-    setPosition(trackRect.x, trackRect.y);
     UIElementID = UIElementIdentifier::MASS_SLIDER_INDEX;
 }
 
@@ -64,4 +50,33 @@ void MassSlider::slideMe(Vector2D positionOfEvent, double& returnedElementValue,
     returnedElementValue = sliderValue;
     // UIState.QueueSoundEffect("SliderTick");
     return;
+}
+
+void MassSlider::updateLayout(float windowWidth, float windowHeight)
+{
+    trackRect = SDL_FRect{17 * windowWidth / 24, 4 * windowHeight / 5, 300, 12};
+    knobRect = SDL_FRect{0, 0, 20, 30};
+
+    float hotzonePaddingX = 30.0f;
+    float hotzonePaddingY = 60.0f;
+    hotZoneRect = SDL_FRect{trackRect.x - hotzonePaddingX / 2.0f, trackRect.y - hotzonePaddingY / 2.0f,
+                            trackRect.w + hotzonePaddingX, trackRect.h + hotzonePaddingY};
+
+    double centered_t;
+    if (sliderValue == 0.0)
+    {
+        centered_t = 0.0;
+    }
+    else
+    {
+        double sign = (sliderValue < 0) ? -1.0 : 1.0;
+        centered_t = sign * (std::log10(std::abs(sliderValue)) / 15.0);
+    }
+    double t = (centered_t + 1.0) / 2.0;
+
+    float track_length_x = trackRect.w - knobRect.w;
+    knobRect.x = trackRect.x + (float)t * track_length_x;
+    knobRect.y = trackRect.y - (knobRect.h - trackRect.h) / 2.0f;
+
+    setPosition(trackRect.x, trackRect.y);
 }

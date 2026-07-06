@@ -36,9 +36,9 @@ inline std::string GetResourcePath(const std::string& relativePath)
         return base + "Resources/Assets/" + relativePath;
     }
 #else
-    // Windows/Linux: relative to exe folder need to implement.
+    // Windows/Linux: relative to exe folder
     return base + "Resources/" + relativePath;
 #endif
 }
 
-} // namespace Utilities
+}; // namespace Utilities

@@ -2,14 +2,9 @@
 
 // Custom Imports
 #include "Core/Game.hpp"
-#include "Utilities/System/SystemPathUtility.hpp"
 
-// Standard Library Imports
-#include <iostream>
-
-// Likely change the resolution to be scalable in the future? default 1920x1080
-// for now. Will be inside the Render system eventually.
-Game::Game() : gameState(), UIState(), inputSystem(), physicsSystem(), renderSystem(), audioSystem(), UISystem()
+Game::Game()
+    : gameState(), UIState(), inputSystem(), physicsSystem(), renderSystem(gameState), audioSystem(), UISystem()
 {
     // fill in imp here
 }
@@ -21,7 +16,7 @@ Game::~Game()
     SDL_Quit();
 }
 
-// Initializes SDL windows, renderer, and starts the main game loop
+// Initializes SDL windows and starts the main game loop
 void Game::StartGame()
 {
     // Initialize any other useful gameState variables here.
@@ -31,11 +26,11 @@ void Game::StartGame()
     // implemented yet.
 
     UIState.setCurrentScene(SceneIdentifier::START_MENU_SCENE);
+    // UIState.setCurrentScene(SceneIdentifier::GAME_SCENE);
     // UIState.setCurrentScene(SceneIdentifier::TEST_VISUAL_SCENE);
     UIState.setPlaySoundEffects(true);
     UIState.setPlayMusic(true);
     UIState.setRequestedMusicMode(MusicMode::TITLE_THEME);
-    // UIState.setRenderDebug(true); // default to true for now to help with development
     // Start the main game loop
     Game::Run();
 
@@ -55,11 +50,11 @@ void Game::Run()
 {
     // High-resolution frequency (ticks per second)
     const Uint64 perf_freq = SDL_GetPerformanceFrequency();
-    
+
     // Timing variables
     Uint64 last_frame_start_tick = SDL_GetPerformanceCounter();
     Uint64 last_physics_update_tick = last_frame_start_tick;
-    
+
     // Accumulators
     float physics_time_accumulator = 0.0f;
     float fps_time_accumulator = 0.0f;
@@ -68,14 +63,15 @@ void Game::Run()
     {
         // printf("capacity: %.3zu", gameState.getParticles().capacity());
         Uint64 frame_start = SDL_GetPerformanceCounter();
-        
+
         Game::updateFPS(frame_start, last_frame_start_tick, fps_time_accumulator, current_fps);
         last_frame_start_tick = frame_start;
-        
+
         // 1. Profile Input
         Uint64 input_start = SDL_GetPerformanceCounter();
         Game::ProcessInput();
-        if (!gameState.IsPlaying()) break;
+        if (!gameState.IsPlaying())
+            break;
         Uint64 input_end = SDL_GetPerformanceCounter();
 
         // 2. Profile Instantiations
@@ -94,9 +90,12 @@ void Game::Run()
         last_physics_update_tick = now_tick;
 
         // Physics Scaling Logic
-        if (UIState.getCurrentSceneID() == SceneIdentifier::GAME_SCENE) {
+        if (UIState.getCurrentSceneID() == SceneIdentifier::GAME_SCENE)
+        {
             physics_time_accumulator += (frame_delta * UIState.getTimeScaleFactor());
-        } else {
+        }
+        else
+        {
             physics_time_accumulator = 0.0f;
         }
 
@@ -112,7 +111,7 @@ void Game::Run()
 
         // 5. Profile Rendering
         gameState.setAlpha(physics_time_accumulator / PHYSICS_TIME_STEP);
-        
+
         Uint64 render_start = SDL_GetPerformanceCounter();
         Game::RenderFrame();
         Uint64 render_end = SDL_GetPerformanceCounter();
@@ -123,43 +122,18 @@ void Game::Run()
 
         // Calculate metrics in milliseconds
         float input_time = (float)((input_end - input_start) * 1000) / perf_freq;
-        float instantiation_time  = (float)((inst_end - inst_start) * 1000) / perf_freq;
+        float instantiation_time = (float)((inst_end - inst_start) * 1000) / perf_freq;
         float audio_playback_time = (float)((audio_end - audio_start) * 1000) / perf_freq;
-        float physics_time  = (float)((phys_total_end - phys_total_start) * 1000) / perf_freq;
-        float rendering_time  = (float)((render_end - render_start) * 1000) / perf_freq;
+        float physics_time = (float)((phys_total_end - phys_total_start) * 1000) / perf_freq;
+        float rendering_time = (float)((render_end - render_start) * 1000) / perf_freq;
 
-        // printf("Profile Time [ms] | Input: %.3f | Inst: %.3f | Audio: %.3f | Phys: %.3f | Rend: %.3f\n", 
-        //         input_time, instantiation_time, audio_playback_time, physics_time, rendering_time);
-
+        // printf("N=%zu | Rend: %.3f | Phys: %.3f\n", gameState.getParticles().size() +
+        // gameState.getMacroBodies().size(),
+        //        rendering_time, physics_time);
+        // printf("Profile Time [ms] | Input: %.3f | Inst: %.3f | Audio: %.3f | Phys: %.3f | Rend: %.3f\n", input_time,
+        //        instantiation_time, audio_playback_time, physics_time, rendering_time);
     }
 }
-// void Game::Run()
-// {
-//     // TODO: Change to performance timer?
-//     // Initialize the time management variables
-//     Uint32 last_physics_update_time = SDL_GetTicks();
-//     Uint32 last_render_time = 0;
-//     Uint32 now = 0;
-//     float frame_delta = 0.0f;
-//     float scaled_frame_delta = 0.0f;
-//     Uint32 render_start = 0.0f;
-//     Uint32 render_end = 0.0f;
-
-//     // Timing accumulators
-//     float physics_time_accumulator = 0.0f;
-//     float fps_time_accumulator = 0.0f;
-
-//     // Local FPS variable
-//     float current_fps = TARGET_FPS; // initialize to target
-
-//     // Frame interpolation alpha (dynamic)
-//     float alpha = gameState.getAlpha();
-
-//     // slowdown cout output pace timer
-//     Uint32 slowdown_print_timer = 300;
-//     Uint32 last_slowdown_print_time = SDL_GetTicks();
-
-
 
 // --------- DISPATCH TO SYSTEM METHODS --------- //
 
@@ -179,7 +153,7 @@ void Game::IntegratePhysicsFrame()
 void Game::UpdateInstantiations() { physicsSystem.UpdateGravBodyInstantiations(gameState, UIState); }
 void Game::RenderFrame()
 {
-    // Dispatch to Renderer System -- renders UI as well.
+    // Dispatch to Render System -- renders UI as well.
     Scene* current_scene = UISystem.getScene(UIState.getCurrentSceneID());
     const std::unordered_map<UIElementIdentifier, UIElement*>& UI_elements_in_scene = current_scene->getSceneElements();
     renderSystem.RenderFullFrame(gameState, UIState, UI_elements_in_scene);
@@ -187,29 +161,13 @@ void Game::RenderFrame()
 
 void Game::PlayAudio() { audioSystem.ProcessSystemAudioFrame(gameState, UIState); }
 // --------- UTILITY METHODS FOR FPS --------- //
-
-// void Game::updateFPS(Uint32 renderEnd, Uint32 lastRender, float& fpsAccumulator, float& currentFPS)
-// {
-//     float frameTime = (renderEnd - lastRender) / 1000.0f;
-//     fpsAccumulator += (renderEnd - lastRender);
-
-//     if (fpsAccumulator > FPS_UPDATE_DELTA_MS)
-//     {
-//         frameTime = std::max(frameTime, 0.001f);
-//         currentFPS = 0.9f * currentFPS + 0.1f * (1.0f / frameTime);
-//         float target_fps_max = static_cast<float>(TARGET_FPS) * 1.1f;
-//         currentFPS = std::min(currentFPS, target_fps_max); // Clamp FPS for stability
-//         UIState.setFPS(currentFPS);
-//         fpsAccumulator = 0.0f;
-//     }
-// }
 void Game::updateFPS(Uint64 renderEnd, Uint64 lastRender, float& fpsAccumulator, float& currentFPS)
 {
     static const Uint64 perf_freq = SDL_GetPerformanceFrequency();
-    
+
     // Calculate the duration of this specific frame in seconds
     float frameTimeSeconds = (float)(renderEnd - lastRender) / perf_freq;
-    
+
     // Accumulate the time in milliseconds for the update interval logic
     fpsAccumulator += (frameTimeSeconds * 1000.0f);
 
@@ -236,17 +194,17 @@ void Game::limitFrameRate(Uint64 renderStart, Uint64 renderEnd, Uint64 perfFreq)
     // 1. Calculate how many ticks our target frame duration is
     // (1.0 / TARGET_FPS) * perfFreq
     const Uint64 targetTicksPerFrame = perfFreq / TARGET_FPS;
-    
+
     Uint64 frameTicks = renderEnd - renderStart;
 
     if (frameTicks < targetTicksPerFrame)
     {
         Uint64 ticksToWait = targetTicksPerFrame - frameTicks;
-        
+
         // 2. Convert ticks to milliseconds for SDL_Delay
         // We subtract 1ms to avoid oversleeping (SDL_Delay is imprecise)
         uint32_t msToWait = (uint32_t)((ticksToWait * 1000) / perfFreq);
-        
+
         if (msToWait > 1)
         {
             SDL_Delay(msToWait - 1);
@@ -258,5 +216,6 @@ void Game::limitFrameRate(Uint64 renderStart, Uint64 renderEnd, Uint64 perfFreq)
         {
             // Do nothing, just wait out the remaining microseconds
         }
+        std::cout << "Camera Zoom" << gameState.getCameraState().zoom << std::endl;
     }
 }

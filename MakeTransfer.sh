@@ -20,12 +20,34 @@ case "$ARG_LOWER" in
         ;;
 esac
 
+
+# =====================================================
+# Compile HLSL -> MSL
+# =====================================================
+
+echo "Compiling shaders..."
+
+SHADER_SRC="Transfer/src/HLSL"
+SHADER_OUT="Transfer/Assets/Shaders"
+mkdir -p "$SHADER_OUT"
+
+SHADERS=(UnifiedGravBody TwinklingStar UIElement VelocityVector)
+
+for name in "${SHADERS[@]}"; do
+    ./LocalShaderCross/shadercross "$SHADER_SRC/$name.vert.hlsl" -o "$SHADER_OUT/$name.vert.msl"
+    ./LocalShaderCross/shadercross "$SHADER_SRC/$name.frag.hlsl" -o "$SHADER_OUT/$name.frag.msl"
+done
+
+echo "Shaders compiled successfully."
+
+
 echo "Cleaning and configuring $BUILD_TYPE build..."
 
 # --- Always clean first ---
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
+
 
 # --- Run CMake and build ---
 cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE 

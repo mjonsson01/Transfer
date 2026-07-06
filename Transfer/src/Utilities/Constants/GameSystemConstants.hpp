@@ -6,7 +6,7 @@
 
 // FPS target for system
 // constexpr int TARGET_FPS = 165;
-constexpr int TARGET_FPS = 120; 
+constexpr int TARGET_FPS = 120;
 
 // Target frame delay in ms
 const double FRAME_DELAY_MS = 1000.0 / TARGET_FPS;
@@ -23,14 +23,27 @@ const double MAX_TIME_SCALE_FACTOR = 2.0;     // 2x speed
 // Delay between particle formation when holding to spawn
 constexpr int SPAWN_DELAY_MS = 10;
 
-// Vertical and horizontal resolutions
-// constexpr int SCREEN_HEIGHT = 1080;
-// constexpr int SCREEN_WIDTH = 1920;
-constexpr int SCREEN_HEIGHT = 720;
-constexpr int SCREEN_WIDTH = 1280;
+// Vertical and horizontal resolutions (starting resolution)
+
+// can scale up as needed
+
+constexpr int SCREEN_HEIGHT = 1080;
+constexpr int SCREEN_WIDTH = 1920;
+// constexpr int SCREEN_HEIGHT = 720;
+// constexpr int SCREEN_WIDTH = 1280;
 
 // Background Star count
-constexpr int STAR_NUM = 200;
+constexpr int STAR_NUM = 100000;
 
 constexpr bool VIEW_DEBUG = false;
-// #endif
+
+const double MIN_ZOOM = 0.01;
+
+const double MAX_ZOOM = 10.0;
+
+const double STARTUP_ZOOM_VALUE = 0.35;
+
+const double STAR_PARALLAX_FACTOR = 1;
+
+constexpr int MAX_VELOCITY_VECTOR_VERTICES = 9; // vertices on a previewbody vector
+                                                // #endif

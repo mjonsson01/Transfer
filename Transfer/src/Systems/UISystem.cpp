@@ -2,13 +2,15 @@
 
 #include "UISystem.hpp"
 
+#include <iostream>
+
 // Constructor
 UISystem::UISystem() : allScenes()
 {
     allScenes.insert({SceneIdentifier::GAME_SCENE, nullptr});
     allScenes.insert({SceneIdentifier::PAUSE_SCENE, nullptr});
     allScenes.insert({SceneIdentifier::START_MENU_SCENE, nullptr});
-    allScenes.insert({SceneIdentifier::TEST_VISUAL_SCENE, nullptr});
+    // allScenes.insert({SceneIdentifier::TEST_VISUAL_SCENE, nullptr});
 
     populateScenes();
 }
@@ -21,6 +23,21 @@ UISystem::~UISystem()
 void UISystem::UpdateUIElements(GameState& gameState, UIState& UIState)
 {
     updateUISystemCurrentSceneID(UIState); // get most up to date current scene
+
+    const CameraState& cam = gameState.getCameraState();
+    updateAllUILayouts(cam.windowWidth, cam.windowHeight);
+
+    // Clunky fix but whatever
+    std::unordered_map<UIElementIdentifier, UIElement*> allUIElements = allScenes[currentSceneID]->getSceneElements();
+    for (auto& [UI_element_ID, UI_element_ptr] : allUIElements)
+    {
+        if (UI_element_ID == UIElementIdentifier::FPS_COUNTER_INDEX)
+        {
+            UI_element_ptr->updateMe(UIState);
+            break;
+        }
+    }
+
     if (currentSceneID == SceneIdentifier::GAME_SCENE)
     {
         updateGameUIElements(gameState, UIState);
@@ -50,7 +67,7 @@ void UISystem::populateScenes()
     GameScene* game_scene = new GameScene();
     PauseScene* pause_scene = new PauseScene();
     StartMenuScene* start_menu_scene = new StartMenuScene();
-    TestVisualScene* test_visual_scene = new TestVisualScene();
+    // TestVisualScene* test_visual_scene = new TestVisualScene();
     for (auto& [scene_ID, scene_ptr] : allScenes)
     {
         switch (scene_ID)
@@ -67,10 +84,10 @@ void UISystem::populateScenes()
             scene_ptr = start_menu_scene;
             scene_ptr->populateMe();
             break;
-        case SceneIdentifier::TEST_VISUAL_SCENE:
-            scene_ptr = test_visual_scene;
-            scene_ptr->populateMe();
-            break;
+        // case SceneIdentifier::TEST_VISUAL_SCENE:
+        //     scene_ptr = test_visual_scene;
+        //     scene_ptr->populateMe();
+        //     break;
         default:
             break;
         }
@@ -154,6 +171,19 @@ void UISystem::updateMenuUIElements(GameState& gameState, UIState& UIState)
     inputs_received.isPreviewingWithInitialVelocity = false;
 }
 
+void UISystem::updateAllUILayouts(float windowWidth, float windowHeight)
+{
+    for (auto& [scene_ID, scene_ptr] : allScenes)
+    {
+        if (!scene_ptr)
+            continue;
+        for (auto& [UI_element_ID, UI_element_ptr] : scene_ptr->getSceneElements())
+        {
+            UI_element_ptr->updateLayout(windowWidth, windowHeight);
+        }
+    }
+}
+
 void UISystem::routeSliderInput(UIElementIdentifier sliderTypeToUpdate, UIState& UIState)
 {
     std::unordered_map<UIElementIdentifier, UIElement*> allUIElements = allScenes[currentSceneID]->getSceneElements();
@@ -180,7 +210,8 @@ void UISystem::routeSliderInput(UIElementIdentifier sliderTypeToUpdate, UIState&
     else if (sliderTypeToUpdate == UIElementIdentifier::SIMULATION_SPEED_SLIDER_INDEX)
     {
         double simulation_speed_val_to_be_calculated_and_injected = 1.0; // initialize to 1
-        elementToUpdate->slideMe(input_state.mouseCurrPosition, simulation_speed_val_to_be_calculated_and_injected, UIState);
+        elementToUpdate->slideMe(input_state.mouseCurrPosition, simulation_speed_val_to_be_calculated_and_injected,
+                                 UIState);
         input_state.selectedSimSpeedScale = simulation_speed_val_to_be_calculated_and_injected;
     }
     else
