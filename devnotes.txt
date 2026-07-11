@@ -107,8 +107,3 @@ Next, add E&M -> boundaries on bodies to indicate class -> rework color system t
 Rework populate collision proxy to just take in both bodies. that way I can give the resultant particles some kick even if their parent particle was slow af.
 
 
-TODO fix the slow mo slider to properly interpolate the positions of the particles
-
-
-
-TODO: fix sliders locking max and min position beyond the bounds of the slider rail?

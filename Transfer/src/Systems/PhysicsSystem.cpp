@@ -592,15 +592,19 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, Grav
         if (smallerBody.isStatic && !largerBody.isStatic)
         {
             largerBody.position += correction;
+            largerBody.previousPosition = largerBody.position;
         }
         else if (!smallerBody.isStatic && largerBody.isStatic)
         {
             smallerBody.position -= correction;
+            smallerBody.previousPosition = smallerBody.position;
         }
         else if (!smallerBody.isStatic && !largerBody.isStatic)
         {
             smallerBody.position -= correction * 0.5;
             largerBody.position += correction * 0.5;
+            largerBody.previousPosition = largerBody.position;
+            smallerBody.previousPosition = smallerBody.position;
         }
     }
 }
