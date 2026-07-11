@@ -43,7 +43,8 @@ const double MAX_ZOOM = 10.0;
 
 const double STARTUP_ZOOM_VALUE = 0.35;
 
-const double STAR_PARALLAX_FACTOR = 1;
+const double STAR_PARALLAX_FACTOR = 0.5;
 
 constexpr int MAX_VELOCITY_VECTOR_VERTICES = 9; // vertices on a previewbody vector
-                                                // #endif
+
+constexpr int NUM_SLIDER_TICKS = 30;

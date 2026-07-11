@@ -31,4 +31,5 @@ class MassSlider : public Slider
     }
     void slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& UIState) override;
     void updateLayout(float windowWidth, float windowHeight) override;
+    void playTickSoundIfMoved(UIState& UIState);
 };

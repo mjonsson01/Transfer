@@ -6,7 +6,7 @@ cbuffer CameraConstants : register(b0, space1)
     float offsetX;
     float offsetY;
     uint viewMode;
-    float _padding0;
+    float rendering_alpha;
     float _padding1;
 }
 struct VertexOutput
@@ -50,7 +50,10 @@ VertexOutput main(
 
     float2 local = offsets[vertexId % 6];
 
-    float2 worldPos = pos + local * radius;
+    // float2 worldPos = pos + local * radius;
+    float2 interpPos = lerp(prevPos, pos, rendering_alpha);
+    float2 worldPos = interpPos + local * radius;
+
     float2 screenPos = (worldPos + float2(offsetX, offsetY))*zoom;
 
     float2 normalizedPos = (screenPos / (float2(screenWidth, screenHeight)))* 2 - 1.0;

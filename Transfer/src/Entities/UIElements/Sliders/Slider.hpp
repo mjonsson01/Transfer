@@ -41,4 +41,6 @@ class Slider : public UIElement
     double sliderValue;
     double minValue;
     double maxValue;
+    int lastTickIndex = -1; // -1 = no tick played yet
+    void playTickSoundIfMoved(UIState& UIState);
 };

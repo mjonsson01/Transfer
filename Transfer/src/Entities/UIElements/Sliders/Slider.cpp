@@ -57,7 +57,7 @@ void Slider::slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIS
 
     // Return updated value
     returnedElementValue = sliderValue;
-    // UIState.QueueSoundEffect("SliderTick");
+    playTickSoundIfMoved(UIState);
     return;
 }
 
@@ -117,4 +117,18 @@ void Slider::buildGeometry(std::vector<UIElementVertex>& vertexBuffer, uint32_t 
 
     std::string slider_text = getDisplayText();
     pushText(vertexBuffer, slider_text, getX(), getY() + knobRect.h, fontAtlas, zIndex);
+}
+
+void Slider::playTickSoundIfMoved(UIState& UIState)
+{
+    if (maxValue == minValue)
+        return; // avoid division by zero on an uninitialized/degenerate slider
+
+    int currentTick = static_cast<int>(std::round((sliderValue - minValue) / (maxValue - minValue) * NUM_SLIDER_TICKS));
+
+    if (currentTick != lastTickIndex)
+    {
+        UIState.QueueSoundEffect("SliderTick");
+        lastTickIndex = currentTick;
+    }
 }

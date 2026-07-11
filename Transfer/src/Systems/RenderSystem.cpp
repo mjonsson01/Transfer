@@ -268,6 +268,7 @@ void RenderSystem::renderBodies(GameState& gameState, UIState& UIState, SDL_GPUR
         if (b.visible)
             instance_count++;
 
+    gameState.getCameraStateMutable().renderAlpha = gameState.getAlpha();
     if (UIState.getMutableInputState().isPreviewingMacro)
     {
         instance_count++;
@@ -473,6 +474,7 @@ void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexDat
         if (input_state.isPreviewingWithInitialVelocity)
         {
             new_preview_grav_body.position = ScreenToWorldCoordinates(input_state.mouseDragStartPosition, cameraState);
+
             Vector2D arrow_end = ScreenToWorldCoordinates(input_state.mouseCurrPosition, cameraState);
             buildVelocityVectorGeometry(new_preview_grav_body.position, arrow_end);
         }
@@ -480,6 +482,8 @@ void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexDat
         {
             new_preview_grav_body.position = ScreenToWorldCoordinates(input_state.mouseCurrPosition, cameraState);
         }
+        new_preview_grav_body.previousPosition =
+            new_preview_grav_body.position; // to prevent alpha interpolation artifacts
         new_preview_grav_body.isPreview = true;
 
         UnifiedBodyVertex new_preview_unified_body_vertex = new_preview_grav_body.toUnifiedVertex();
@@ -496,8 +500,8 @@ CameraConstants RenderSystem::buildCameraConstants(const CameraState& cameraStat
     camera_constants.offsetX = (float)offset.xVal;
     camera_constants.offsetY = (float)offset.yVal;
     camera_constants.viewMode = 0;
-    camera_constants._padding[0] = 0.0f;
-    camera_constants._padding[1] = 0.0f;
+    camera_constants.rendering_alpha = cameraState.renderAlpha;
+    camera_constants._padding1 = 0.0f;
     return camera_constants;
 }
 // Smooth interpolation color lookup function

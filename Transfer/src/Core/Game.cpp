@@ -216,6 +216,5 @@ void Game::limitFrameRate(Uint64 renderStart, Uint64 renderEnd, Uint64 perfFreq)
         {
             // Do nothing, just wait out the remaining microseconds
         }
-        std::cout << "Camera Zoom" << gameState.getCameraState().zoom << std::endl;
     }
 }
