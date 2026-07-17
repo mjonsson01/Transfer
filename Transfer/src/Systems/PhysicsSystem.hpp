@@ -106,9 +106,11 @@ class PhysicsSystem
     // Utility Functions
     void calculateTotalEnergy(GameState& gameState); // Calculates total energy of all Macro Bodies
                                                      // and Particles on Screen.
-    void substituteWithParticles(GravitationalBody& originalBody,
-                                 GameState& gameState); // Replaces a Macro Body with Particles in place
+    void substituteWithParticles(GravitationalBody& originalBody, GameState& gameState,
+                                 double densityFactor); // Replaces a Macro Body with Particles in place
                                                         // to aid accretion
+    void substituteWithParticlesFromImpact(GravitationalBody& originalBody, GameState& gameState, double densityFactor,
+                                           const Vector2D& impactPoint);
     void populateCollisionProxyFromMacroBody(GravitationalBody& originalMacroBody, GravitationalBody& proxyBody);
     // Cleanup Functions
     void cleanupParticles(GameState& gameState);   // Clears any Particles from the screen flagged

@@ -183,8 +183,15 @@ void PhysicsSystem::calculateGravity(GravitationalBody& body1, GravitationalBody
     double proxyScale = 1.0;
     if (body1.macroIdentifier == body2.macroIdentifier)
     {
-        proxyScale = 0.10;
+
+        if (body1.isTransient)
+        {
+            proxyScale = -0.2; // this is the proxyBody pulling toward itself ()
+        }
+        else
+            proxyScale = 0.2;
     }
+
     // Define softening epsilon
     double epsilon = (body1.radius + body2.radius) / 2.0; // Simple average radius
     double epsilon_squared = epsilon * epsilon;
@@ -391,7 +398,10 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
                     if (pair.light->isShatterable)
                     {
                         //  std::cout << "Collision Branch Hit: 6" << std::endl;
-                        substituteWithParticles(*pair.light, gameState);
+                        substituteWithParticles(*pair.light, gameState, 16.0);
+                        // Vector2D impactDir1 = (pair.light->position - pair.heavy->position).normalize();
+                        // Vector2D impactPoint1 = pair.light->position - impactDir1 * pair.light->radius;
+                        // substituteWithParticlesFromImpact(*pair.light, gameState, 16.0, impactPoint);
                         continue;
                     }
                     else
@@ -406,7 +416,7 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
                     if (pair.heavy->isShatterable)
                     {
                         //  std::cout << "Collision Branch Hit: 8" << std::endl;
-                        substituteWithParticles(*pair.heavy, gameState);
+                        substituteWithParticles(*pair.heavy, gameState, 16.0);
                         continue;
                     }
                     else
@@ -428,7 +438,10 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
                     else // just blow the smaller one into bits
                     {
                         //  std::cout << "Collision Branch Hit: 11" << std::endl;
-                        substituteWithParticles(*pair.light, gameState);
+                        Vector2D impactDir = (pair.light->position - pair.heavy->position).normalize();
+                        Vector2D impactPoint = pair.light->position - impactDir * pair.light->radius;
+                        substituteWithParticlesFromImpact(*pair.light, gameState, 16.0, impactPoint);
+                        // substituteWithParticles(*pair.light, gameState, 16.0);
                         continue;
                     }
                 }
@@ -441,7 +454,7 @@ void PhysicsSystem::handleCollisions(GameState& gameState)
                 {
                     // std::cout << "Collision Branch Hit: 12" << std::endl;
                     // handleAccretion(*pair.light, *pair.heavy);
-                    substituteWithParticles(*pair.light, gameState);
+                    substituteWithParticles(*pair.light, gameState, 16.0);
                 }
                 else
                 {
@@ -641,8 +654,15 @@ void PhysicsSystem::handleDynamicExplosionCollision(GravitationalBody& macroBody
     pending_macros.push_back(proxyForMB1);
     pending_macros.push_back(proxyForMB2);
 
-    substituteWithParticles(macroBody1, gameState);
-    substituteWithParticles(macroBody2, gameState);
+    // substituteWithParticles(macroBody1, gameState, 16.0);
+    // substituteWithParticles(macroBody2, gameState, 16.0);
+    Vector2D impactDir1 = (macroBody1.position - macroBody2.position).normalize();
+    Vector2D impactPoint1 = macroBody1.position - impactDir1 * macroBody1.radius;
+    substituteWithParticlesFromImpact(macroBody1, gameState, 16.0, impactPoint1);
+
+    Vector2D impactDir2 = impactDir1 * -1.0; // symmetric: away from body1 is toward body2
+    Vector2D impactPoint2 = macroBody2.position - impactDir2 * macroBody2.radius;
+    substituteWithParticlesFromImpact(macroBody2, gameState, 16.0, impactPoint2);
 
     auto& macros = gameState.getMacroBodiesMutable();
     macros.insert(macros.end(), pending_macros.begin(), pending_macros.end());
@@ -749,7 +769,7 @@ void PhysicsSystem::createParticleCluster(GameState& gameState, InputState& inpu
     body.isPlanet = true;
     body.isStatic = inputState.isCreatingStatic;
 
-    substituteWithParticles(body, gameState);
+    substituteWithParticles(body, gameState, 16.0);
 }
 // --------- TOTAL ENERGY CALCULATION METHOD --------- //
 
@@ -791,8 +811,85 @@ void PhysicsSystem::calculateTotalEnergy(GameState& gameState)
 
 // --------- PARTICLE SUBSTITUTION METHOD --------- //
 
-void PhysicsSystem::substituteWithParticles(GravitationalBody& originalBody, GameState& gameState)
+// Work in progress
+//     double phaseOffset = randomDouble(0.0, 2 * PI); // rolled once at the top of substituteWithParticles
+//     const double R = originalBody.radius;
+//     const Vector2D center = originalBody.position;
+//     const double originalMass = originalBody.mass;
+//     const Vector2D originalVelocity = originalBody.velocity;
+
+//     const double totalArea = PI * R * R;
+//     const double chunkArea = totalArea * CHUNK_MASS_FRACTION;
+//     const double dustArea = totalArea - chunkArea;
+
+//     struct TierSpec
+//     {
+//         double area;
+//         double densityFactor;
+//         double overlapMargin;
+//     };
+
+//     const TierSpec tiers[2] = {
+//         {chunkArea, CHUNK_DENSITY_FACTOR, CHUNK_OVERLAP_MARGIN},
+//         {dustArea, densityFactor, DUST_OVERLAP_MARGIN},
+//     };
+
+//     struct Fragment
+//     {
+//         Vector2D position;
+//         double radius;
+//     };
+//     std::vector<Fragment> fragments;
+
+//     for (const auto& tier : tiers)
+//     {
+//         uint32_t tierCount = (uint32_t)round(tier.area / tier.densityFactor);
+//         tierCount = std::max(1U, tierCount);
+
+//         double tierRadius = tier.overlapMargin * sqrt(tier.densityFactor / PI);
+
+//         for (size_t k = 0; k < tierCount; ++k)
+//         {
+//             double r_k = R * sqrt((k + 0.5) / tierCount);
+//             double theta_k = phaseOffset + k * GOLDEN_ANGLE;
+//             Vector2D pos_k = center + Vector2D{r_k * cos(theta_k), r_k * sin(theta_k)};
+//             fragments.push_back({pos_k, tierRadius});
+//         }
+//     }
+
+//     if (fragments.empty())
+//     {
+//         return;
+//     }
+
+//     // Mass proportional to area (r^2), normalized so fragments sum exactly to originalMass.
+//     // This is what makes a chunk correctly outweigh a dust speck instead of matching it 1:1.
+//     double totalFragArea = 0.0;
+//     for (const auto& frag : fragments)
+//     {
+//         totalFragArea += frag.radius * frag.radius;
+//     }
+
+//     for (const auto& frag : fragments)
+//     {
+//         GravitationalBody p;
+//         p.mass = originalMass * (frag.radius * frag.radius) / totalFragArea;
+//         p.radius = frag.radius;
+//         p.position = frag.position;
+//         p.previousPosition = frag.position;
+//         p.isFragment = true;
+//         p.isAccretable = true;
+//         p.isCollidable = true;
+//         p.macroIdentifier = originalBody.macroIdentifier;
+//         p.velocity = originalVelocity;
+
+//         gameState.getParticlesMutable().push_back(p);
+//     }
+
+//     originalBody.isMarkedForDeletion = true;
+void PhysicsSystem::substituteWithParticles(GravitationalBody& originalBody, GameState& gameState, double densityFactor)
 {
+
     // A simplified value for the collision radius (R)
     const double R = originalBody.radius;
     const Vector2D center = originalBody.position;
@@ -803,21 +900,31 @@ void PhysicsSystem::substituteWithParticles(GravitationalBody& originalBody, Gam
 
     // 1. RASTERIZATION (Find all pixel positions)
     // Assuming a 1-to-1 mapping where 1 unit = 1 pixel for simplicity.
-    int R_int = static_cast<int>(R);
-    for (int i = -R_int; i <= R_int; ++i)
+    // int R_int = static_cast<int>(R);
+    // for (int i = -R_int; i <= R_int; ++i)
+    // {
+    //     for (int j = -R_int; j <= R_int; ++j)
+    //     {
+    //         // Check if (i, j) is inside the circle
+    //         if ((i * i) + (j * j) <= (R * R))
+    //         {
+    //             // Store the particle's center position
+    //             pixelPositions.push_back(center + Vector2D{(double)i, (double)j});
+    //         }
+    //     }
+    // }
+    uint32_t num_particles = (uint32_t)round(PI * R * R / densityFactor); // maybe change to global density factor ?
+    num_particles = std::max(1U, num_particles);                          // make sure there is at least 1 particle.
+
+    for (size_t k = 0; k < num_particles; ++k)
     {
-        for (int j = -R_int; j <= R_int; ++j)
-        {
-            // Check if (i, j) is inside the circle
-            if ((i * i) + (j * j) <= (R * R))
-            {
-                // Store the particle's center position
-                pixelPositions.push_back(center + Vector2D{(double)i, (double)j});
-            }
-        }
+        double r_k = R * sqrt((k + 0.5) / num_particles);
+        double theta_k = k * GOLDEN_ANGLE;
+        Vector2D pos_k = center + Vector2D{r_k * cos(theta_k), r_k * sin(theta_k)};
+        pixelPositions.push_back(pos_k);
     }
 
-    // Check if we found any pixels (safety)
+    // Check if we found any pixels(safety)
     if (pixelPositions.empty())
     {
         return;
@@ -831,7 +938,8 @@ void PhysicsSystem::substituteWithParticles(GravitationalBody& originalBody, Gam
     {
         GravitationalBody p;
         p.mass = particleMass;
-        p.radius = 1.0;
+        // p.radius = 1.0;
+        p.radius = OVERLAP_MARGIN * sqrt(densityFactor / PI);
         p.position = pos;
         p.previousPosition = pos; // No offset here
         p.isFragment = true;
@@ -841,8 +949,8 @@ void PhysicsSystem::substituteWithParticles(GravitationalBody& originalBody, Gam
 
         // inherit velocity exactly
         p.velocity = originalVelocity;
-        // p.velocity = originalVelocity * randomDouble(0.95, 1.05);
-        // p.velocity = originalVelocity * randomDouble(0.5, 0.85);
+        p.velocity = originalVelocity * randomDouble(0.95, 1.05);
+        p.velocity = originalVelocity * randomDouble(0.5, 0.85);
 
         gameState.getParticlesMutable().push_back(p);
     }
@@ -850,7 +958,66 @@ void PhysicsSystem::substituteWithParticles(GravitationalBody& originalBody, Gam
     // 4. CLEANUP
     originalBody.isMarkedForDeletion = true; // Destroy the original macro body
 }
+// void PhysicsSystem::substituteWithParticlesFromImpact(GravitationalBody& originalBody, GameState& gameState,
+//                                                       double densityFactor, const Vector2D& impactPoint)
+// {
+//     const double R = originalBody.radius;
+//     const double originalMass = originalBody.mass; // capture before substituteWithParticles deletes the body
 
+//     auto& particles = gameState.getParticlesMutable();
+//     size_t startIndex = particles.size();
+
+//     substituteWithParticles(originalBody, gameState, densityFactor);
+
+//     // Grow radius with distance from the impact point (0 = right at impact, 1 = far side).
+//     double totalWeightedArea = 0.0;
+//     for (size_t i = startIndex; i < particles.size(); ++i)
+//     {
+//         GravitationalBody& p = particles[i];
+//         double distance = (p.position - impactPoint).magnitude();
+//         double t = std::clamp(distance / (2.0 * R), 0.0, 1.0);
+//         double sizeMultiplier = 1.0 + t * (IMPACT_SKEW_GROWTH_FACTOR - 1.0) * randomDouble(0.5, 0.9);
+//         p.radius *= sizeMultiplier;
+//         totalWeightedArea += p.radius * p.radius;
+//     }
+
+//     // Re-normalize mass so the biased fragments still sum exactly to originalMass.
+//     for (size_t i = startIndex; i < particles.size(); ++i)
+//     {
+//         GravitationalBody& p = particles[i];
+//         p.mass = originalMass * (p.radius * p.radius) / totalWeightedArea;
+//     }
+// }
+void PhysicsSystem::substituteWithParticlesFromImpact(GravitationalBody& originalBody, GameState& gameState,
+                                                      double densityFactor, const Vector2D& impactPoint)
+{
+    const double r = originalBody.radius;
+    const double original_mass = originalBody.mass;
+
+    auto& particles = gameState.getParticlesMutable();
+    size_t start_index = particles.size();
+    substituteWithParticles(originalBody, gameState, densityFactor);
+
+    // Particles further away from impact point should be larger
+    double totalWeightedArea = 0.0;
+
+    particles = gameState.getParticlesMutable();
+
+    for (size_t i = start_index; i < particles.size(); ++i)
+    {
+        GravitationalBody& p = particles[i];
+        double distance = (p.position - impactPoint).magnitude();
+        double t = std::clamp(distance / (2 * r), 0.0, 1.0);
+        double size_multiplier = 1.0 + t * (IMPACT_SKEW_GROWTH_FACTOR - 1) * randomDouble(0.5, 0.9);
+        p.radius *= size_multiplier;
+        totalWeightedArea += p.radius * p.radius;
+    }
+    for (size_t i = start_index; i < particles.size(); ++i)
+    {
+        GravitationalBody& p = particles[i];
+        p.mass = original_mass * (p.radius * p.radius) / totalWeightedArea;
+    }
+}
 void PhysicsSystem::populateCollisionProxyFromMacroBody(GravitationalBody& originalMacroBody,
                                                         GravitationalBody& proxyBody)
 {
@@ -859,7 +1026,7 @@ void PhysicsSystem::populateCollisionProxyFromMacroBody(GravitationalBody& origi
     proxyBody.isMacroGhost = true;
     proxyBody.isMacro = true;
     // proxyBody.lifetime = TARGET_FPS; // ~1 second for now, still need
-    // to fix.
+    //                                  // to fix
 
     // proxy body lifetime should be the amount of time it is predicted
     // to take to reach the collision center. needs to be instantiated
@@ -867,14 +1034,16 @@ void PhysicsSystem::populateCollisionProxyFromMacroBody(GravitationalBody& origi
     proxyBody.mass = 1.0 * originalMacroBody.mass;
     proxyBody.radius = originalMacroBody.radius * 1.0;
     proxyBody.velocity = originalMacroBody.velocity * 1.0;
-    proxyBody.isStatic = true;
+    proxyBody.isStatic = true; // prev was true
     proxyBody.isBounce = true;
     proxyBody.isShatterable = false;
     proxyBody.isCollidable = true;
     proxyBody.isTransient = true;
     proxyBody.netForce = {0.0, 0.0};
     proxyBody.prevForce = {0.0, 0.0};
-    proxyBody.visible = false;
+    proxyBody.visible = true;
+    proxyBody.macroIdentifier = originalMacroBody.macroIdentifier;
+    // proxyBody.visible = false;
 }
 // --------- CLEANUP GRAVITATIONAL BODIES METHODS --------- //
 
