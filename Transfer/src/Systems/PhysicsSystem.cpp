@@ -546,13 +546,36 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, Grav
         GravitationalBody& dyn = smallerBody.isStatic ? largerBody : smallerBody;
         GravitationalBody& stat = smallerBody.isStatic ? smallerBody : largerBody;
 
-        Vector2D n = (dyn.position - stat.position).normalize();
-        double v_n = dyn.velocity.dot(n);
+        // Vector2D n = (dyn.position - stat.position).normalize();
+        // Vector2D v_collision = dyn.velocity - stat.velocity;
 
-        if (v_n < 0.0)
-        {
-            dyn.velocity -= n * (1.0 + ELASTIC_LOSS_FACTOR) * v_n;
-        }
+        // double v_n = v_collision.dot(n);
+
+        // if (v_n < 0.0)
+        // {
+        //     dyn.velocity -= n * (1.0 + ELASTIC_LOSS_FACTOR) * v_n;
+        // }
+        // return;
+        Vector2D r_vector = largerBody.position - smallerBody.position;
+        double distance = r_vector.magnitude();
+        Vector2D normal_vector = r_vector / distance; // collision normal
+        Vector2D v_dyn = dyn.velocity;
+        Vector2D v_stat = stat.velocity;
+        double m_dyn = dyn.mass;
+        double m_stat = stat.mass;
+        double v_dyn_n = v_dyn.dot(normal_vector);
+        double v_stat_n = v_stat.dot(normal_vector);
+
+        // 1D elastic collision formula (normal direction only)
+        double v_dyn_n_new = (v_dyn_n * (m_dyn - m_stat) + 2 * m_stat * v_stat_n) / (m_dyn + m_stat);
+        double v_stat_n_new = (v_stat_n * (m_stat - m_dyn) + 2 * m_dyn * v_dyn_n) / (m_dyn + m_stat);
+
+        Vector2D v_dyn_change = normal_vector * (v_dyn_n_new - v_dyn_n) * ELASTIC_LOSS_FACTOR;
+        Vector2D v_stat_change = normal_vector * (v_stat_n_new - v_stat_n) * STATIC_ELASTIC_LOSS_FACTOR;
+
+        // Apply
+        smallerBody.velocity = v_dyn + v_dyn_change;
+        largerBody.velocity = v_stat + v_stat_change;
         return;
     }
 
@@ -601,18 +624,19 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, Grav
 
         Vector2D correction = normal_vector * correction_magnitude;
 
-        // static handling
-        if (smallerBody.isStatic && !largerBody.isStatic)
-        {
-            largerBody.position += correction;
-            largerBody.previousPosition = largerBody.position;
-        }
-        else if (!smallerBody.isStatic && largerBody.isStatic)
-        {
-            smallerBody.position -= correction;
-            smallerBody.previousPosition = smallerBody.position;
-        }
-        else if (!smallerBody.isStatic && !largerBody.isStatic)
+        // // static handling
+        // if (smallerBody.isStatic && !largerBody.isStatic)
+        // {
+        //     largerBody.position += correction;
+        //     largerBody.previousPosition = largerBody.position;
+        // }
+        // else if (!smallerBody.isStatic && largerBody.isStatic)
+        // {
+        //     smallerBody.position -= correction;
+        //     smallerBody.previousPosition = smallerBody.position;
+        // }
+        // else if (!smallerBody.isStatic && !largerBody.isStatic)
+        if (!smallerBody.isStatic && !largerBody.isStatic)
         {
             smallerBody.position -= correction * 0.5;
             largerBody.position += correction * 0.5;
