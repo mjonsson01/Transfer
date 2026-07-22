@@ -48,3 +48,5 @@ const double STAR_PARALLAX_FACTOR = 0.5;
 constexpr int MAX_VELOCITY_VECTOR_VERTICES = 9; // vertices on a previewbody vector
 
 constexpr int NUM_SLIDER_TICKS = 30;
+
+static const double GOLDEN_ANGLE = 2.399963229728653; // pi(3-sqrt(5))

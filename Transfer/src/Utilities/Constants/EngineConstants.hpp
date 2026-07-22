@@ -9,7 +9,7 @@ constexpr float PHYSICS_TIME_STEP = 1.0f / 120.0f; // 120Hz physics update rate
 static const double GRAVITATIONAL_CONSTANT = 6.67430e-7 / 5; // in m^3 kg^-1 s^-2
 
 static const double MAX_MASS = 1e16;
-static const double MAX_RADIUS = 200;
+static const double MAX_RADIUS = 400;
 
 static const double MIN_BODY_BODY_ACCRETION_THRESHOLD_RATIO = 10.0;
 static const double MIN_BODY_PARTICLE_ACCRETION_THRESHOLD_RATIO = 10.0;
@@ -30,3 +30,7 @@ static const uint32_t MAX_UNIFIED_BODIES = 200000;
 static const double ELASTIC_LOSS_FACTOR = 0.75; // 85% of Velocity retained after elastic collision
 
 static const uint32_t MAX_UI_VERTICES = 65536;
+
+static const double PARTICLE_DENSITY_DIVISOR = 16;
+
+static const double OVERLAP_MARGIN = 1.2; // test for now
