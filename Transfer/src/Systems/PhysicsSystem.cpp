@@ -181,10 +181,10 @@ void PhysicsSystem::calculateGravity(GravitationalBody& body1, GravitationalBody
     if (body1.radius == 0 || body2.radius == 0) // this one might be okay because its cast to int? not sure
         return;
     double proxyScale = 1.0;
-    if (body1.macroIdentifier == body2.macroIdentifier)
-    {
-        proxyScale = 0.10;
-    }
+    // if (body1.macroIdentifier == body2.macroIdentifier)
+    // {
+    //     proxyScale = 0.10;
+    // }
     // Define softening epsilon
     double epsilon = (body1.radius + body2.radius) / 2.0; // Simple average radius
     double epsilon_squared = epsilon * epsilon;
@@ -528,20 +528,20 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, Grav
     {
         return;
     }
-    if (smallerBody.isStatic xor largerBody.isStatic)
-    {
-        GravitationalBody& dyn = smallerBody.isStatic ? largerBody : smallerBody;
-        GravitationalBody& stat = smallerBody.isStatic ? smallerBody : largerBody;
+    // if (smallerBody.isStatic xor largerBody.isStatic)
+    // {
+    //     GravitationalBody& dyn = smallerBody.isStatic ? largerBody : smallerBody;
+    //     GravitationalBody& stat = smallerBody.isStatic ? smallerBody : largerBody;
 
-        Vector2D n = (dyn.position - stat.position).normalize();
-        double v_n = dyn.velocity.dot(n);
+    //     Vector2D n = (dyn.position - stat.position).normalize();
+    //     double v_n = dyn.velocity.dot(n);
 
-        if (v_n < 0.0)
-        {
-            dyn.velocity -= n * (1.0 + ELASTIC_LOSS_FACTOR) * v_n;
-        }
-        return;
-    }
+    //     if (v_n < 0.0)
+    //     {
+    //         dyn.velocity -= n * (1.0 + ELASTIC_LOSS_FACTOR) * v_n;
+    //     }
+    //     return;
+    // }
 
     if (firstWithinEpsilonOfSecond(smallerBody.mass, 0.0) || firstWithinEpsilonOfSecond(largerBody.mass, 0.0))
     {
@@ -613,7 +613,6 @@ void PhysicsSystem::handleDynamicExplosionCollision(GravitationalBody& macroBody
                                                     GameState& gameState)
 {
     // Buffers to prevent iterator invalidation
-    std::vector<GravitationalBody> pending_particles;
     std::vector<GravitationalBody> pending_macros;
 
     // instantiate collision proxy for both bodies. Consider a shrinking
@@ -631,10 +630,12 @@ void PhysicsSystem::handleDynamicExplosionCollision(GravitationalBody& macroBody
     // the same id. Then a skipout of the logic if id
     // matches macro (in elastic collsion)
     GravitationalBody proxyForMB1;
+    gameState.incrementMaxIDInstantiated();
     populateCollisionProxyFromMacroBody(macroBody1, proxyForMB1);
     proxyForMB1.lifetime = proxyBody1LifeTime;
     // proxyForMB1.lifetime = 1000;
     GravitationalBody proxyForMB2;
+    gameState.incrementMaxIDInstantiated();
     populateCollisionProxyFromMacroBody(macroBody2, proxyForMB2);
     proxyForMB2.lifetime = proxyBody2LifeTime;
     // proxyForMB2.lifetime = 1000;
@@ -867,14 +868,15 @@ void PhysicsSystem::populateCollisionProxyFromMacroBody(GravitationalBody& origi
     proxyBody.mass = 1.0 * originalMacroBody.mass;
     proxyBody.radius = originalMacroBody.radius * 1.0;
     proxyBody.velocity = originalMacroBody.velocity * 1.0;
-    proxyBody.isStatic = true;
+    proxyBody.isStatic = true; // should follow a single trajectory
     proxyBody.isBounce = true;
     proxyBody.isShatterable = false;
     proxyBody.isCollidable = true;
     proxyBody.isTransient = true;
     proxyBody.netForce = {0.0, 0.0};
     proxyBody.prevForce = {0.0, 0.0};
-    proxyBody.visible = false;
+    proxyBody.visible = false; 
+    proxyBody.macroIdentifier = originalMacroBody.macroIdentifier;
 }
 // --------- CLEANUP GRAVITATIONAL BODIES METHODS --------- //
 

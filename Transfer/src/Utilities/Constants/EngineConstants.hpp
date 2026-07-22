@@ -6,7 +6,7 @@
 constexpr float PHYSICS_TIME_STEP = 1.0f / 120.0f; // 120Hz physics update rate
 
 // Newtonian Gravitational constant (scaled)
-static const double GRAVITATIONAL_CONSTANT = 6.67430e-7 / 5; // in m^3 kg^-1 s^-2
+static const double GRAVITATIONAL_CONSTANT = 6.67430e-7 / 2; // in m^3 kg^-1 s^-2
 
 static const double MAX_MASS = 1e16;
 static const double MAX_RADIUS = 200;
@@ -19,7 +19,6 @@ static const double MAX_ACCRETION_COLLISION_SPEED = 90.0; // in px/s need to res
 static const double MIN_SHATTER_SPEED = 90.0;             // in px/s need to rescale later to m/s
 
 // Scaling factors for converting between simulation units and screen units
-// TBI
 
 static const double PI = 3.14159265358979323846;
 
