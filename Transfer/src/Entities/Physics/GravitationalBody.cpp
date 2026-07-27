@@ -36,7 +36,7 @@ UnifiedBodyVertex GravitationalBody::toUnifiedVertex() const
         f |= (1 << 7);
     if (isDust)
         f |= (1 << 8);
-    if (isStatic)
+    if (isForceStatic)
         f |= (1 << 9);
     if (isGas)
         f |= (1 << 10);

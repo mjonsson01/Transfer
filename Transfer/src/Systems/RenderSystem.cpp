@@ -54,12 +54,7 @@ RenderSystem::~RenderSystem()
 // --------- CLEANUP METHOD --------- //
 void RenderSystem::CleanUp()
 {
-    if (window)
-    {
-        SDL_DestroyWindow(window);
-        window = nullptr;
-    }
-    // 1. Release GPU-specific resources
+    // Release GPU-specific resources
     if (unifiedBodyVertexBuffer != nullptr)
         SDL_ReleaseGPUBuffer(gpu, unifiedBodyVertexBuffer);
     if (twinklingStarVertexBuffer != nullptr)
@@ -89,10 +84,15 @@ void RenderSystem::CleanUp()
     if (velocityVectorPipeline != nullptr)
         SDL_ReleaseGPUGraphicsPipeline(gpu, velocityVectorPipeline);
 
-    // 2. Finally, destroy the GPU device
+    // release the window from gpu
+    if (gpu != nullptr && window != nullptr)
+        SDL_ReleaseWindowFromGPUDevice(gpu, window);
+
+    // destroy the gpu
     if (gpu != nullptr)
         SDL_DestroyGPUDevice(gpu);
 
+    // destroy the window
     if (window)
     {
         SDL_DestroyWindow(window);

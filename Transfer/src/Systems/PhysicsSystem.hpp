@@ -6,6 +6,7 @@
 #include "Core/GameState.hpp"
 #include "Core/UIState.hpp"
 #include "Entities/Physics/GravitationalBody.hpp"
+#include "Entities/Physics/GravitationalBodyPair.hpp"
 #include "Utilities/Constants/EngineConstants.hpp"
 #include "Utilities/Constants/GameSystemConstants.hpp"
 #include "Utilities/Math/CustomMathUtilities.hpp"
@@ -19,26 +20,6 @@
 #include <random>
 
 #include <iostream>
-
-struct SpawnLimiter
-{
-    double accumulator = 0.0;
-    double delay = 0.25; //
-
-    bool canSpawn(double deltaTime)
-    {
-        accumulator += deltaTime;
-
-        if (accumulator >= delay)
-        {
-            accumulator -= delay;
-            return true;
-        }
-        return false;
-    }
-
-    void reset() { accumulator = 0.0; }
-};
 
 class PhysicsSystem
 {
@@ -57,7 +38,9 @@ class PhysicsSystem
     void UpdateGravBodyInstantiations(GameState& gameState, UIState& UIState);
 
   private:
-    // Add/remove any user-requested new Gravitational bodies;
+    void updateAllForces(GameState& gameState);
+    void handleMacroMacroCollisions(std::vector<GravitationalBody>& macroBodyList);
+    void handleDynamicCollision(GravitationalBodyPair& gravBodyPair);
 
     // Gravity Methods
     void updateGravityForSystem(GameState& gameState); // Gravity calculation dispatch helper
@@ -65,14 +48,11 @@ class PhysicsSystem
                           GravitationalBody& body2); // Calculate and apply gravity between two
                                                      // gravitational bodies
 
-    // Two-step integration (a la Verlet with half-steps for stability)
-    void integrateForwardsPhase1(GameState& gameState); // First half step of integration. Kicks velocity
-                                                        // halfway and drifts position. Occurs with
-                                                        // leftover forces from previous physics frame
-    void integrateForwardsPhase2(GameState& gameState); // Second half step of integration. Kicks
-                                                        // Velocity halfway. Occurs with newly calculated
-                                                        // forces from current physics frame
-
+    // Integration system
+    void integrateForwardsVelocityVerletPhase1(GameState& gameState);
+    void applyVelocityVerletPhase1(GravitationalBody& gravBody);
+    void integrateForwardsVelocityVerletPhase2(GameState& gameState);
+    void applyVelocityVerletPhase2(GravitationalBody& gravBody);
     // Top-level collision handler. Makes decisions about the kinds of
     // collisions encountered and dispatches to the subhandlers
     void handleCollisions(GameState& gameState);
@@ -115,8 +95,4 @@ class PhysicsSystem
                                                    // as marked for deletion
     void cleanupMacroBodies(GameState& gameState); // Clears any Macro Bodies from the screen
                                                    // flagged as marked for deletion
-  private:
-    SpawnLimiter macroLimiter;
-    SpawnLimiter particleLimiter;
-    SpawnLimiter clusterLimiter;
 };

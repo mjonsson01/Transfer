@@ -40,8 +40,8 @@ void MassSlider::slideMe(Vector2D positionOfEvent, double& returnedElementValue,
     }
     else
     {
-        // This gives you a range of +/- 1 to +/- 1e15
-        sliderValue = sign * std::pow(10.0, std::abs(centered_t) * 15.0);
+        // This gives you a range of +/- 1 to +/- 1e6 // TODO: FIX TO MATCH MAX_MASS INSTANTIATION
+        sliderValue = sign * std::pow(10.0, std::abs(centered_t) * 6);
     }
 
     // 4. Update the knob position (Standard linear for visual consistency)
@@ -70,7 +70,8 @@ void MassSlider::updateLayout(float windowWidth, float windowHeight)
     else
     {
         double sign = (sliderValue < 0) ? -1.0 : 1.0;
-        centered_t = sign * (std::log10(std::abs(sliderValue)) / 15.0);
+        // TODO: FIX (Same as above)
+        centered_t = sign * (std::log10(std::abs(sliderValue)) / 6.0);
     }
     double t = (centered_t + 1.0) / 2.0;
 
@@ -91,7 +92,7 @@ void MassSlider::playTickSoundIfMoved(UIState& UIState)
     else
     {
         double sign = (sliderValue < 0) ? -1.0 : 1.0;
-        centered_t = sign * (std::log10(std::abs(sliderValue)) / 15.0);
+        centered_t = sign * (std::log10(std::abs(sliderValue)) / 6.0);
     }
 
     int currentTick = static_cast<int>(std::round(centered_t * NUM_SLIDER_TICKS));

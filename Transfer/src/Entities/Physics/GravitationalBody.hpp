@@ -22,6 +22,7 @@ struct GravitationalBody
     Vector2D netForce = {0.0, 0.0};         // Current frame net force vector
     Vector2D prevForce = {0.0, 0.0};        // Net force vector from previous frame
     double mass = 0.0;                      // Mass of Gravitational Body
+    double invMass = 0.0;                   // Inverse mass of grav body
     double radius = 0.0;                    // Radius of Gravitational Body (units TBD)
     double temperature = 0.0;               // Kelvin
 
@@ -33,17 +34,17 @@ struct GravitationalBody
 
     // Subtype flags -- only one may be true
     // Need to be implemented and well-defined
-    bool isPlanet = false;
-    bool isMoon = false;
-    bool isGravStar = false;
-    bool isDust = false;
-    bool isFragment = false;
-    bool isGas = false;
+    bool isPlanet = false;   // unused
+    bool isMoon = false;     // unused
+    bool isGravStar = false; // unused
+    bool isDust = false;     // unused
+    bool isFragment = false; // unused
+    bool isGas = false;      // unused
 
     bool isBounce = false; // Body only bounces, no accretion-type behavior. False makes it
                            // follow the standard thresholds. true makes it always bounce.
     // Attribute enablement flags
-    bool isStatic = false;      // makes the particle not follow any forces, can only have a
+    bool isForceStatic = false; // makes the particle not follow any forces, can only have a
                                 // fixed initial velocity. Basically as if it has infinite mass.
     bool isShatterable = false; // allows for shattering into particles
     bool isAccretable = false;  // allows body to be absorbed into another
@@ -59,13 +60,8 @@ struct GravitationalBody
     Uint32 lifetime = 0;
     bool isMarkedForDeletion = false;
 
-    int macroIdentifier = -1; // Defaults to minus one on construction unless
-                              // explicitly being instantiated with a parent that might
-                              // disintegrate. so create macro body should
-                              // pass an iterating id based on global state. Only macro
-                              // bodies will have an id. Can't just be the number of macro bodies
-                              // because then duplicates, so just select +1 on each instantiation.
-                              // ADD THIS LINE HERE:
+    int macroIdentifier = -1; // Defaults to -1 until manually instantiated with helper call. Particles receive the
+                              // macroID of their parent body
     UnifiedBodyVertex toUnifiedVertex() const;
 };
 
@@ -89,10 +85,10 @@ inline std::ostream& operator<<(std::ostream& os, const GravitationalBody& b)
        << "\nisFragment = " << std::boolalpha << b.isFragment << "\nisGas = " << std::boolalpha << b.isGas
 
        << "\n --- Attributes: ---"
-       << "\nisStatic = " << std::boolalpha << b.isStatic << "\nisShatterable = " << std::boolalpha << b.isShatterable
-       << "\nisAccretable = " << std::boolalpha << b.isAccretable << "\nisCollidable = " << std::boolalpha
-       << b.isCollidable << "\nisMacroGhost = " << std::boolalpha << b.isMacroGhost << "\nisBounce = " << std::boolalpha
-       << b.isBounce
+       << "\nisForceStatic = " << std::boolalpha << b.isForceStatic << "\nisShatterable = " << std::boolalpha
+       << b.isShatterable << "\nisAccretable = " << std::boolalpha << b.isAccretable
+       << "\nisCollidable = " << std::boolalpha << b.isCollidable << "\nisMacroGhost = " << std::boolalpha
+       << b.isMacroGhost << "\nisBounce = " << std::boolalpha << b.isBounce
 
        << "\n --- Status: ---"
        << "\nisTransient = " << std::boolalpha << b.isTransient << "\nlifetime = " << b.lifetime
