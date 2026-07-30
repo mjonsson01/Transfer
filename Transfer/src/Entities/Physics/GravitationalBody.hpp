@@ -59,6 +59,7 @@ struct GravitationalBody
     bool isTransient = false; // for bodies that are bounce artifacts of collisions
     Uint32 lifetime = 0;
     bool isMarkedForDeletion = false;
+    bool isMarkedForPromotion = false; // particle has grown large enough via accretion to become a macro body
 
     int macroIdentifier = -1; // Defaults to -1 until manually instantiated with helper call. Particles receive the
                               // macroID of their parent body

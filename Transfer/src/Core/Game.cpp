@@ -61,7 +61,10 @@ void Game::Run()
     float current_fps = (float)TARGET_FPS;
     while (gameState.IsPlaying())
     {
-        // printf("capacity: %.3zu", gameState.getParticles().capacity());
+        if (gameState.getMacroBodies().size() > 0)
+        {
+            std::cout << "MacroBodies Size: " << gameState.getMacroBodies()[0].mass << std::endl;
+        }
         Uint64 frame_start = SDL_GetPerformanceCounter();
 
         Game::updateFPS(frame_start, last_frame_start_tick, fps_time_accumulator, current_fps);

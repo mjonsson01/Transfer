@@ -6,17 +6,18 @@ MassSlider::MassSlider() : Slider()
 {
     orientation = Orientation::Horizontal;
     knobRect = SDL_FRect{0, 0, 20, 30}; // will set x,y below
-    updateLayout(SCREEN_WIDTH, SCREEN_HEIGHT);
 
     // Slider range
     maxValue = MAX_MASS / 10;
-    // minValue = 0.0;
-    minValue = -MAX_MASS / 10; // now supports negative values
-    sliderValue = 0.0;         // start centered
+    minValue = -MAX_MASS / 10;            // now supports negative values
+    sliderValue = 0.0;                    // start centered
+    curveExponent = std::log10(maxValue); // keeps the log curve in sync with maxValue/MAX_MASS
+
+    updateLayout(SCREEN_WIDTH, SCREEN_HEIGHT);
+
     setVisibility(true);
     UIElementID = UIElementIdentifier::MASS_SLIDER_INDEX;
 }
-
 void MassSlider::slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& UIState)
 {
     float track_start_x = trackRect.x;
@@ -33,15 +34,14 @@ void MassSlider::slideMe(Vector2D positionOfEvent, double& returnedElementValue,
 
     // 3. Apply the Exponential Curve
     // We use a power function to give detail to small numbers.
-    // 10^15 is massive, so we raise 10 to the power of (abs(centered_t) * 15)
     if (std::abs(centered_t) < 0.01)
     {
         sliderValue = 0.0; // "Snap" to zero in the middle
     }
     else
     {
-        // This gives you a range of +/- 1 to +/- 1e6 // TODO: FIX TO MATCH MAX_MASS INSTANTIATION
-        sliderValue = sign * std::pow(10.0, std::abs(centered_t) * 6);
+        // Range is +/- 1 to +/- maxValue, exponent derived from maxValue (MAX_MASS / 10)
+        sliderValue = sign * std::pow(10.0, std::abs(centered_t) * curveExponent);
     }
 
     // 4. Update the knob position (Standard linear for visual consistency)
@@ -70,8 +70,7 @@ void MassSlider::updateLayout(float windowWidth, float windowHeight)
     else
     {
         double sign = (sliderValue < 0) ? -1.0 : 1.0;
-        // TODO: FIX (Same as above)
-        centered_t = sign * (std::log10(std::abs(sliderValue)) / 6.0);
+        centered_t = sign * (std::log10(std::abs(sliderValue)) / curveExponent);
     }
     double t = (centered_t + 1.0) / 2.0;
 
@@ -92,7 +91,7 @@ void MassSlider::playTickSoundIfMoved(UIState& UIState)
     else
     {
         double sign = (sliderValue < 0) ? -1.0 : 1.0;
-        centered_t = sign * (std::log10(std::abs(sliderValue)) / 6.0);
+        centered_t = sign * (std::log10(std::abs(sliderValue)) / 7.0);
     }
 
     int currentTick = static_cast<int>(std::round(centered_t * NUM_SLIDER_TICKS));

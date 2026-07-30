@@ -6,7 +6,7 @@
 
 // FPS target for system
 // constexpr int TARGET_FPS = 165;
-constexpr int TARGET_FPS = 120;
+constexpr int TARGET_FPS = 60;
 
 // Target frame delay in ms
 const double FRAME_DELAY_MS = 1000.0 / TARGET_FPS;
@@ -19,9 +19,6 @@ constexpr int FPS_UPDATE_DELTA_MS = 250;
 const double MIN_TIME_SCALE_FACTOR = 0.0;     // negative is allowed and runs only due to alpha interpolation
 const double REGULAR_TIME_SCALE_FACTOR = 1.0; // 1x speed
 const double MAX_TIME_SCALE_FACTOR = 2.0;     // 2x speed
-
-// Delay between particle formation when holding to spawn
-constexpr int SPAWN_DELAY_MS = 10;
 
 // Vertical and horizontal resolutions (starting resolution)
 
