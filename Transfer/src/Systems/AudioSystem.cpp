@@ -67,11 +67,11 @@ void AudioSystem::CleanUp()
     SDL_QuitSubSystem(SDL_INIT_AUDIO);
 }
 
-void AudioSystem::ProcessSystemAudioFrame(GameState& gameState, UIState& UIState)
+void AudioSystem::ProcessSystemAudioFrame(GameState& gameState, UIState& uiState)
 {
-    musicEnabled = UIState.getPlayMusic();
-    soundEffectsEnabled = UIState.getPlaySoundEffects();
-    MusicMode requested_music_mode = UIState.getRequestedMusicMode();
+    musicEnabled = uiState.getPlayMusic();
+    soundEffectsEnabled = uiState.getPlaySoundEffects();
+    MusicMode requested_music_mode = uiState.getRequestedMusicMode();
     if (requested_music_mode != currentMusicMode)
     {
         transitionMusicMode(requested_music_mode);
@@ -86,9 +86,9 @@ void AudioSystem::ProcessSystemAudioFrame(GameState& gameState, UIState& UIState
     cleanupFinishedSFX();
 
     processMusic();
-    while (UIState.HasPendingSoundEffects())
+    while (uiState.HasPendingSoundEffects())
     {
-        playSoundEffect(UIState.PopNextSoundEffect());
+        playSoundEffect(uiState.PopNextSoundEffect());
     }
 }
 void AudioSystem::cleanupFinishedSFX()

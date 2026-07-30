@@ -24,7 +24,7 @@ class Button : public UIElement
                        const FontAtlasUtility& fontAtlas) override;
 
     virtual std::string getDisplayText() const { return displayText; }
-    virtual void clickMe(Vector2D positionOfEvent, UIState& UIState) override;
+    virtual void clickMe(Vector2D positionOfEvent, UIState& uiState) override;
     double getButtonState() { return buttonSelected; }
 
   protected:

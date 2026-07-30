@@ -27,7 +27,7 @@ const double EPSILON = 1e-8;
 
 const uint32_t MAX_UNIFIED_BODIES = 200000;
 
-const double ELASTIC_LOSS_FACTOR = 0.995; // need to tweak if no longer having particle particle gravity
+const double ELASTIC_LOSS_FACTOR = 0.999; // need to tweak if no longer having particle particle gravity
 
 const uint32_t MAX_UI_VERTICES = 65536;
 

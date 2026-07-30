@@ -9,9 +9,9 @@ FPSCounter::FPSCounter()
     UIElementID = UIElementIdentifier::FPS_COUNTER_INDEX;
 }
 
-void FPSCounter::updateMe(UIState& UIState)
+void FPSCounter::updateMe(UIState& uiState)
 {
-    float fps_local = UIState.getFPS();
+    float fps_local = uiState.getFPS();
     fps = static_cast<int>(fps_local);
 }
 

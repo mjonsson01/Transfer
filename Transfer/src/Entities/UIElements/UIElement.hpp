@@ -23,9 +23,9 @@ class UIElement
   public:
     UIElement();
     virtual ~UIElement();
-    virtual void slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& UIState) {
+    virtual void slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& uiState) {
     }; // Default does nothing
-    virtual void clickMe(Vector2D positionOfEvent, UIState& UIState) {}; // Default does nothing
+    virtual void clickMe(Vector2D positionOfEvent, UIState& uiState) {}; // Default does nothing
     void setPosition(float x, float y)
     {
         posX = x;
@@ -39,7 +39,7 @@ class UIElement
     UIElementIdentifier getUIElementID() const { return UIElementID; }
     virtual void buildGeometry(std::vector<UIElementVertex>& vertexBuffer, uint32_t zIndex,
                                const FontAtlasUtility& fontAtlas) {};    // Default does nothing
-    virtual void updateMe(UIState& UIState) {};                          // Default does nothing
+    virtual void updateMe(UIState& uiState) {};                          // Default does nothing
     virtual void updateLayout(float windowWidth, float windowHeight) {}; // Default does nothing
 
   private:

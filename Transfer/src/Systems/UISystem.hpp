@@ -29,14 +29,14 @@ class UISystem
     UISystem();
     ~UISystem();
     void CleanUp();
-    void UpdateUIElements(GameState& gameState, UIState& UIState);
+    void UpdateUIElements(GameState& gameState, UIState& uiState);
     Scene* getScene(SceneIdentifier sceneID) { return allScenes[sceneID]; }
-    void updateUISystemCurrentSceneID(UIState& UIState) { currentSceneID = UIState.getCurrentSceneID(); }
-    void updateGameUIElements(GameState& gameState, UIState& UIState);
-    void updateMenuUIElements(GameState& gameState, UIState& UIState);
+    void updateUISystemCurrentSceneID(UIState& uiState) { currentSceneID = uiState.getCurrentSceneID(); }
+    void updateGameUIElements(GameState& gameState, UIState& uiState);
+    void updateMenuUIElements(GameState& gameState, UIState& uiState);
     UIElementIdentifier findElementWeAreIn(InputState& inputsReceived);
-    void routeSliderInput(UIElementIdentifier elementToUpdate, UIState& UIState);
-    void routeButtonClick(UIElementIdentifier elementToUpdate, UIState& UIState);
+    void routeSliderInput(UIElementIdentifier elementToUpdate, UIState& uiState);
+    void routeButtonClick(UIElementIdentifier elementToUpdate, UIState& uiState);
     void populateScenes();
     void updateAllUILayouts(float windowWidth, float windowHeight);
 

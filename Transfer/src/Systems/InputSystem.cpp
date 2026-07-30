@@ -12,11 +12,11 @@ InputSystem::~InputSystem() {}
 
 // --------- SYSTEM-LEVEL METHOD --------- //
 
-void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState)
+void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& uiState)
 {
 
     transferInputs.resetJustPressed();
-    UIState.getMutableInputState().resetTransientFlags(); // clean the input state before polling for new events.
+    uiState.getMutableInputState().resetTransientFlags(); // clean the input state before polling for new events.
     SDL_Event event;
     // int eventCount = 0;
     while (SDL_PollEvent(&event))
@@ -36,9 +36,9 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState
         else
         {
             // Will ensure the event is not yet consumed by the UI.
-            UIState.getMutableInputState().UIInputConsumed = false;
+            uiState.getMutableInputState().UIInputConsumed = false;
             // First check if in start menu. If so, route input to start menu behaviors
-            SceneIdentifier current_scene = UIState.getCurrentSceneID();
+            SceneIdentifier current_scene = uiState.getCurrentSceneID();
 
             if (current_scene == SceneIdentifier::GAME_SCENE)
             {
@@ -51,7 +51,7 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState
         }
     }
 
-    SceneIdentifier current_scene = UIState.getCurrentSceneID();
+    SceneIdentifier current_scene = uiState.getCurrentSceneID();
     if (current_scene == SceneIdentifier::GAME_SCENE)
     {
         CameraState& camera_state = gameState.getCameraStateMutable();
@@ -109,11 +109,11 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& UIState
 
         clampOffsetToStarField(camera_state.offset);
         clampOffsetToStarField(camera_state.twinklingStarOffset);
-        translateAndPassTransferInputsOff(UIState);
+        translateAndPassTransferInputsOff(uiState);
     }
     else
     {
-        translateAndPassMenuInputsOff(UIState);
+        translateAndPassMenuInputsOff(uiState);
     }
 }
 
@@ -333,9 +333,9 @@ void InputSystem::routeSDL_EventInputInGame(SDL_Event* e)
     }
 }
 
-void InputSystem::translateAndPassMenuInputsOff(UIState& UIState)
+void InputSystem::translateAndPassMenuInputsOff(UIState& uiState)
 {
-    InputState& updated_input_state = UIState.getMutableInputState();
+    InputState& updated_input_state = uiState.getMutableInputState();
     updated_input_state.mouseCurrPosition = transferInputs.mouseCurrPosition;
     updated_input_state.isDragging = transferInputs.isDragging;
     updated_input_state.mouseDragStartPosition = transferInputs.mouseDragStartPosition;
@@ -348,16 +348,16 @@ void InputSystem::translateAndPassMenuInputsOff(UIState& UIState)
     updated_input_state.leftMouseButtonJustReleased = transferInputs.leftMouseJustReleased;
     if (transferInputs.escJustPressed)
     {
-        UIState.setCurrentScene(SceneIdentifier::GAME_SCENE);
+        uiState.setCurrentScene(SceneIdentifier::GAME_SCENE);
         transferInputs.resetAllInputsForSceneChange();
         updated_input_state.resetFlagsForSceneChange();
         return;
     }
 }
-void InputSystem::translateAndPassTransferInputsOff(UIState& UIState)
+void InputSystem::translateAndPassTransferInputsOff(UIState& uiState)
 {
     // Check for clear all particle orders
-    InputState& updated_input_state = UIState.getMutableInputState();
+    InputState& updated_input_state = uiState.getMutableInputState();
     if (transferInputs.clearParticlesPressed)
     {
         updated_input_state.clearAllBodies();
@@ -369,7 +369,7 @@ void InputSystem::translateAndPassTransferInputsOff(UIState& UIState)
     }
     if (transferInputs.escJustPressed)
     {
-        UIState.setCurrentScene(SceneIdentifier::PAUSE_SCENE);
+        uiState.setCurrentScene(SceneIdentifier::PAUSE_SCENE);
         transferInputs.resetAllInputsForSceneChange();
         updated_input_state.resetFlagsForSceneChange();
         return;

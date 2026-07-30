@@ -9,6 +9,6 @@ class ResumeButton : public Button
   public:
     ResumeButton();
     ~ResumeButton() = default;
-    void clickMe(Vector2D positionOfEvent, UIState& UIState) override;
+    void clickMe(Vector2D positionOfEvent, UIState& uiState) override;
     void updateLayout(float windowWidth, float windowHeight) override;
 };

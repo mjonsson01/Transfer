@@ -13,7 +13,7 @@ Slider::Slider()
     maxValue = 0.0;
 }
 
-void Slider::slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& UIState)
+void Slider::slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& uiState)
 {
 
     // Track start positions
@@ -57,7 +57,7 @@ void Slider::slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIS
 
     // Return updated value
     returnedElementValue = sliderValue;
-    playTickSoundIfMoved(UIState);
+    playTickSoundIfMoved(uiState);
     return;
 }
 
@@ -119,7 +119,7 @@ void Slider::buildGeometry(std::vector<UIElementVertex>& vertexBuffer, uint32_t 
     pushText(vertexBuffer, slider_text, getX(), getY() + knobRect.h, fontAtlas, zIndex);
 }
 
-void Slider::playTickSoundIfMoved(UIState& UIState)
+void Slider::playTickSoundIfMoved(UIState& uiState)
 {
     if (maxValue == minValue)
         return; // avoid division by zero on an uninitialized/degenerate slider
@@ -128,7 +128,7 @@ void Slider::playTickSoundIfMoved(UIState& UIState)
 
     if (currentTick != lastTickIndex)
     {
-        UIState.QueueSoundEffect("SliderTick");
+        uiState.QueueSoundEffect("SliderTick");
         lastTickIndex = currentTick;
     }
 }

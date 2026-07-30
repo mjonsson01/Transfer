@@ -4,7 +4,7 @@
 #include "Core/Game.hpp"
 
 Game::Game()
-    : gameState(), UIState(), inputSystem(), physicsSystem(), renderSystem(gameState), audioSystem(), UISystem()
+    : gameState(), uiState(), inputSystem(), physicsSystem(), renderSystem(gameState), audioSystem(), UISystem()
 {
     // fill in imp here
 }
@@ -25,12 +25,12 @@ void Game::StartGame()
     // Default to starting in the level scene since other scenes are not
     // implemented yet.
 
-    UIState.setCurrentScene(SceneIdentifier::START_MENU_SCENE);
-    // UIState.setCurrentScene(SceneIdentifier::GAME_SCENE);
-    // UIState.setCurrentScene(SceneIdentifier::TEST_VISUAL_SCENE);
-    UIState.setPlaySoundEffects(true);
-    UIState.setPlayMusic(true);
-    UIState.setRequestedMusicMode(MusicMode::TITLE_THEME);
+    uiState.setCurrentScene(SceneIdentifier::START_MENU_SCENE);
+    // uiState.setCurrentScene(SceneIdentifier::GAME_SCENE);
+    // uiState.setCurrentScene(SceneIdentifier::TEST_VISUAL_SCENE);
+    uiState.setPlaySoundEffects(true);
+    uiState.setPlayMusic(true);
+    uiState.setRequestedMusicMode(MusicMode::TITLE_THEME);
     // Start the main game loop
     Game::Run();
 
@@ -93,9 +93,9 @@ void Game::Run()
         last_physics_update_tick = now_tick;
 
         // Physics Scaling Logic
-        if (UIState.getCurrentSceneID() == SceneIdentifier::GAME_SCENE)
+        if (uiState.getCurrentSceneID() == SceneIdentifier::GAME_SCENE)
         {
-            physics_time_accumulator += (frame_delta * UIState.getTimeScaleFactor());
+            physics_time_accumulator += (frame_delta * uiState.getTimeScaleFactor());
         }
         else
         {
@@ -105,7 +105,7 @@ void Game::Run()
         // 4. Profile Physics Integration
         Uint64 phys_total_start = SDL_GetPerformanceCounter();
         while (physics_time_accumulator >= PHYSICS_TIME_STEP &&
-               UIState.getCurrentSceneID() == SceneIdentifier::GAME_SCENE)
+               uiState.getCurrentSceneID() == SceneIdentifier::GAME_SCENE)
         {
             Game::IntegratePhysicsFrame();
             physics_time_accumulator -= PHYSICS_TIME_STEP;
@@ -143,26 +143,26 @@ void Game::Run()
 void Game::ProcessInput()
 {
     // Dispatch to Input System
-    inputSystem.ProcessSystemInputFrame(gameState, UIState);
-    UISystem.UpdateUIElements(gameState, UIState);
+    inputSystem.ProcessSystemInputFrame(gameState, uiState);
+    UISystem.UpdateUIElements(gameState, uiState);
 }
 
 void Game::IntegratePhysicsFrame()
 {
     // Dispatch to Physics System
-    physicsSystem.UpdateSystemFrame(gameState, UIState);
+    physicsSystem.UpdateSystemFrame(gameState, uiState);
 }
 
-void Game::UpdateInstantiations() { physicsSystem.UpdateGravBodyInstantiations(gameState, UIState); }
+void Game::UpdateInstantiations() { physicsSystem.UpdateGravBodyInstantiations(gameState, uiState); }
 void Game::RenderFrame()
 {
     // Dispatch to Render System -- renders UI as well.
-    Scene* current_scene = UISystem.getScene(UIState.getCurrentSceneID());
+    Scene* current_scene = UISystem.getScene(uiState.getCurrentSceneID());
     const std::unordered_map<UIElementIdentifier, UIElement*>& UI_elements_in_scene = current_scene->getSceneElements();
-    renderSystem.RenderFullFrame(gameState, UIState, UI_elements_in_scene);
+    renderSystem.RenderFullFrame(gameState, uiState, UI_elements_in_scene);
 }
 
-void Game::PlayAudio() { audioSystem.ProcessSystemAudioFrame(gameState, UIState); }
+void Game::PlayAudio() { audioSystem.ProcessSystemAudioFrame(gameState, uiState); }
 // --------- UTILITY METHODS FOR FPS --------- //
 void Game::updateFPS(Uint64 renderEnd, Uint64 lastRender, float& fpsAccumulator, float& currentFPS)
 {
@@ -188,7 +188,7 @@ void Game::updateFPS(Uint64 renderEnd, Uint64 lastRender, float& fpsAccumulator,
         float target_fps_max = static_cast<float>(TARGET_FPS) * 1.1f;
         currentFPS = std::min(currentFPS, target_fps_max);
 
-        UIState.setFPS(currentFPS);
+        uiState.setFPS(currentFPS);
         fpsAccumulator = 0.0f;
     }
 }

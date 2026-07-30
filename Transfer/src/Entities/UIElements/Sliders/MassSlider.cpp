@@ -18,7 +18,7 @@ MassSlider::MassSlider() : Slider()
     setVisibility(true);
     UIElementID = UIElementIdentifier::MASS_SLIDER_INDEX;
 }
-void MassSlider::slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& UIState)
+void MassSlider::slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& uiState)
 {
     float track_start_x = trackRect.x;
     float track_length_x = trackRect.w - knobRect.w;
@@ -48,7 +48,7 @@ void MassSlider::slideMe(Vector2D positionOfEvent, double& returnedElementValue,
     knobRect.x = track_start_x + (t * track_length_x);
 
     returnedElementValue = sliderValue;
-    playTickSoundIfMoved(UIState);
+    playTickSoundIfMoved(uiState);
     return;
 }
 
@@ -81,7 +81,7 @@ void MassSlider::updateLayout(float windowWidth, float windowHeight)
     setPosition(trackRect.x, trackRect.y);
 }
 
-void MassSlider::playTickSoundIfMoved(UIState& UIState)
+void MassSlider::playTickSoundIfMoved(UIState& uiState)
 {
     double centered_t;
     if (sliderValue == 0.0)
@@ -98,7 +98,7 @@ void MassSlider::playTickSoundIfMoved(UIState& UIState)
 
     if (currentTick != lastTickIndex)
     {
-        UIState.QueueSoundEffect("SliderTick");
+        uiState.QueueSoundEffect("SliderTick");
         lastTickIndex = currentTick;
     }
 }

@@ -9,6 +9,6 @@ class PlayGameButton : public Button
   public:
     PlayGameButton();
     ~PlayGameButton() = default;
-    void clickMe(Vector2D positionOfEvent, UIState& UIState) override;
+    void clickMe(Vector2D positionOfEvent, UIState& uiState) override;
     void updateLayout(float windowWidth, float windowHeight) override;
 };

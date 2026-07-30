@@ -30,7 +30,7 @@ class InputSystem
 
   public:
     // Main method to process input
-    void ProcessSystemInputFrame(GameState& gameState, UIState& UIState);
+    void ProcessSystemInputFrame(GameState& gameState, UIState& uiState);
 
     // Clean up helper
     void CleanUp();
@@ -38,7 +38,7 @@ class InputSystem
   private:
     void routeSDL_EventInputInGame(SDL_Event* event);
     void routeSDL_EventInputInMenu(SDL_Event* event);
-    void translateAndPassTransferInputsOff(UIState& UIState);
-    void translateAndPassMenuInputsOff(UIState& UIState);
+    void translateAndPassTransferInputsOff(UIState& uiState);
+    void translateAndPassMenuInputsOff(UIState& uiState);
     TransferInputs transferInputs; // in game inputs
 };

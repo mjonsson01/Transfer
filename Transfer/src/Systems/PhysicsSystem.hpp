@@ -1,4 +1,4 @@
-// File: Transfer/src/Systems/PhysicsSystem.h
+// File: Transfer/src/Systems/PhysicsSystem.hpp
 
 #pragma once
 
@@ -17,8 +17,6 @@
 // Standard Library Imports
 #include <algorithm>
 #include <cmath>
-#include <numeric>
-#include <random>
 
 #include <iostream>
 
@@ -40,69 +38,66 @@ class PhysicsSystem
     PhysicsSystem();
     ~PhysicsSystem();
 
-  public:
     // Method to update Physics System. Handles all physics interactions and
     // body instantiations for one physics frame
-    void UpdateSystemFrame(GameState& gameState, UIState& UIState);
+    void UpdateSystemFrame(GameState& gameState, UIState& uiState);
     // Helper method called in the destructor to clear up physics-related
     // contents
     void CleanUp();
-    void UpdateGravBodyInstantiations(GameState& gameState, UIState& UIState);
+    void UpdateGravBodyInstantiations(GameState& gameState, UIState& uiState);
 
   private:
-    void updateAllForces(GameState& gameState);
+    // --- Collision Handling ---
+    // Top-level collision handler. Makes decisions about the kinds of
+    // collisions encountered and dispatches to the subhandlers
+    void handleCollisions(GameState& gameState);
     void handleMacroMacroCollisions(GameState& gameState);
     void handleMacroParticleCollisions(GameState& gameState);
     void handleParticleParticleCollisions(GameState& gameState);
     void handleDynamicCollision(GravitationalBodyPair& gravBodyPair, const CollisionInfo& collisionInfo,
                                 GameState& gameState);
+    // Handles a 'bouncy' (elastic) collision between two bodies, when the collision
+    // satisfies Engine-Constant-defined constraints
+    void handleElasticCollisions(GravitationalBody& smallerBody, GravitationalBody& largerBody);
     void handleAccretion(GravitationalBodyPair& gravBodyPair);
-    void promoteOversizedParticles(GameState& gameState);
+    void promoteOversizedParticles(GameState& gameState); // TODO: Prune? currently uncalled, see UpdateSystemFrame
     void substituteWithParticles(GravitationalBody& originalBody, GameState& gameState, uint32_t targetFragmentCount);
     void substituteWithParticlesFromImpact(GravitationalBody& originalBody, GameState& gameState,
-                                           uint32_t targetFragmantCount, const Vector2D& impactPoint);
+                                           uint32_t targetFragmentCount, const Vector2D& impactPoint);
 
-    void handleCollisions(GameState& gameState);
+    // --- Gravity ---
+    void updateAllForces(GameState& gameState); // Gravity calculation dispatch helper
+    void updateGravityForSystem(GameState& gameState);
+    void calculateGravity(GravitationalBody& firstBody,
+                          GravitationalBody& secondBody); // Calculate and apply gravity between two
+                                                          // gravitational bodies
 
-    // Sub-level collision handlers
-    void handleElasticCollisions(GravitationalBody& smallerBody,
-                                 GravitationalBody& largerBody); // Handles 'bouncy' collision if the collision
-                                                                 // satisfies Engine-Constant-defined constraints
-                                                                 // the pieces if the collision satisfies
-
-    UniformParticleGrid particleGrid;
-
-    // Gravity Methods
-    void updateGravityForSystem(GameState& gameState); // Gravity calculation dispatch helper
-    void calculateGravity(GravitationalBody& body1,
-                          GravitationalBody& body2); // Calculate and apply gravity between two
-                                                     // gravitational bodies
-
-    // Integration system
+    // --- Integration (Velocity Verlet) ---
     void integrateForwardsVelocityVerletPhase1(GameState& gameState);
     void applyVelocityVerletPhase1(GravitationalBody& gravBody);
     void integrateForwardsVelocityVerletPhase2(GameState& gameState);
     void applyVelocityVerletPhase2(GravitationalBody& gravBody);
-    // Top-level collision handler. Makes decisions about the kinds of
-    // collisions encountered and dispatches to the subhandlers
 
-    // Gravitational Body Creation Mechanisms
+    // --- Gravitational Body Creation Mechanisms ---
     void createMacroBody(GameState& gameState,
                          InputState& inputState); // Creates a Macro Gravitational Body
                                                   // with the user-defined attributes
     void createParticle(GameState& gameState,
-                        InputState& inputState); // Creates a Particle Gravitational Body with
-                                                 // the user-defined attriubutes
+                        InputState& inputState); // TODO: Prune? declared, never defined or called
     void createParticleCluster(GameState& gameState,
-                               InputState& inputState); // Creates a cluster of Particle Gravitational
-                                                        // Bodies with the user-defined attributes
+                               InputState& inputState); // TODO: Prune? declared, never defined or called
 
-    // Utility Functions
-    void calculateTotalEnergy(GameState& gameState); // Calculates total energy of all Macro Bodies
-                                                     // and Particles on Screen.
-    // Cleanup Functions
+    // --- Utility ---
+    void calculateTotalEnergy(GameState& gameState); // TODO: Prune? currently uncalled, see UpdateSystemFrame
+                                                     //  Calculates total energy of all Macro Bodies and
+                                                     //  Particles on screen.
+
+    // --- Cleanup ---
     void cleanupParticles(GameState& gameState);   // Clears any Particles from the screen flagged
                                                    // as marked for deletion
     void cleanupMacroBodies(GameState& gameState); // Clears any Macro Bodies from the screen
                                                    // flagged as marked for deletion
+
+    // --- Data Members ---
+    UniformParticleGrid particleGrid;
 };
