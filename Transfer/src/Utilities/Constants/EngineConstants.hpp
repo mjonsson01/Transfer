@@ -22,4 +22,4 @@ static const uint32_t MAX_SIMULTANEOUS_SHATTERS_PER_TICK = 20; // headroom heuri
 
 // Grav body max/mins
 constexpr double MAX_MASS = 1e12;
-constexpr double MAX_RADIUS = 300;
+constexpr double MAX_RADIUS = 600;

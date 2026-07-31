@@ -199,6 +199,7 @@ void InputSystem::routeSDL_EventInputInGame(SDL_Event* e)
             break;
         case SDL_BUTTON_RIGHT:
             transferInputs.rightMousePressed = true;
+            transferInputs.rightMouseJustPressed = true;
             break;
         case SDL_BUTTON_MIDDLE:
             transferInputs.middleMousePressed = true;
@@ -217,6 +218,7 @@ void InputSystem::routeSDL_EventInputInGame(SDL_Event* e)
             break;
         case SDL_BUTTON_RIGHT:
             transferInputs.rightMousePressed = false;
+            transferInputs.rightMouseJustReleased = true;
             break;
         case SDL_BUTTON_MIDDLE:
             transferInputs.middleMousePressed = false;
@@ -394,6 +396,15 @@ void InputSystem::translateAndPassTransferInputsOff(UIState& uiState)
             updated_input_state.isCreatingWithInitialVelocity = true;
         }
         updated_input_state.isCreatingMacro = true;
+    }
+    if (transferInputs.rightMouseJustReleased)
+    {
+        updated_input_state.isCreatingCollidable = true;
+        if (transferInputs.shiftPressed)
+        {
+            updated_input_state.isCreatingWithInitialVelocity = true;
+        }
+        updated_input_state.isCreatingParticleCluster = true;
     }
 }
 

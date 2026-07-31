@@ -1,6 +1,7 @@
 // File: Transfer/src/Systems/PhysicsSystem.cpp
 
 #include "PhysicsSystem.hpp"
+#include "Utilities/Constants/PhysicsConstants.hpp"
 
 PhysicsSystem::PhysicsSystem()
 {
@@ -49,6 +50,11 @@ void PhysicsSystem::UpdateGravBodyInstantiations(GameState& gameState, UIState& 
             createMacroBody(gameState,
                             input_state); // can inline replace with other create* methods for test. isCreatingMacro
                                           // should eventually be unique to just creating planets, etc.
+            input_state.resetTransientFlags();
+        }
+        else if (input_state.isCreatingParticleCluster)
+        {
+            createParticleCluster(gameState, input_state);
             input_state.resetTransientFlags();
         }
     }
@@ -714,6 +720,28 @@ void PhysicsSystem::createMacroBody(GameState& gameState, InputState& inputState
     // Now with populated flags, nudge particles out?
     macro_bodies.push_back(macro_body);
 }
+
+
+void PhysicsSystem::createParticleCluster(GameState& gameState, InputState& inputState)
+{
+    std::vector<GravitationalBody>& particles = gameState.getParticlesMutable();
+    if (inputState.selectedRadius <= 1.0)
+    {
+        return;
+    }
+    if (firstWithinEpsilonOfSecond((inputState.selectedMass), 0.0))
+    {
+        return;
+    }
+
+    GravitationalBody macro_body;
+
+    // Pass flags from inputState as possible.
+    populateGravBodyPropertiesFromInputState(macro_body, gameState, inputState);
+
+    substituteWithParticles(macro_body, gameState, DEFAULT_FRAGMENT_COUNT);
+}
+
 
 // --------- UTILITY --------- //
 
