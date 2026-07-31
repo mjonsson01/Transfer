@@ -717,7 +717,7 @@ void PhysicsSystem::createMacroBody(GameState& gameState, InputState& inputState
 
 // --------- UTILITY --------- //
 
-// TODO: Prune? currently uncalled, see commented invocation in UpdateSystemFrame
+// TODO: Prune?
 void PhysicsSystem::calculateTotalEnergy(GameState& gameState)
 {
     auto& macro_bodies = gameState.getMacroBodies();
