@@ -1,4 +1,4 @@
-// File: Transfer/src/Utilities/Rendering/Colors.h
+// File: Transfer/src/Utilities/Rendering/Colors.hpp
 
 #pragma once
 

@@ -8,6 +8,7 @@
 #include "Entities/Physics/GravitationalBody.hpp"
 #include "Entities/Physics/GravitationalBodyPair.hpp"
 #include "Utilities/Constants/EngineConstants.hpp"
+#include "Utilities/Constants/PhysicsConstants.hpp"
 #include "Utilities/Constants/GameSystemConstants.hpp"
 #include "Utilities/Math/CustomMathUtilities.hpp"
 #include "Utilities/Math/Vector2D.hpp"
