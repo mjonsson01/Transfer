@@ -215,7 +215,7 @@ void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& gravBodyPair, 
         return;
     }
 
-    if (collisionInfo.shouldBlowUp)
+    if (collisionInfo.shouldBlowUp && lighter.isShatterable)
     {
         if (!lighter.isShatterable)
         {

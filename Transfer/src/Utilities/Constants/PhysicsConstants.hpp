@@ -16,7 +16,7 @@ constexpr double MIN_BODY_BODY_ACCRETION_THRESHOLD_RATIO = 10.0; // 10x mass rat
 constexpr double MIN_BODY_PARTICLE_ACCRETION_THRESHOLD_RATIO = 10.0; // 10x mass ratio allows for accretion
 constexpr double ELASTIC_LOSS_FACTOR = 0.994; // Keep 99.4% of elastic collision energy. 
 constexpr double MUTUAL_SHATTER_MASS_RATIO_THRESHOLD = 10.0; // below this heavy/light ratio, both bodies shatter
-constexpr double MAX_ACCRETION_COLLISION_SPEED = 6000000.0; // in px/s (in world space) need to rescale later to m/s
+constexpr double MAX_ACCRETION_COLLISION_SPEED = 240.0; // in px/s (in world space) need to rescale later to m/s
 constexpr double MIN_SHATTER_SPEED = 120.0;             // in px/s (in world space) need to rescale later to m/s
 
 // Inactive for now, used if we reenable particle particle accretion and promotion
