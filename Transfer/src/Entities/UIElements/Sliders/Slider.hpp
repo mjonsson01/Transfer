@@ -30,7 +30,7 @@ class Slider : public UIElement
     void buildGeometry(std::vector<UIElementVertex>& vertexBuffer, uint32_t zIndex,
                        const FontAtlasUtility& fontAtlas) override;
     virtual std::string getDisplayText() const { return std::to_string(sliderValue); }
-    virtual void slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& UIState) override;
+    virtual void slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& uiState) override;
     double getSliderValue() { return sliderValue; }
     SDL_FPoint getKnobPosition() const { return {knobRect.x, knobRect.y}; }
 
@@ -42,5 +42,5 @@ class Slider : public UIElement
     double minValue;
     double maxValue;
     int lastTickIndex = -1; // -1 = no tick played yet
-    void playTickSoundIfMoved(UIState& UIState);
+    void playTickSoundIfMoved(UIState& uiState);
 };

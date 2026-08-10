@@ -1,32 +1,25 @@
-// File: Transfer/src/Utilities/Constants/EngineConstants.h
+// File: Transfer/src/Utilities/Constants/EngineConstants.hpp
 
 #pragma once
 
-// Global Physics dt
-constexpr float PHYSICS_TIME_STEP = 1.0f / 120.0f; // 120Hz physics update rate
+// Hardcoded Pi
+constexpr double PI = 3.14159265358979323846;
 
-// Newtonian Gravitational constant (scaled)
-static const double GRAVITATIONAL_CONSTANT = 6.67430e-7 / 5; // in m^3 kg^-1 s^-2
+// Near-zero comparison epsilon.
+constexpr double EPSILON = 1e-8;
 
-static const double MAX_MASS = 1e16;
-static const double MAX_RADIUS = 200;
+// Load balancing max renderable bodies on screen at once
+constexpr uint32_t MAX_UNIFIED_BODIES = 20000;
 
-static const double MIN_BODY_BODY_ACCRETION_THRESHOLD_RATIO = 10.0;
-static const double MIN_BODY_PARTICLE_ACCRETION_THRESHOLD_RATIO = 10.0;
+// Arbitrary limit to number of UI vertices
+constexpr uint32_t MAX_UI_VERTICES = 65536;
 
-static const double MAX_ACCRETION_COLLISION_SPEED = 90.0; // in px/s need to rescale later to m/s // not necessarily the
-                                                          // same as the min shatter speed
-static const double MIN_SHATTER_SPEED = 90.0;             // in px/s need to rescale later to m/s
+// Load balancing to prevent too many particles from being instantiated
+static const uint32_t MAX_LIVE_PARTICLES = 20000; 
 
-// Scaling factors for converting between simulation units and screen units
-// TBI
+// Load balancing to prevent too many shatters from occuring in a single frame.
+static const uint32_t MAX_SIMULTANEOUS_SHATTERS_PER_TICK = 20; // headroom heuristic, see handleCollisions reserve()
 
-static const double PI = 3.14159265358979323846;
-
-static const double EPSILON = 1e-8;
-
-static const uint32_t MAX_UNIFIED_BODIES = 200000;
-
-static const double ELASTIC_LOSS_FACTOR = 0.75; // 85% of Velocity retained after elastic collision
-
-static const uint32_t MAX_UI_VERTICES = 65536;
+// Grav body max/mins
+constexpr double MAX_MASS = 1e12;
+constexpr double MAX_RADIUS = 600;

@@ -1,4 +1,4 @@
-// File: Transfer/src/Systems/AudioSystem.h
+// File: Transfer/src/Systems/AudioSystem.hpp
 
 #pragma once
 
@@ -29,7 +29,7 @@ class AudioSystem
 
   public:
     // Main method to process audio each frame
-    void ProcessSystemAudioFrame(GameState& gameState, UIState& UIState);
+    void ProcessSystemAudioFrame(GameState& gameState, UIState& uiState);
 
     void loadAndPlayTrack(const std::string& path);
     void addAllSoundEffectsToLibrary(const std::string& folderPath);

@@ -54,12 +54,7 @@ RenderSystem::~RenderSystem()
 // --------- CLEANUP METHOD --------- //
 void RenderSystem::CleanUp()
 {
-    if (window)
-    {
-        SDL_DestroyWindow(window);
-        window = nullptr;
-    }
-    // 1. Release GPU-specific resources
+    // Release GPU-specific resources
     if (unifiedBodyVertexBuffer != nullptr)
         SDL_ReleaseGPUBuffer(gpu, unifiedBodyVertexBuffer);
     if (twinklingStarVertexBuffer != nullptr)
@@ -89,10 +84,15 @@ void RenderSystem::CleanUp()
     if (velocityVectorPipeline != nullptr)
         SDL_ReleaseGPUGraphicsPipeline(gpu, velocityVectorPipeline);
 
-    // 2. Finally, destroy the GPU device
+    // release the window from gpu
+    if (gpu != nullptr && window != nullptr)
+        SDL_ReleaseWindowFromGPUDevice(gpu, window);
+
+    // destroy the gpu
     if (gpu != nullptr)
         SDL_DestroyGPUDevice(gpu);
 
+    // destroy the window
     if (window)
     {
         SDL_DestroyWindow(window);
@@ -141,17 +141,17 @@ SDL_GPUShader* RenderSystem::LoadShader(SDL_GPUDevice* device, const char* baseF
 }
 // --------- RENDER FULL FRAME METHOD --------- //
 
-void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState,
+void RenderSystem::RenderFullFrame(GameState& gameState, UIState& uiState,
                                    const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope)
 {
 
     SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(gpu);
 
-    SceneIdentifier current_scene = UIState.getCurrentSceneID();
+    SceneIdentifier current_scene = uiState.getCurrentSceneID();
 
     if (current_scene == SceneIdentifier::GAME_SCENE)
     {
-        uploadBodies(gameState, UIState, cmdbuf);
+        uploadBodies(gameState, uiState, cmdbuf);
     }
     uploadUIVertices(allUIElementsInScope, cmdbuf);
     // Acquire the display target
@@ -176,11 +176,11 @@ void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState,
         if (current_scene == SceneIdentifier::GAME_SCENE)
         {
             // Update your renderGameFrame signature to match
-            renderGameFrame(gameState, UIState, allUIElementsInScope, pass, cmdbuf);
+            renderGameFrame(gameState, uiState, allUIElementsInScope, pass, cmdbuf);
         }
         else
         {
-            renderNonGameFrame(gameState, UIState, allUIElementsInScope, pass, cmdbuf);
+            renderNonGameFrame(gameState, uiState, allUIElementsInScope, pass, cmdbuf);
         }
 
         SDL_EndGPURenderPass(pass);
@@ -189,23 +189,23 @@ void RenderSystem::RenderFullFrame(GameState& gameState, UIState& UIState,
     SDL_SubmitGPUCommandBuffer(cmdbuf);
 }
 
-void RenderSystem::renderGameFrame(GameState& gameState, UIState& UIState,
+void RenderSystem::renderGameFrame(GameState& gameState, UIState& uiState,
                                    const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
                                    SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf)
 {
     renderTwinklingStarField(pass, cmdbuf, gameState.getCameraState());
-    renderBodies(gameState, UIState, pass, cmdbuf);
+    renderBodies(gameState, uiState, pass, cmdbuf);
     renderVelocityVector(pass, cmdbuf, gameState.getCameraState());
     renderUIElements(pass, cmdbuf, gameState.getCameraState());
 }
-void RenderSystem::renderNonGameFrame(GameState& gameState, UIState& UIState,
+void RenderSystem::renderNonGameFrame(GameState& gameState, UIState& uiState,
                                       const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
                                       SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf)
 {
     renderUIElements(pass, cmdbuf, gameState.getCameraState());
 }
 
-void RenderSystem::uploadBodies(GameState& gameState, UIState& UIState, SDL_GPUCommandBuffer* cmdbuf)
+void RenderSystem::uploadBodies(GameState& gameState, UIState& uiState, SDL_GPUCommandBuffer* cmdbuf)
 {
     auto& particles = gameState.getParticles();
     auto& bodies = gameState.getMacroBodies();
@@ -229,7 +229,7 @@ void RenderSystem::uploadBodies(GameState& gameState, UIState& UIState, SDL_GPUC
         }
     }
 
-    appendPreviewBodies(vertex_data, UIState, gameState.getCameraState());
+    appendPreviewBodies(vertex_data, uiState, gameState.getCameraState());
     uploadVelocityVectorVertices(cmdbuf);
 
     if (vertex_data.size() > MAX_UNIFIED_BODIES)
@@ -256,7 +256,7 @@ void RenderSystem::uploadBodies(GameState& gameState, UIState& UIState, SDL_GPUC
     }
 }
 
-void RenderSystem::renderBodies(GameState& gameState, UIState& UIState, SDL_GPURenderPass* pass,
+void RenderSystem::renderBodies(GameState& gameState, UIState& uiState, SDL_GPURenderPass* pass,
                                 SDL_GPUCommandBuffer* cmdbuf)
 {
     // Quickly count how many total instances are active for drawing
@@ -269,7 +269,7 @@ void RenderSystem::renderBodies(GameState& gameState, UIState& UIState, SDL_GPUR
             instance_count++;
 
     gameState.getCameraStateMutable().renderAlpha = gameState.getAlpha();
-    if (UIState.getMutableInputState().isPreviewingMacro)
+    if (uiState.getMutableInputState().isPreviewingMacro)
     {
         instance_count++;
     }
@@ -460,10 +460,10 @@ void RenderSystem::renderUIElements(SDL_GPURenderPass* pass, SDL_GPUCommandBuffe
     SDL_BindGPUFragmentSamplers(pass, 0, &texBinding, 1);
     SDL_DrawGPUPrimitives(pass, (uint32_t)uiVertices.size(), 1, 0, 0);
 }
-void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexData, UIState& UIState,
+void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexData, UIState& uiState,
                                        const CameraState& cameraState)
 {
-    InputState& input_state = UIState.getMutableInputState();
+    InputState& input_state = uiState.getMutableInputState();
     velocityVectorVertices.clear();
     if (input_state.isPreviewingMacro)
     {

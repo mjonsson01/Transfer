@@ -36,8 +36,11 @@ float4 main(VertexOutput input) : SV_Target
         // Mass View
         //--------------------------------
 
-        float massMag = saturate(abs(input.logMass) / 16.0);
-
+        float massMag = saturate(abs(input.logMass) / 8.0);
+        // Scale brightness of a pure hue instead of blending toward white, so
+        // color stays fully saturated across the whole mass range instead of
+        // washing out near zero mass.
+        float brightness = lerp(0.35, 1.0, massMag);
         float3 c;
 
         if (input.logMass < 0.0)

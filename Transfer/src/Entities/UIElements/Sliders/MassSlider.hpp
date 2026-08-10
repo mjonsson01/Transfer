@@ -29,7 +29,10 @@ class MassSlider : public Slider
     {
         return "Mass: " + std::to_string(sliderValue); // add units?
     }
-    void slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& UIState) override;
+    void slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& uiState) override;
     void updateLayout(float windowWidth, float windowHeight) override;
-    void playTickSoundIfMoved(UIState& UIState);
+    void playTickSoundIfMoved(UIState& uiState);
+
+  private:
+    double curveExponent;
 };

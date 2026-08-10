@@ -12,10 +12,10 @@ PlayGameButton::PlayGameButton() : Button()
     UIElementID = UIElementIdentifier::PLAY_GAME_BUTTON_INDEX;
 }
 
-void PlayGameButton::clickMe(Vector2D positionOfEvent, UIState& UIState)
+void PlayGameButton::clickMe(Vector2D positionOfEvent, UIState& uiState)
 {
-    UIState.setCurrentScene(SceneIdentifier::GAME_SCENE);
-    UIState.QueueSoundEffect("ButtonClick");
+    uiState.setCurrentScene(SceneIdentifier::GAME_SCENE);
+    uiState.QueueSoundEffect("ButtonClick");
     return;
 }
 

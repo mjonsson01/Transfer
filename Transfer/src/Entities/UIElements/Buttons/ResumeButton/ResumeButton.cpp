@@ -12,13 +12,13 @@ ResumeButton::ResumeButton() : Button()
     UIElementID = UIElementIdentifier::RESUME_BUTTON_INDEX;
 }
 
-void ResumeButton::clickMe(Vector2D positionOfEvent, UIState& UIState)
+void ResumeButton::clickMe(Vector2D positionOfEvent, UIState& uiState)
 {
-    // UIState.setCurrentScene(SceneIdentifier::GAME_SCENE);
+    uiState.setCurrentScene(SceneIdentifier::GAME_SCENE);
     std::string temp = displayText;
     displayText = altText;
     altText = temp;
-    UIState.QueueSoundEffect("ButtonClick");
+    uiState.QueueSoundEffect("ButtonClick");
     return;
 }
 

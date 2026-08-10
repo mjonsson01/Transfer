@@ -10,7 +10,7 @@ Button::Button()
     hotZoneRect = boundingRect;
 }
 
-void Button::clickMe(Vector2D positionOfEvent, UIState& UIState)
+void Button::clickMe(Vector2D positionOfEvent, UIState& uiState)
 {
     std::string temp = altText;
     altText = displayText;

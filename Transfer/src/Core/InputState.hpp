@@ -12,7 +12,7 @@ struct InputState
 
     // Physics locations if instantiateDirty gets thrown. If the event is not
     // consumed by a UI event, then instantiate dirty will be set by the
-    // UIState.
+    // uiState.
 
     bool isDragging = false;                  // set in Input System
     bool isClickingRightMouseButton = false;  // set by transfer inputs
