@@ -26,6 +26,8 @@ struct TransferInputs
     bool middleMousePressed = false;
     bool leftMouseJustReleased = false;
     bool leftMouseJustPressed = false;
+    bool rightMouseJustReleased = false;
+    bool rightMouseJustPressed = false;
     bool middleMouseJustPressed = false;
 
     // Menu and Media controls
@@ -78,6 +80,8 @@ struct TransferInputs
     {
         leftMouseJustPressed = false;
         leftMouseJustReleased = false;
+        rightMouseJustPressed = false;
+        rightMouseJustReleased = false;
         middleMouseJustPressed = false;
         escJustPressed = false;
     }
