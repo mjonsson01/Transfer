@@ -44,11 +44,11 @@ VertexOutput main(
     float  charge      : TEXCOORD4,
     uint   flags       : TEXCOORD5,
     uint   seed        : TEXCOORD6,
-    uint   vertexId    : SV_VertexID)
+    uint   vertexID    : SV_vertexID)
 {
     VertexOutput output;
 
-    float2 local = offsets[vertexId % 6];
+    float2 local = offsets[vertexID % 6];
 
     // float2 worldPos = pos + local * radius;
     float2 interpPos = lerp(prevPos, pos, rendering_alpha);
@@ -72,7 +72,7 @@ VertexOutput main(
     output.flags = flags;
     output.seed = seed;
 
-    output.color = float4(1.0, 0.0, 0.0, 1.0);
+    output.color = float4(0.0, 0.0, 0.0, 1.0);
 
     return output;
 }

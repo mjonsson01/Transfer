@@ -32,11 +32,12 @@ RenderSystem::RenderSystem(GameState& gameState)
     UIFontRegular = TTF_OpenFont(Utilities::GetResourcePath("Fonts/SpaceMono-Regular.ttf").c_str(), 18);
     UIFontTitle = TTF_OpenFont(Utilities::GetResourcePath("Fonts/SpaceMono-Bold.ttf").c_str(), 32);
 
-    createGravBodyGPUBuffer();
-    createTwinklingStarGPUBuffer();
-    createVelocityVectorPipeline();
-    createUIPipeline();
-    createFontAtlasTexture();
+    createUnifiedBodyGPUBufferAndPipeline();
+    createTwinklingStarGPUBufferAndPipeline();
+    createVelocityVectorGPUBufferAndPipeline();
+    createUIGPUBufferAndPipeline();
+    createFontAtlasTextureAndSampler();
+    createStarshipGPUBufferAndPipeline();
     createTwinklingStarField(gameState.getCameraState().maxDisplayWidth, gameState.getCameraState().maxDisplayHeight);
     if (gpu)
     {
@@ -169,7 +170,11 @@ void RenderSystem::RenderFullFrame(GameState& gameState, UIState& uiState,
     if (current_scene == SceneIdentifier::GAME_SCENE)
     {
         uploadTwinklingStarField(cmdbuf);
-        uploadBodies(gameState, uiState, cmdbuf);
+        uploadUnifiedBodies(gameState, uiState, cmdbuf);
+    }
+    if (current_scene == SceneIdentifier::TEST_VISUAL_SCENE)
+    {
+        uploadStarship(gameState, uiState, cmdbuf);
     }
     uploadUIVertices(allUIElementsInScope, cmdbuf);
     // Acquire the display target
@@ -191,10 +196,14 @@ void RenderSystem::RenderFullFrame(GameState& gameState, UIState& uiState,
 
         SDL_GPURenderPass* pass = SDL_BeginGPURenderPass(cmdbuf, &color_info, 1, nullptr);
 
-        if (current_scene == SceneIdentifier::GAME_SCENE || current_scene == SceneIdentifier::TEST_VISUAL_SCENE)
+        if (current_scene == SceneIdentifier::GAME_SCENE)
         {
             // Update your renderGameFrame signature to match
             renderGameFrame(gameState, uiState, allUIElementsInScope, pass, cmdbuf);
+        }
+        if (current_scene == SceneIdentifier::TEST_VISUAL_SCENE)
+        {
+            renderTestFrame(gameState, uiState, allUIElementsInScope, pass, cmdbuf);
         }
         else
         {
@@ -213,9 +222,10 @@ void RenderSystem::renderGameFrame(GameState& gameState, UIState& uiState,
 {
     renderTwinklingStarField(pass, cmdbuf, gameState.getCameraState());
     renderBodies(gameState, uiState, pass, cmdbuf);
-    renderVelocityVector(pass, cmdbuf, gameState.getCameraState());
+    renderVelocityVectors(pass, cmdbuf, gameState.getCameraState());
     renderUIElements(pass, cmdbuf, gameState.getCameraState());
 }
+
 void RenderSystem::renderNonGameFrame(GameState& gameState, UIState& uiState,
                                       const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
                                       SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf)
@@ -223,7 +233,13 @@ void RenderSystem::renderNonGameFrame(GameState& gameState, UIState& uiState,
     renderUIElements(pass, cmdbuf, gameState.getCameraState());
 }
 
-void RenderSystem::uploadBodies(GameState& gameState, UIState& uiState, SDL_GPUCommandBuffer* cmdbuf)
+void RenderSystem::renderTestFrame(GameState& gameState, UIState& uiState,
+                                   const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
+                                   SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf)
+{
+    renderStarship(gameState, pass, cmdbuf, gameState.getCameraState());
+}
+void RenderSystem::uploadUnifiedBodies(GameState& gameState, UIState& uiState, SDL_GPUCommandBuffer* cmdbuf)
 {
     unifiedBodyVertices.clear();
 
@@ -275,6 +291,38 @@ void RenderSystem::uploadBodies(GameState& gameState, UIState& uiState, SDL_GPUC
     }
 }
 
+void RenderSystem::uploadStarship(GameState& gameState, UIState& uiState, SDL_GPUCommandBuffer* cmdbuf)
+{
+    starshipVertices.clear();
+    starshipVertices.reserve(MAX_STARSHIP_VERTICES);
+
+    // Rework into getPlayer const since this method doesn't actually do anything to the starship
+    gameState.getPlayerMutable().starship.buildGeometry(starshipVertices);
+
+    if (starshipVertices.size() > MAX_STARSHIP_VERTICES)
+    {
+        printf("Too many starship vertices %zu > %d\n", starshipVertices.size(), MAX_STARSHIP_VERTICES);
+    }
+    if (starshipVertices.empty())
+    {
+        printf("No starship vertices received");
+    }
+    if (!starshipVertices.empty())
+    {
+        void* map = SDL_MapGPUTransferBuffer(gpu, starshipTransferBuffer, false);
+        SDL_memcpy(map, starshipVertices.data(), starshipVertices.size() * sizeof(StarshipVertex));
+        SDL_UnmapGPUTransferBuffer(gpu, starshipTransferBuffer);
+        SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdbuf);
+        SDL_GPUTransferBufferLocation src = {.transfer_buffer = starshipTransferBuffer, .offset = 0};
+        SDL_GPUBufferRegion dst = {.buffer = starshipVertexBuffer,
+                                   .offset = 0,
+                                   .size = (uint32_t)(starshipVertices.size() * sizeof(StarshipVertex))};
+
+        SDL_UploadToGPUBuffer(copyPass, &src, &dst, false);
+        SDL_EndGPUCopyPass(copyPass);
+    }
+}
+
 void RenderSystem::renderBodies(GameState& gameState, UIState& uiState, SDL_GPURenderPass* pass,
                                 SDL_GPUCommandBuffer* cmdbuf)
 {
@@ -311,7 +359,24 @@ void RenderSystem::renderBodies(GameState& gameState, UIState& uiState, SDL_GPUR
     }
 }
 
-void RenderSystem::createUIPipeline()
+void RenderSystem::renderStarship(GameState& gameState, SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
+                                  const CameraState& cameraState)
+{
+    SDL_BindGPUGraphicsPipeline(pass, starshipPipeline);
+    CameraConstants camera_constants =
+        buildCameraConstants(gameState.getCameraState(), gameState.getCameraState().offset);
+    SDL_PushGPUVertexUniformData(cmdbuf, 0, &camera_constants, sizeof(camera_constants));
+
+    SDL_GPUBufferBinding vbo = {.buffer = starshipVertexBuffer, .offset = 0};
+    SDL_BindGPUVertexBuffers(pass, 0, &vbo, 1);
+
+    SDL_DrawGPUPrimitives(pass,
+                          6, // vertices per quad
+                          1, // instances
+                          0, 0);
+}
+
+void RenderSystem::createUIGPUBufferAndPipeline()
 {
     SDL_GPUBufferCreateInfo vb_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX,
                                        .size = MAX_UI_VERTICES * sizeof(UIElementVertex)};
@@ -322,7 +387,7 @@ void RenderSystem::createUIPipeline()
     uiTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
 
     SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/UIElement.vert", 0, 1);
-    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/UIElement.frag", 1);
+    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/UIElement.frag", 1, 0);
 
     SDL_GPUVertexAttribute attrs[6];
     attrs[0] = {.location = 0,
@@ -375,7 +440,7 @@ void RenderSystem::createUIPipeline()
     SDL_ReleaseGPUShader(gpu, frag_shader);
 }
 
-void RenderSystem::createFontAtlasTexture()
+void RenderSystem::createFontAtlasTextureAndSampler()
 {
     SDL_Surface* atlasSurface = fontAtlas.BuildAtlas(UIFontRegular);
     if (!atlasSurface)
@@ -563,21 +628,21 @@ SDL_Color RenderSystem::getColorForProperty(const GravitationalBody& body)
     return SDL_Color{r, g, b, opacity};
 }
 
-void RenderSystem::createGravBodyGPUBuffer()
+void RenderSystem::createUnifiedBodyGPUBufferAndPipeline()
 {
 
-    SDL_GPUBufferCreateInfo vertex_buffer_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX,
-                                                  .size = MAX_UNIFIED_BODIES * sizeof(UnifiedBodyVertex)};
-    unifiedBodyVertexBuffer = SDL_CreateGPUBuffer(gpu, &vertex_buffer_info);
+    SDL_GPUBufferCreateInfo vb_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX,
+                                       .size = MAX_UNIFIED_BODIES * sizeof(UnifiedBodyVertex)};
+    unifiedBodyVertexBuffer = SDL_CreateGPUBuffer(gpu, &vb_info);
 
     SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
                                                .size = MAX_UNIFIED_BODIES * sizeof(UnifiedBodyVertex)};
     unifiedBodyTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
 
     SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/UnifiedGravBody.vert", 0, 1);
-    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/UnifiedGravBody.frag");
+    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/UnifiedGravBody.frag", 0, 0);
 
-    // 6. Define Pipeline State
+    // Define Pipeline State
     SDL_GPUVertexAttribute vertex_attributes[8];
 
     // [0] Position, float2
@@ -648,7 +713,7 @@ void RenderSystem::createGravBodyGPUBuffer()
     pipeline_info.vertex_shader = vert_shader;
     pipeline_info.fragment_shader = frag_shader;
 
-    // Change to TRIANGLESTRIP for your Quads!
+    // Change to TRIANGLESTRIP ``TODO: CHECK?`` for your Quads!
     pipeline_info.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
 
     pipeline_info.vertex_input_state.vertex_attributes = vertex_attributes;
@@ -666,12 +731,12 @@ void RenderSystem::createGravBodyGPUBuffer()
     SDL_ReleaseGPUShader(gpu, frag_shader);
 }
 
-void RenderSystem::createTwinklingStarGPUBuffer()
+void RenderSystem::createTwinklingStarGPUBufferAndPipeline()
 {
 
-    SDL_GPUBufferCreateInfo vertex_buffer_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX,
-                                                  .size = STAR_NUM * sizeof(TwinklingStarVertex)};
-    twinklingStarVertexBuffer = SDL_CreateGPUBuffer(gpu, &vertex_buffer_info);
+    SDL_GPUBufferCreateInfo vb_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX,
+                                       .size = STAR_NUM * sizeof(TwinklingStarVertex)};
+    twinklingStarVertexBuffer = SDL_CreateGPUBuffer(gpu, &vb_info);
 
     SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
                                                .size = STAR_NUM * sizeof(TwinklingStarVertex)};
@@ -729,7 +794,7 @@ void RenderSystem::createTwinklingStarGPUBuffer()
     pipeline_info.vertex_shader = vert_shader;
     pipeline_info.fragment_shader = frag_shader;
 
-    // Change to TRIANGLESTRIP for your Quads!
+    // Change to TRIANGLESTRIP ``TODO: CHECK?`` for your Quads!
     pipeline_info.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
 
     pipeline_info.vertex_input_state.vertex_attributes = vertex_attributes;
@@ -817,7 +882,7 @@ void RenderSystem::renderTwinklingStarField(SDL_GPURenderPass* pass, SDL_GPUComm
     SDL_DrawGPUPrimitives(pass, 6, STAR_NUM, 0, 0);
 }
 
-void RenderSystem::createVelocityVectorPipeline()
+void RenderSystem::createVelocityVectorGPUBufferAndPipeline()
 {
     SDL_GPUBufferCreateInfo vb_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX,
                                        .size = MAX_VELOCITY_VECTOR_VERTICES * sizeof(VelocityVectorVertex)};
@@ -828,7 +893,7 @@ void RenderSystem::createVelocityVectorPipeline()
     velocityVectorTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
 
     SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/VelocityVector.vert", 0, 1);
-    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/VelocityVector.frag");
+    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/VelocityVector.frag", 0, 0);
 
     SDL_GPUVertexAttribute vertex_attributes[2];
     vertex_attributes[0].location = 0;
@@ -869,6 +934,90 @@ void RenderSystem::createVelocityVectorPipeline()
 
     velocityVectorPipeline = SDL_CreateGPUGraphicsPipeline(gpu, &pipeline_info);
 
+    SDL_ReleaseGPUShader(gpu, vert_shader);
+    SDL_ReleaseGPUShader(gpu, frag_shader);
+}
+
+void RenderSystem::createStarshipGPUBufferAndPipeline()
+{
+    SDL_GPUBufferCreateInfo vb_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX,
+                                       .size = MAX_STARSHIP_VERTICES * sizeof(StarshipVertex)};
+
+    starshipVertexBuffer = SDL_CreateGPUBuffer(gpu, &vb_info);
+
+    SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+                                               .size = MAX_STARSHIP_VERTICES * sizeof(StarshipVertex)};
+    starshipTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
+
+    SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/Starship.vert", 0, 1);
+    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/Starship.frag", 0, 0);
+
+    SDL_GPUVertexAttribute vertex_attributes[5];
+
+    // Position float2
+    vertex_attributes[0].location = 0;
+    vertex_attributes[0].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2;
+    vertex_attributes[0].offset = offsetof(StarshipVertex, x);
+    vertex_attributes[0].buffer_slot = 0;
+
+    // Previous position float2
+    vertex_attributes[1].location = 1;
+    vertex_attributes[1].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2;
+    vertex_attributes[1].offset = offsetof(StarshipVertex, prevX);
+    vertex_attributes[1].buffer_slot = 0;
+
+    // square size, float
+    vertex_attributes[2].location = 2;
+    vertex_attributes[2].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT;
+    vertex_attributes[2].offset = offsetof(StarshipVertex, square_size);
+    vertex_attributes[2].buffer_slot = 0;
+
+    // texture coordinates (u, v) float2
+    vertex_attributes[3].location = 3;
+    vertex_attributes[3].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2;
+    vertex_attributes[3].offset = offsetof(StarshipVertex, u);
+    vertex_attributes[3].buffer_slot = 0;
+
+    // Color float 4
+    vertex_attributes[4].location = 4;
+    vertex_attributes[4].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4;
+    vertex_attributes[4].offset = offsetof(StarshipVertex, r);
+    vertex_attributes[4].buffer_slot = 0;
+
+    SDL_GPUGraphicsPipelineCreateInfo pipeline_info = {};
+    pipeline_info.target_info.num_color_targets = 1;
+
+    SDL_GPUColorTargetDescription color_target = {};
+    color_target.format = SDL_GetGPUSwapchainTextureFormat(gpu, window);
+    color_target.blend_state.enable_blend = true;
+
+    color_target.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    color_target.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+    color_target.blend_state.src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    color_target.blend_state.dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+
+    // MUST SET THESE EXPLICITLY:
+    color_target.blend_state.color_blend_op = SDL_GPU_BLENDOP_ADD;
+    color_target.blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD;
+
+    pipeline_info.target_info.color_target_descriptions = &color_target;
+    pipeline_info.vertex_shader = vert_shader;
+    pipeline_info.fragment_shader = frag_shader;
+
+    // // Change to TRIANGLESTRIP ``TODO: CHECK?`` for quads
+    pipeline_info.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
+
+    pipeline_info.vertex_input_state.vertex_attributes = vertex_attributes;
+    pipeline_info.vertex_input_state.num_vertex_attributes = 5;
+
+    SDL_GPUVertexBufferDescription vbo_desc = {
+        .slot = 0, .pitch = sizeof(StarshipVertex), .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX};
+    pipeline_info.vertex_input_state.vertex_buffer_descriptions = &vbo_desc;
+    pipeline_info.vertex_input_state.num_vertex_buffers = 1;
+
+    starshipPipeline = SDL_CreateGPUGraphicsPipeline(gpu, &pipeline_info);
+    if (!starshipPipeline)
+        std::cerr << "Starship pipeline creation failed: " << SDL_GetError() << std::endl;
     SDL_ReleaseGPUShader(gpu, vert_shader);
     SDL_ReleaseGPUShader(gpu, frag_shader);
 }
@@ -938,8 +1087,8 @@ void RenderSystem::uploadVelocityVectorVertices(SDL_GPUCommandBuffer* cmdbuf)
     SDL_EndGPUCopyPass(copyPass);
 }
 
-void RenderSystem::renderVelocityVector(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
-                                        const CameraState& cameraState)
+void RenderSystem::renderVelocityVectors(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
+                                         const CameraState& cameraState)
 {
     if (velocityVectorVertices.empty())
         return;

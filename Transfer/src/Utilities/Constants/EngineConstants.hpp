@@ -15,11 +15,12 @@ constexpr uint32_t MAX_UNIFIED_BODIES = 20000;
 constexpr uint32_t MAX_UI_VERTICES = 65536;
 
 // Load balancing to prevent too many particles from being instantiated
-static const uint32_t MAX_LIVE_PARTICLES = 20000;
+constexpr uint32_t MAX_LIVE_PARTICLES = 20000;
 
 // Load balancing to prevent too many shatters from occuring in a single frame.
-static const uint32_t MAX_SIMULTANEOUS_SHATTERS_PER_TICK = 20; // headroom heuristic, see handleCollisions reserve()
+constexpr uint32_t MAX_SIMULTANEOUS_SHATTERS_PER_TICK = 20; // headroom heuristic, see handleCollisions reserve()
 
+constexpr uint32_t MAX_STARSHIP_VERTICES = 32; // Unknown if needed
 // Grav body max/mins
 constexpr double MAX_MASS = 1e11;
 constexpr double MAX_RADIUS = 300;

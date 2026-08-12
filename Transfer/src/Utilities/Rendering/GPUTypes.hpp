@@ -48,6 +48,8 @@ struct VelocityVectorVertex
 struct StarshipVertex
 {
     float x, y;
+    float prevX, prevY;
+    float square_size;
     float u, v;
     float r, g, b, a;
 };
