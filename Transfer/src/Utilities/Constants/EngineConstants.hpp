@@ -21,10 +21,5 @@ static const uint32_t MAX_LIVE_PARTICLES = 20000;
 static const uint32_t MAX_SIMULTANEOUS_SHATTERS_PER_TICK = 20; // headroom heuristic, see handleCollisions reserve()
 
 // Grav body max/mins
-<<<<<<< HEAD
 constexpr double MAX_MASS = 1e11;
 constexpr double MAX_RADIUS = 300;
-=======
-constexpr double MAX_MASS = 1e12;
-constexpr double MAX_RADIUS = 600;
->>>>>>> 35bb4b8cd1894f2d0615f49b56a79c7c5cbf9702

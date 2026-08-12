@@ -41,7 +41,6 @@ RenderSystem::RenderSystem(GameState& gameState)
     if (gpu)
     {
         SDL_GPUCommandBuffer* initCmdBuf = SDL_AcquireGPUCommandBuffer(gpu);
-        uploadTwinklingStarField(initCmdBuf);
         SDL_SubmitGPUCommandBuffer(initCmdBuf);
     }
 }
@@ -55,34 +54,52 @@ RenderSystem::~RenderSystem()
 void RenderSystem::CleanUp()
 {
     // Release GPU-specific resources
+
+    // Release Unified Body Resources
     if (unifiedBodyVertexBuffer != nullptr)
         SDL_ReleaseGPUBuffer(gpu, unifiedBodyVertexBuffer);
-    if (twinklingStarVertexBuffer != nullptr)
-        SDL_ReleaseGPUBuffer(gpu, twinklingStarVertexBuffer);
-    if (unifiedBodyTransferBuffer != nullptr)
-        SDL_ReleaseGPUTransferBuffer(gpu, unifiedBodyTransferBuffer);
-    if (twinklingStarTransferBuffer != nullptr)
-        SDL_ReleaseGPUTransferBuffer(gpu, twinklingStarTransferBuffer);
     if (unifiedBodyPipeline != nullptr)
         SDL_ReleaseGPUGraphicsPipeline(gpu, unifiedBodyPipeline);
+    if (unifiedBodyTransferBuffer != nullptr)
+        SDL_ReleaseGPUTransferBuffer(gpu, unifiedBodyTransferBuffer);
+
+    // Release Twinkling Star Resources
+    if (twinklingStarVertexBuffer != nullptr)
+        SDL_ReleaseGPUBuffer(gpu, twinklingStarVertexBuffer);
     if (twinklingStarPipeline != nullptr)
         SDL_ReleaseGPUGraphicsPipeline(gpu, twinklingStarPipeline);
+    if (twinklingStarTransferBuffer != nullptr)
+        SDL_ReleaseGPUTransferBuffer(gpu, twinklingStarTransferBuffer);
+
+    // Release UI Resources
     if (uiVertexBuffer != nullptr)
         SDL_ReleaseGPUBuffer(gpu, uiVertexBuffer);
-    if (uiTransferBuffer != nullptr)
-        SDL_ReleaseGPUTransferBuffer(gpu, uiTransferBuffer);
     if (uiPipeline != nullptr)
         SDL_ReleaseGPUGraphicsPipeline(gpu, uiPipeline);
+    if (uiTransferBuffer != nullptr)
+        SDL_ReleaseGPUTransferBuffer(gpu, uiTransferBuffer);
+
+    // Release Velocity Vector Resources
+    if (velocityVectorVertexBuffer != nullptr)
+        SDL_ReleaseGPUBuffer(gpu, velocityVectorVertexBuffer);
+    if (velocityVectorPipeline != nullptr)
+        SDL_ReleaseGPUGraphicsPipeline(gpu, velocityVectorPipeline);
+    if (velocityVectorTransferBuffer != nullptr)
+        SDL_ReleaseGPUTransferBuffer(gpu, velocityVectorTransferBuffer);
+
+    // Release Starship Pipeline
+    if (starshipVertexBuffer != nullptr)
+        SDL_ReleaseGPUBuffer(gpu, starshipVertexBuffer);
+    if (starshipPipeline != nullptr)
+        SDL_ReleaseGPUGraphicsPipeline(gpu, starshipPipeline);
+    if (starshipTransferBuffer != nullptr)
+        SDL_ReleaseGPUTransferBuffer(gpu, starshipTransferBuffer);
+
+    // Release Font Resources
     if (fontAtlasTexture != nullptr)
         SDL_ReleaseGPUTexture(gpu, fontAtlasTexture);
     if (fontAtlasSampler != nullptr)
         SDL_ReleaseGPUSampler(gpu, fontAtlasSampler);
-    if (velocityVectorVertexBuffer != nullptr)
-        SDL_ReleaseGPUBuffer(gpu, velocityVectorVertexBuffer);
-    if (velocityVectorTransferBuffer != nullptr)
-        SDL_ReleaseGPUTransferBuffer(gpu, velocityVectorTransferBuffer);
-    if (velocityVectorPipeline != nullptr)
-        SDL_ReleaseGPUGraphicsPipeline(gpu, velocityVectorPipeline);
 
     // release the window from gpu
     if (gpu != nullptr && window != nullptr)
@@ -151,6 +168,7 @@ void RenderSystem::RenderFullFrame(GameState& gameState, UIState& uiState,
 
     if (current_scene == SceneIdentifier::GAME_SCENE)
     {
+        uploadTwinklingStarField(cmdbuf);
         uploadBodies(gameState, uiState, cmdbuf);
     }
     uploadUIVertices(allUIElementsInScope, cmdbuf);
@@ -173,7 +191,7 @@ void RenderSystem::RenderFullFrame(GameState& gameState, UIState& uiState,
 
         SDL_GPURenderPass* pass = SDL_BeginGPURenderPass(cmdbuf, &color_info, 1, nullptr);
 
-        if (current_scene == SceneIdentifier::GAME_SCENE)
+        if (current_scene == SceneIdentifier::GAME_SCENE || current_scene == SceneIdentifier::TEST_VISUAL_SCENE)
         {
             // Update your renderGameFrame signature to match
             renderGameFrame(gameState, uiState, allUIElementsInScope, pass, cmdbuf);
@@ -207,17 +225,18 @@ void RenderSystem::renderNonGameFrame(GameState& gameState, UIState& uiState,
 
 void RenderSystem::uploadBodies(GameState& gameState, UIState& uiState, SDL_GPUCommandBuffer* cmdbuf)
 {
+    unifiedBodyVertices.clear();
+
     auto& particles = gameState.getParticles();
     auto& bodies = gameState.getMacroBodies();
 
-    std::vector<UnifiedBodyVertex> vertex_data;
-    vertex_data.reserve(particles.size() + bodies.size());
+    unifiedBodyVertices.reserve(particles.size() + bodies.size());
 
     for (auto& p : particles)
     {
         if (p.visible)
         {
-            vertex_data.push_back(p.toUnifiedVertex());
+            unifiedBodyVertices.push_back(p.toUnifiedVertex());
         }
     }
 
@@ -225,23 +244,23 @@ void RenderSystem::uploadBodies(GameState& gameState, UIState& uiState, SDL_GPUC
     {
         if (b.visible)
         {
-            vertex_data.push_back(b.toUnifiedVertex());
+            unifiedBodyVertices.push_back(b.toUnifiedVertex());
         }
     }
 
-    appendPreviewBodies(vertex_data, uiState, gameState.getCameraState());
+    appendPreviewBodies(unifiedBodyVertices, uiState, gameState.getCameraState());
     uploadVelocityVectorVertices(cmdbuf);
 
-    if (vertex_data.size() > MAX_UNIFIED_BODIES)
+    if (unifiedBodyVertices.size() > MAX_UNIFIED_BODIES)
     {
-        printf("Too many bodies! %zu > %d\n", vertex_data.size(), MAX_UNIFIED_BODIES);
+        printf("Too many bodies! %zu > %d\n", unifiedBodyVertices.size(), MAX_UNIFIED_BODIES);
         return;
     }
     // Copy pass
-    if (!vertex_data.empty())
+    if (!unifiedBodyVertices.empty())
     {
         void* map = SDL_MapGPUTransferBuffer(gpu, unifiedBodyTransferBuffer, false);
-        SDL_memcpy(map, vertex_data.data(), vertex_data.size() * sizeof(UnifiedBodyVertex));
+        SDL_memcpy(map, unifiedBodyVertices.data(), unifiedBodyVertices.size() * sizeof(UnifiedBodyVertex));
         SDL_UnmapGPUTransferBuffer(gpu, unifiedBodyTransferBuffer);
 
         SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdbuf);
@@ -249,7 +268,7 @@ void RenderSystem::uploadBodies(GameState& gameState, UIState& uiState, SDL_GPUC
         SDL_GPUTransferBufferLocation src = {.transfer_buffer = unifiedBodyTransferBuffer, .offset = 0};
         SDL_GPUBufferRegion dst = {.buffer = unifiedBodyVertexBuffer,
                                    .offset = 0,
-                                   .size = (uint32_t)(vertex_data.size() * sizeof(UnifiedBodyVertex))};
+                                   .size = (uint32_t)(unifiedBodyVertices.size() * sizeof(UnifiedBodyVertex))};
 
         SDL_UploadToGPUBuffer(copyPass, &src, &dst, false);
         SDL_EndGPUCopyPass(copyPass);
@@ -729,8 +748,8 @@ void RenderSystem::createTwinklingStarGPUBuffer()
 
 void RenderSystem::createTwinklingStarField(float fieldMaxWidth, float fieldMaxHeight)
 {
-    twinklingStars.clear();
-    twinklingStars.reserve(STAR_NUM);
+    twinklingStarVertices.clear();
+    twinklingStarVertices.reserve(STAR_NUM);
 
     std::mt19937 rng(12345);
 
@@ -756,7 +775,7 @@ void RenderSystem::createTwinklingStarField(float fieldMaxWidth, float fieldMaxH
         star.alpha = alphaDist(rng);
         star.twinkleSpeed = twinkleDist(rng);
         star.seed = rng();
-        twinklingStars.push_back(star);
+        twinklingStarVertices.push_back(star);
     }
 }
 
@@ -765,7 +784,7 @@ void RenderSystem::uploadTwinklingStarField(SDL_GPUCommandBuffer* cmdbuf)
 
     void* map = SDL_MapGPUTransferBuffer(gpu, twinklingStarTransferBuffer, false);
 
-    SDL_memcpy(map, twinklingStars.data(), twinklingStars.size() * sizeof(TwinklingStarVertex));
+    SDL_memcpy(map, twinklingStarVertices.data(), twinklingStarVertices.size() * sizeof(TwinklingStarVertex));
 
     SDL_UnmapGPUTransferBuffer(gpu, twinklingStarTransferBuffer);
 
@@ -775,7 +794,7 @@ void RenderSystem::uploadTwinklingStarField(SDL_GPUCommandBuffer* cmdbuf)
 
     SDL_GPUBufferRegion dst = {.buffer = twinklingStarVertexBuffer,
                                .offset = 0,
-                               .size = (uint32_t)(twinklingStars.size() * sizeof(TwinklingStarVertex))};
+                               .size = (uint32_t)(twinklingStarVertices.size() * sizeof(TwinklingStarVertex))};
 
     SDL_UploadToGPUBuffer(copyPass, &src, &dst, false);
 

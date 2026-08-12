@@ -25,9 +25,9 @@ void Game::StartGame()
     // Default to starting in the level scene since other scenes are not
     // implemented yet.
 
-    uiState.setCurrentScene(SceneIdentifier::START_MENU_SCENE);
+    // uiState.setCurrentScene(SceneIdentifier::START_MENU_SCENE);
     // uiState.setCurrentScene(SceneIdentifier::GAME_SCENE);
-    // uiState.setCurrentScene(SceneIdentifier::TEST_VISUAL_SCENE);
+    uiState.setCurrentScene(SceneIdentifier::TEST_VISUAL_SCENE);
     uiState.setPlaySoundEffects(true);
     uiState.setPlayMusic(true);
     uiState.setRequestedMusicMode(MusicMode::TITLE_THEME);

@@ -40,7 +40,7 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& uiState
             // First check if in start menu. If so, route input to start menu behaviors
             SceneIdentifier current_scene = uiState.getCurrentSceneID();
 
-            if (current_scene == SceneIdentifier::GAME_SCENE)
+            if (current_scene == SceneIdentifier::GAME_SCENE || current_scene == SceneIdentifier::TEST_VISUAL_SCENE)
             {
                 routeSDL_EventInputInGame(&event); // writes to internal member transferInputs;
             }
@@ -52,7 +52,7 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& uiState
     }
 
     SceneIdentifier current_scene = uiState.getCurrentSceneID();
-    if (current_scene == SceneIdentifier::GAME_SCENE)
+    if (current_scene == SceneIdentifier::GAME_SCENE || current_scene == SceneIdentifier::TEST_VISUAL_SCENE)
     {
         CameraState& camera_state = gameState.getCameraStateMutable();
 

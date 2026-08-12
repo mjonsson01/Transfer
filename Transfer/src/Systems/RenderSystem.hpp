@@ -58,28 +58,44 @@ class RenderSystem
     SDL_Window* window = nullptr;
     SDL_GPUDevice* gpu = nullptr;
 
-    SDL_GPUBuffer* unifiedBodyVertexBuffer;
-    SDL_GPUBuffer* twinklingStarVertexBuffer;
-    SDL_GPUGraphicsPipeline* unifiedBodyPipeline;
-    SDL_GPUGraphicsPipeline* twinklingStarPipeline;
+    // Unified Body Rendering Components
+    std::vector<UnifiedBodyVertex> unifiedBodyVertices;
+    SDL_GPUBuffer* unifiedBodyVertexBuffer = nullptr;
+    SDL_GPUGraphicsPipeline* unifiedBodyPipeline = nullptr;
     SDL_GPUTransferBuffer* unifiedBodyTransferBuffer = nullptr;
+
+    // Twinkling Star Rendering Components
+    std::vector<TwinklingStarVertex> twinklingStarVertices;
+    SDL_GPUBuffer* twinklingStarVertexBuffer = nullptr;
+    SDL_GPUGraphicsPipeline* twinklingStarPipeline = nullptr;
     SDL_GPUTransferBuffer* twinklingStarTransferBuffer = nullptr;
+
+    // UI Element Rendering Components
+    std::vector<UIElementVertex> uiVertices;
     SDL_GPUBuffer* uiVertexBuffer = nullptr;
-    SDL_GPUTransferBuffer* uiTransferBuffer = nullptr;
     SDL_GPUGraphicsPipeline* uiPipeline = nullptr;
+    SDL_GPUTransferBuffer* uiTransferBuffer = nullptr;
+
+    // Velocity Vector Rendering Components
+    std::vector<VelocityVectorVertex> velocityVectorVertices;
+    SDL_GPUBuffer* velocityVectorVertexBuffer = nullptr;
+    SDL_GPUGraphicsPipeline* velocityVectorPipeline = nullptr;
+    SDL_GPUTransferBuffer* velocityVectorTransferBuffer = nullptr;
+
+    // Player Starship Rendering Components
+    std::vector<StarshipVertex> starshipVertices;
+    SDL_GPUBuffer* starshipVertexBuffer = nullptr;
+    SDL_GPUGraphicsPipeline* starshipPipeline = nullptr;
+    SDL_GPUTransferBuffer* starshipTransferBuffer = nullptr;
+
+    // Text Rendering Components
     SDL_GPUTexture* fontAtlasTexture = nullptr;
     SDL_GPUSampler* fontAtlasSampler = nullptr;
-    FontAtlasUtility fontAtlas; // TBI
-    std::vector<UIElementVertex> uiVertices;
+    FontAtlasUtility fontAtlas;
+
     // Font for UI Elements that require text
     TTF_Font* UIFontRegular = nullptr;
     TTF_Font* UIFontTitle = nullptr;
-    std::vector<TwinklingStarVertex> twinklingStars;
-
-    SDL_GPUBuffer* velocityVectorVertexBuffer = nullptr;
-    SDL_GPUTransferBuffer* velocityVectorTransferBuffer = nullptr;
-    SDL_GPUGraphicsPipeline* velocityVectorPipeline = nullptr;
-    std::vector<VelocityVectorVertex> velocityVectorVertices;
 
   private:
     // Subordinate Rendering Functions
