@@ -90,3 +90,105 @@ inline std::ostream& operator<<(std::ostream& os, const Vector2D& Vec)
     os << "{ " << Vec.xVal << ", " << Vec.yVal << " }";
     return os;
 }
+
+// #pragma once
+
+// #include <cmath>
+// #include <iostream>
+
+// template <typename T> struct Vector2D
+// {
+//     T xVal;
+//     T yVal;
+
+//     // Constructors
+//     Vector2D() : xVal(0), yVal(0) {}
+//     Vector2D(T x, T y) : xVal(x), yVal(y) {}
+
+//     // --- Vector-Vector Arithmetic operators --- //
+//     Vector2D operator+(const Vector2D& other) const { return {xVal + other.xVal, yVal + other.yVal}; }
+
+//     Vector2D operator-(const Vector2D& other) const { return {xVal - other.xVal, yVal - other.yVal}; }
+
+//     // --- Vector-Scalar Arithmetic operators --- //
+//     Vector2D operator*(T scalar) const { return {xVal * scalar, yVal * scalar}; }
+
+//     Vector2D operator/(T scalar) const { return {xVal / scalar, yVal / scalar}; }
+
+//     // --- Vector-Vector Assignment operations --- //
+//     Vector2D& operator+=(const Vector2D& other)
+//     {
+//         xVal += other.xVal;
+//         yVal += other.yVal;
+//         return *this;
+//     }
+
+//     Vector2D& operator-=(const Vector2D& other)
+//     {
+//         xVal -= other.xVal;
+//         yVal -= other.yVal;
+//         return *this;
+//     }
+
+//     // --- Vector-Scalar Assignment operations --- //
+//     Vector2D& operator*=(T scalar)
+//     {
+//         xVal *= scalar;
+//         yVal *= scalar;
+//         return *this;
+//     }
+
+//     Vector2D& operator/=(T scalar)
+//     {
+//         xVal /= scalar;
+//         yVal /= scalar;
+//         return *this;
+//     }
+
+//     // --- Special Vector Utilities --- //
+//     T magnitude() const { return static_cast<T>(std::sqrt(xVal * xVal + yVal * yVal)); }
+
+//     T square_magnitude() const { return xVal * xVal + yVal * yVal; }
+
+//     T dot(const Vector2D& other) const { return xVal * other.xVal + yVal * other.yVal; }
+
+//     Vector2D& normalizeInPlace()
+//     {
+//         T mag = magnitude();
+
+//         if (mag != 0)
+//         {
+//             xVal /= mag;
+//             yVal /= mag;
+//         }
+
+//         return *this;
+//     }
+
+//     Vector2D normalize() const
+//     {
+//         T mag = magnitude();
+
+//         if (mag != 0)
+//         {
+//             return {xVal / mag, yVal / mag};
+//         }
+
+//         return {0, 0};
+//     }
+// };
+
+// // --------- SPECIALTY METHODS --------- //
+
+// template <typename T> static inline Vector2D<T> lerp(const Vector2D<T>& a, const Vector2D<T>& b, T t)
+// {
+//     return a + (b - a) * t;
+// }
+
+// // --------- I/O OPERATOR OVERLOAD --------- //
+
+// template <typename T> inline std::ostream& operator<<(std::ostream& os, const Vector2D<T>& vec)
+// {
+//     os << "{ " << vec.xVal << ", " << vec.yVal << " }";
+//     return os;
+// }

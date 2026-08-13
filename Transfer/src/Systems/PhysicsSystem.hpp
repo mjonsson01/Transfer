@@ -8,8 +8,8 @@
 #include "Entities/Physics/GravitationalBody.hpp"
 #include "Entities/Physics/GravitationalBodyPair.hpp"
 #include "Utilities/Constants/EngineConstants.hpp"
-#include "Utilities/Constants/PhysicsConstants.hpp"
 #include "Utilities/Constants/GameSystemConstants.hpp"
+#include "Utilities/Constants/PhysicsConstants.hpp"
 #include "Utilities/Math/CustomMathUtilities.hpp"
 #include "Utilities/Math/Vector2D.hpp"
 #include "Utilities/Physics/UniformParticleGrid.hpp"
@@ -93,6 +93,8 @@ class PhysicsSystem
                                                      //  Calculates total energy of all Macro Bodies and
                                                      //  Particles on screen.
 
+    // --- Player Physics ---
+    void updatePlayerPhysics(GameState& gameState, UIState& uiState);
     // --- Cleanup ---
     void cleanupParticles(GameState& gameState);   // Clears any Particles from the screen flagged
                                                    // as marked for deletion

@@ -57,6 +57,14 @@ struct InputState
     bool isPreviewingMacro = false;
     bool isPreviewingWithInitialVelocity = false;
 
+    // Starship inputs
+    bool isRequestingThrust = false;
+    bool positiveThrust = false;
+    bool negativeThrust = false;
+    bool isRequestingRotation = false;
+    bool positiveRotation = false;
+    bool negativeRotation = false;
+
     InputState& resetTransientFlags()
     {
         // Creation type flags

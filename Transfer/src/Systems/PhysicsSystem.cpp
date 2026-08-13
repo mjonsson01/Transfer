@@ -21,6 +21,8 @@ void PhysicsSystem::UpdateSystemFrame(GameState& gameState, UIState& uiState)
 
     handleCollisions(gameState);
 
+    updatePlayerPhysics(gameState, uiState);
+
     // promoteOversizedParticles(gameState); //TODO: Review?
 
     // Update forces (grav, later will add electromagnetic)
@@ -605,6 +607,7 @@ void PhysicsSystem::integrateForwardsVelocityVerletPhase1(GameState& gameState)
     {
         applyVelocityVerletPhase1(macro_body);
     }
+    gameState.getPlayerMutable().starship.integratePosition();
 }
 
 void PhysicsSystem::applyVelocityVerletPhase1(GravitationalBody& gravBody)
@@ -721,7 +724,6 @@ void PhysicsSystem::createMacroBody(GameState& gameState, InputState& inputState
     macro_bodies.push_back(macro_body);
 }
 
-
 void PhysicsSystem::createParticleCluster(GameState& gameState, InputState& inputState)
 {
     std::vector<GravitationalBody>& particles = gameState.getParticlesMutable();
@@ -741,7 +743,6 @@ void PhysicsSystem::createParticleCluster(GameState& gameState, InputState& inpu
 
     substituteWithParticles(macro_body, gameState, DEFAULT_FRAGMENT_COUNT);
 }
-
 
 // --------- UTILITY --------- //
 
@@ -815,4 +816,10 @@ void PhysicsSystem::cleanupMacroBodies(GameState& gameState)
     // [new_end, particles.end())
     //    This efficiently shrinks the vector to the correct size.
     particles.erase(new_end, particles.end());
+}
+
+void PhysicsSystem::updatePlayerPhysics(GameState& gameState, UIState& uiState)
+{
+    gameState.getPlayerMutable().starship.applyRotation(uiState);
+    gameState.getPlayerMutable().starship.applyVelocity(uiState);
 }

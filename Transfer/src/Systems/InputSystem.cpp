@@ -115,6 +115,7 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& uiState
     {
         translateAndPassMenuInputsOff(uiState);
     }
+    return;
 }
 
 // Only need to worry about clicking
@@ -388,6 +389,12 @@ void InputSystem::translateAndPassTransferInputsOff(UIState& uiState)
 
     updated_input_state.leftMouseButtonJustPressed = transferInputs.leftMouseJustPressed;
     updated_input_state.leftMouseButtonJustReleased = transferInputs.leftMouseJustReleased;
+    updated_input_state.isRequestingThrust = transferInputs.wPressed xor transferInputs.sPressed;
+    updated_input_state.positiveThrust = transferInputs.wPressed;
+    updated_input_state.negativeThrust = transferInputs.sPressed;
+    updated_input_state.isRequestingRotation = transferInputs.dPressed xor transferInputs.aPressed;
+    updated_input_state.positiveRotation = transferInputs.aPressed;
+    updated_input_state.negativeRotation = transferInputs.dPressed;
     if (transferInputs.leftMouseJustReleased)
     {
         updated_input_state.isCreatingCollidable = true;

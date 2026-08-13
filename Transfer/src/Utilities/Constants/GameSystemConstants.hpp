@@ -24,10 +24,10 @@ const double MAX_TIME_SCALE_FACTOR = 2.0;     // 2x speed
 
 // can scale up as needed
 
-constexpr int SCREEN_HEIGHT = 1080;
-constexpr int SCREEN_WIDTH = 1920;
-// constexpr int SCREEN_HEIGHT = 720;
-// constexpr int SCREEN_WIDTH = 1280;
+// constexpr int SCREEN_HEIGHT = 1080;
+// constexpr int SCREEN_WIDTH = 1920;
+constexpr int SCREEN_HEIGHT = 720;
+constexpr int SCREEN_WIDTH = 1280;
 
 // Background Star count
 constexpr int STAR_NUM = 100000;

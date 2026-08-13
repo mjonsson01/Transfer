@@ -89,7 +89,8 @@ void Game::Run()
         last_physics_update_tick = now_tick;
 
         // Physics Scaling Logic
-        if (uiState.getCurrentSceneID() == SceneIdentifier::GAME_SCENE)
+        if (uiState.getCurrentSceneID() == SceneIdentifier::GAME_SCENE ||
+            uiState.getCurrentSceneID() == SceneIdentifier::TEST_VISUAL_SCENE)
         {
             physics_time_accumulator += (frame_delta * uiState.getTimeScaleFactor());
         }
@@ -101,7 +102,8 @@ void Game::Run()
         // 4. Profile Physics Integration
         Uint64 phys_total_start = SDL_GetPerformanceCounter();
         while (physics_time_accumulator >= PHYSICS_TIME_STEP &&
-               uiState.getCurrentSceneID() == SceneIdentifier::GAME_SCENE)
+               ((uiState.getCurrentSceneID() == SceneIdentifier::GAME_SCENE) ||
+                (uiState.getCurrentSceneID() == SceneIdentifier::TEST_VISUAL_SCENE)))
         {
             Game::IntegratePhysicsFrame();
             physics_time_accumulator -= PHYSICS_TIME_STEP;

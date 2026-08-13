@@ -201,13 +201,13 @@ void RenderSystem::RenderFullFrame(GameState& gameState, UIState& uiState,
             // Update your renderGameFrame signature to match
             renderGameFrame(gameState, uiState, allUIElementsInScope, pass, cmdbuf);
         }
-        if (current_scene == SceneIdentifier::TEST_VISUAL_SCENE)
+        else if (current_scene != SceneIdentifier::TEST_VISUAL_SCENE)
         {
-            renderTestFrame(gameState, uiState, allUIElementsInScope, pass, cmdbuf);
+            renderNonGameFrame(gameState, uiState, allUIElementsInScope, pass, cmdbuf);
         }
         else
         {
-            renderNonGameFrame(gameState, uiState, allUIElementsInScope, pass, cmdbuf);
+            renderTestFrame(gameState, uiState, allUIElementsInScope, pass, cmdbuf);
         }
 
         SDL_EndGPURenderPass(pass);
@@ -220,6 +220,7 @@ void RenderSystem::renderGameFrame(GameState& gameState, UIState& uiState,
                                    const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
                                    SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf)
 {
+    gameState.getCameraStateMutable().renderAlpha = gameState.getAlpha();
     renderTwinklingStarField(pass, cmdbuf, gameState.getCameraState());
     renderBodies(gameState, uiState, pass, cmdbuf);
     renderVelocityVectors(pass, cmdbuf, gameState.getCameraState());
@@ -237,6 +238,7 @@ void RenderSystem::renderTestFrame(GameState& gameState, UIState& uiState,
                                    const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
                                    SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf)
 {
+    gameState.getCameraStateMutable().renderAlpha = gameState.getAlpha();
     renderStarship(gameState, pass, cmdbuf, gameState.getCameraState());
 }
 void RenderSystem::uploadUnifiedBodies(GameState& gameState, UIState& uiState, SDL_GPUCommandBuffer* cmdbuf)
@@ -335,7 +337,6 @@ void RenderSystem::renderBodies(GameState& gameState, UIState& uiState, SDL_GPUR
         if (b.visible)
             instance_count++;
 
-    gameState.getCameraStateMutable().renderAlpha = gameState.getAlpha();
     if (uiState.getMutableInputState().isPreviewingMacro)
     {
         instance_count++;
@@ -371,8 +372,8 @@ void RenderSystem::renderStarship(GameState& gameState, SDL_GPURenderPass* pass,
     SDL_BindGPUVertexBuffers(pass, 0, &vbo, 1);
 
     SDL_DrawGPUPrimitives(pass,
-                          6, // vertices per quad
-                          1, // instances
+                          (uint32_t)starshipVertices.size(), // vertices per quad
+                          1,                                 // instances
                           0, 0);
 }
 
