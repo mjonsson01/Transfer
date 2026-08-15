@@ -9,7 +9,8 @@ constexpr double PI = 3.14159265358979323846;
 constexpr double EPSILON = 1e-8;
 
 // Load balancing max renderable bodies on screen at once
-constexpr uint32_t MAX_UNIFIED_BODIES = 20000;
+constexpr uint32_t MAX_UNIFIED_BODIES = 12000; // This only balances the rendering system, which is not actually the
+                                               // bottleneck. Need to fix the physics system load balancing.
 
 // Arbitrary limit to number of UI vertices
 constexpr uint32_t MAX_UI_VERTICES = 65536;
