@@ -51,29 +51,3 @@ class UIElement
     SDL_FRect hotZoneRect;
     UIElementIdentifier UIElementID;
 };
-
-// Derived UI Element Classes
-// (Each derived class should have its own header file)
-
-// class SimulationSpeedSlider : public UIElement
-// {
-// };
-// class VelocityVectorToggle : public UIElement
-// {
-// };
-
-// class GravityToggle : public UIElement
-// {
-// };
-
-// class MassSlider : public UIElement
-// {
-// };
-
-// class PauseMenu : public UIElement
-// {
-// };
-
-// class SelectionCheckbox : public UIElement
-// {
-// };
