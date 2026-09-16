@@ -25,12 +25,13 @@ void Game::StartGame()
     // Default to starting in the level scene since other scenes are not
     // implemented yet.
 
-    uiState.setCurrentScene(SceneIdentifier::START_MENU_SCENE);
+    // uiState.setCurrentScene(SceneIdentifier::START_MENU_SCENE);
     // uiState.setCurrentScene(SceneIdentifier::GAME_SCENE);
-    // uiState.setCurrentScene(SceneIdentifier::TEST_VISUAL_SCENE);
+    uiState.setCurrentScene(SceneIdentifier::TEST_VISUAL_SCENE);
     uiState.setPlaySoundEffects(true);
     uiState.setPlayMusic(true);
-    uiState.setRequestedMusicMode(MusicMode::TITLE_THEME);
+    // uiState.setRequestedMusicMode(MusicMode::TITLE_THEME);
+    uiState.setRequestedMusicMode(MusicMode::MAIN_SHUFFLE);
     // Start the main game loop
     Game::Run();
 
@@ -89,7 +90,8 @@ void Game::Run()
         last_physics_update_tick = now_tick;
 
         // Physics Scaling Logic
-        if (uiState.getCurrentSceneID() == SceneIdentifier::GAME_SCENE)
+        if (uiState.getCurrentSceneID() == SceneIdentifier::GAME_SCENE ||
+            uiState.getCurrentSceneID() == SceneIdentifier::TEST_VISUAL_SCENE)
         {
             physics_time_accumulator += (frame_delta * uiState.getTimeScaleFactor());
         }
@@ -101,7 +103,8 @@ void Game::Run()
         // 4. Profile Physics Integration
         Uint64 phys_total_start = SDL_GetPerformanceCounter();
         while (physics_time_accumulator >= PHYSICS_TIME_STEP &&
-               uiState.getCurrentSceneID() == SceneIdentifier::GAME_SCENE)
+               ((uiState.getCurrentSceneID() == SceneIdentifier::GAME_SCENE) ||
+                (uiState.getCurrentSceneID() == SceneIdentifier::TEST_VISUAL_SCENE)))
         {
             Game::IntegratePhysicsFrame();
             physics_time_accumulator -= PHYSICS_TIME_STEP;

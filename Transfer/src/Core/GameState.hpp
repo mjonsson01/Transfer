@@ -6,8 +6,8 @@
 #include "Core/CameraState.hpp"
 #include "Entities/Physics/GravitationalBody.hpp"
 #include "Entities/Sound/MusicModeEnum.hpp"
+#include "Player/Player.hpp"
 #include "Utilities/Constants/GameSystemConstants.hpp"
-
 // Standard Library Imports
 #include <vector>
 
@@ -46,6 +46,9 @@ class GameState
     CameraState& getCameraStateMutable() { return cameraState; }
     const CameraState& getCameraState() const { return cameraState; }
 
+    Player& getPlayerMutable() { return player; }
+    const Player& getPlayer() const { return player; }
+
   private:
     // State variables
     bool isPlaying = false;
@@ -58,6 +61,8 @@ class GameState
     int maxIDInstantiated = 0;
     // Database for all the Particle Bodies
     std::vector<GravitationalBody> particles;
+
+    Player player;
 
     CameraState cameraState;
 };

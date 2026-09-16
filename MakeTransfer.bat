@@ -164,6 +164,10 @@ echo Compiling shaders...
     .\Transfer\src\HLSL\VelocityVector.vert.hlsl ^
     -o .\Transfer\Assets\Shaders\VelocityVector.vert.spv
 
+.\LocalShaderCross\shadercross.exe ^
+    .\Transfer\src\HLSL\Starship.vert.hlsl ^
+    -o .\Transfer\Assets\Shaders\Starship.vert.spv
+
 if %ERRORLEVEL% NEQ 0 (
     echo Vertex shader compilation failed!
     exit /b 1
@@ -184,6 +188,10 @@ if %ERRORLEVEL% NEQ 0 (
 .\LocalShaderCross\shadercross.exe ^
     .\Transfer\src\HLSL\VelocityVector.frag.hlsl ^
     -o .\Transfer\Assets\Shaders\VelocityVector.frag.spv
+
+.\LocalShaderCross\shadercross.exe ^
+    .\Transfer\src\HLSL\Starship.frag.hlsl ^
+    -o .\Transfer\Assets\Shaders\Starship.frag.spv
 
 
 if %ERRORLEVEL% NEQ 0 (

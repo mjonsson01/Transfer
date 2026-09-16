@@ -72,7 +72,7 @@ void AudioSystem::ProcessSystemAudioFrame(GameState& gameState, UIState& uiState
     musicEnabled = uiState.getPlayMusic();
     soundEffectsEnabled = uiState.getPlaySoundEffects();
     MusicMode requested_music_mode = uiState.getRequestedMusicMode();
-    if (requested_music_mode != currentMusicMode)
+    if (requested_music_mode != currentMusicMode && musicEnabled)
     {
         transitionMusicMode(requested_music_mode);
     }

@@ -93,3 +93,6 @@ Next, add E&M -> boundaries on bodies to indicate class -> rework color system t
 
 If instantiating a large negative mass body explosion in positive cloud, weird explosion and also vice versa
 
+
+
+Need to make a toggle for the camera to follow the player around?

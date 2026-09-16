@@ -40,7 +40,7 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& uiState
             // First check if in start menu. If so, route input to start menu behaviors
             SceneIdentifier current_scene = uiState.getCurrentSceneID();
 
-            if (current_scene == SceneIdentifier::GAME_SCENE)
+            if (current_scene == SceneIdentifier::GAME_SCENE || current_scene == SceneIdentifier::TEST_VISUAL_SCENE)
             {
                 routeSDL_EventInputInGame(&event); // writes to internal member transferInputs;
             }
@@ -52,7 +52,7 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& uiState
     }
 
     SceneIdentifier current_scene = uiState.getCurrentSceneID();
-    if (current_scene == SceneIdentifier::GAME_SCENE)
+    if (current_scene == SceneIdentifier::GAME_SCENE || current_scene == SceneIdentifier::TEST_VISUAL_SCENE)
     {
         CameraState& camera_state = gameState.getCameraStateMutable();
 
@@ -115,6 +115,7 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& uiState
     {
         translateAndPassMenuInputsOff(uiState);
     }
+    return;
 }
 
 // Only need to worry about clicking
@@ -388,6 +389,12 @@ void InputSystem::translateAndPassTransferInputsOff(UIState& uiState)
 
     updated_input_state.leftMouseButtonJustPressed = transferInputs.leftMouseJustPressed;
     updated_input_state.leftMouseButtonJustReleased = transferInputs.leftMouseJustReleased;
+    updated_input_state.isRequestingThrust = transferInputs.wPressed xor transferInputs.sPressed;
+    updated_input_state.positiveThrust = transferInputs.wPressed;
+    updated_input_state.negativeThrust = transferInputs.sPressed;
+    updated_input_state.isRequestingRotation = transferInputs.dPressed xor transferInputs.aPressed;
+    updated_input_state.positiveRotation = transferInputs.aPressed;
+    updated_input_state.negativeRotation = transferInputs.dPressed;
     if (transferInputs.leftMouseJustReleased)
     {
         updated_input_state.isCreatingCollidable = true;
