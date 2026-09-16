@@ -30,7 +30,8 @@ void Game::StartGame()
     uiState.setCurrentScene(SceneIdentifier::TEST_VISUAL_SCENE);
     uiState.setPlaySoundEffects(true);
     uiState.setPlayMusic(true);
-    uiState.setRequestedMusicMode(MusicMode::TITLE_THEME);
+    // uiState.setRequestedMusicMode(MusicMode::TITLE_THEME);
+    uiState.setRequestedMusicMode(MusicMode::MAIN_SHUFFLE);
     // Start the main game loop
     Game::Run();
 
