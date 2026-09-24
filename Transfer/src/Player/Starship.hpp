@@ -9,8 +9,8 @@
 // Custom includes
 #include "Core/InputState.hpp"
 #include "Core/UIState.hpp"
+#include "Engine/Math/Vector2D.hpp"
 #include "Utilities/Constants/PhysicsConstants.hpp"
-#include "Utilities/Math/Vector2D.hpp"
 #include "Utilities/Rendering/GPUTypes.hpp"
 
 class Starship

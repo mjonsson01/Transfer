@@ -8,8 +8,8 @@
 
 // Custom Imports
 #include "Core/UIState.hpp"
+#include "Engine/Math/Vector2D.hpp"
 #include "Entities/UIElements/UIElementIdentifierEnum.hpp"
-#include "Utilities/Math/Vector2D.hpp"
 #include "Utilities/Rendering/Colors.hpp"
 #include "Utilities/Rendering/FontAtlasUtility.hpp"
 #include "Utilities/Rendering/GPUTypes.hpp"

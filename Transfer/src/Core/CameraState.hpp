@@ -3,8 +3,8 @@
 #pragma once
 
 // Custom imports
+#include "Engine/Math/Vector2D.hpp"
 #include "Utilities/Constants/GameSystemConstants.hpp"
-#include "Utilities/Math/Vector2D.hpp"
 
 struct CameraState
 {

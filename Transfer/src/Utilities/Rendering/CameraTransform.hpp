@@ -3,7 +3,7 @@
 #pragma once
 
 #include "Core/CameraState.hpp"
-#include "Utilities/Math/Vector2D.hpp"
+#include "Engine/Math/Vector2D.hpp"
 
 inline Vector2D ScreenToWorldCoordinates(const Vector2D& screenPoint, const CameraState& camera_state)
 {
