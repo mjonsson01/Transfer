@@ -13,3 +13,5 @@ Transfer/Assets/Shaders/
 *.md
 
 CLAUDE/
+
+build-tests/

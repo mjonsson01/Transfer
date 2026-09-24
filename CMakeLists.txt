@@ -162,3 +162,126 @@ add_custom_target(buildTransfer
     COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}" --target ${PROJECT_NAME}
     COMMENT "Building TransferGame target."
 )
+
+
+# ----------------------------------
+# Unit tests (googletest) -- off for game builds; RunTests.sh turns them on
+# ----------------------------------
+option(TRANSFER_BUILD_TESTS "Build the TransferTests unit test executable" OFF)
+
+if(TRANSFER_BUILD_TESTS)
+    if(POLICY CMP0135)
+        cmake_policy(SET CMP0135 NEW) # use extraction time as file timestamps (silences a FetchContent warning)
+    endif()
+
+    include(FetchContent)
+    FetchContent_Declare(
+        googletest
+        URL https://github.com/google/googletest/archive/refs/tags/v1.17.0.tar.gz
+    )
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE) # Windows: same C runtime as the game
+    set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)         # we never install googletest
+    FetchContent_MakeAvailable(googletest)
+
+    enable_testing()
+
+    # Tests + every engine source. Engine code must build without any game code -- if this target
+    # fails to link, something in Engine/ reached into the game.
+    file(GLOB_RECURSE TEST_SRC_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/Tests/*.cpp")
+    file(GLOB_RECURSE ENGINE_SRC_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/Transfer/src/Engine/*.cpp")
+
+    if(TEST_SRC_FILES)
+        add_executable(TransferTests ${TEST_SRC_FILES} ${ENGINE_SRC_FILES})
+        target_include_directories(TransferTests PRIVATE "${CMAKE_SOURCE_DIR}/Transfer/src" ${SDL3_INCLUDE_DIRS})
+        target_link_libraries(TransferTests PRIVATE GTest::gtest_main ${SDL3_LIBS})
+
+        include(GoogleTest)
+        gtest_discover_tests(TransferTests)
+    else()
+        message(STATUS "TransferTests: no test sources in Transfer/Tests yet -- skipping the test target")
+    endif()
+endif()
+
+# ----------------------------------
+# VS Code IntelliSense config -- generates .vscode/c_cpp_properties.json on every configure
+# ----------------------------------
+# Every build script (MakeTransfer.sh/.bat, RunTest.sh) runs a configure, so they all refresh this file.
+# It points IntelliSense at each build folder's compile_commands.json (game build/ + tests build-tests/),
+# so game sources and test sources both get their exact compile flags. .vscode/ is gitignored and
+# machine-specific: hand edits to this file will be overwritten. Turn off with -DTRANSFER_GENERATE_VSCODE_CONFIG=OFF.
+option(TRANSFER_GENERATE_VSCODE_CONFIG "Write .vscode/c_cpp_properties.json on configure" ON)
+
+if(TRANSFER_GENERATE_VSCODE_CONFIG)
+    # compile_commands.json from the build folder being configured right now (CMake writes it at the end of
+    # this run, so it may not exist yet) plus any other known build folder that has been built before.
+    set(VSCODE_COMPILE_COMMANDS "")
+    foreach(build_dir IN ITEMS "${CMAKE_BINARY_DIR}" "${CMAKE_SOURCE_DIR}/build" "${CMAKE_SOURCE_DIR}/build-tests")
+        if(build_dir STREQUAL CMAKE_BINARY_DIR OR EXISTS "${build_dir}/compile_commands.json")
+            file(RELATIVE_PATH relative_build_dir "${CMAKE_SOURCE_DIR}" "${build_dir}")
+            list(APPEND VSCODE_COMPILE_COMMANDS "\"\${workspaceFolder}/${relative_build_dir}/compile_commands.json\"")
+        endif()
+    endforeach()
+    list(REMOVE_DUPLICATES VSCODE_COMPILE_COMMANDS)
+    list(JOIN VSCODE_COMPILE_COMMANDS ",\n                " VSCODE_COMPILE_COMMANDS_JSON)
+
+    # Fallback include paths, used for files that aren't in any compile_commands.json (e.g. a header opened on its own)
+    set(VSCODE_INCLUDE_PATHS "\"\${workspaceFolder}/Transfer/src\"")
+    if(SDL3_INCLUDE_DIRS)
+        foreach(include_dir IN LISTS SDL3_INCLUDE_DIRS) # Windows: explicit SDL folders
+            list(APPEND VSCODE_INCLUDE_PATHS "\"${include_dir}\"")
+        endforeach()
+    elseif(APPLE)
+        list(APPEND VSCODE_INCLUDE_PATHS "\"/opt/homebrew/include\"") # Homebrew SDL3 / SDL3_ttf
+    endif()
+    if(EXISTS "${CMAKE_SOURCE_DIR}/build-tests/_deps/googletest-src/googletest/include")
+        list(APPEND VSCODE_INCLUDE_PATHS "\"\${workspaceFolder}/build-tests/_deps/googletest-src/googletest/include\"")
+    endif()
+    list(JOIN VSCODE_INCLUDE_PATHS ",\n                " VSCODE_INCLUDE_PATHS_JSON)
+
+    # IntelliSense mode = <platform>-<compiler>-<architecture>
+    string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" VSCODE_ARCH)
+    if(VSCODE_ARCH MATCHES "arm64|aarch64")
+        set(VSCODE_ARCH "arm64")
+    else()
+        set(VSCODE_ARCH "x64")
+    endif()
+
+    if(MSVC)
+        set(VSCODE_CONFIG_NAME "Win32")
+        set(VSCODE_INTELLISENSE_MODE "windows-msvc-${VSCODE_ARCH}")
+    elseif(APPLE)
+        set(VSCODE_CONFIG_NAME "Mac")
+        set(VSCODE_INTELLISENSE_MODE "macos-clang-${VSCODE_ARCH}")
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        set(VSCODE_CONFIG_NAME "Linux")
+        set(VSCODE_INTELLISENSE_MODE "linux-clang-${VSCODE_ARCH}")
+    else()
+        set(VSCODE_CONFIG_NAME "Linux")
+        set(VSCODE_INTELLISENSE_MODE "linux-gcc-${VSCODE_ARCH}")
+    endif()
+
+    # [=[ ... ]=] is a literal block (no ${} expansion); @ONLY fills in just the @VARIABLES@.
+    # file(CONFIGURE) only rewrites the file when its contents actually change.
+    file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/.vscode")
+    file(CONFIGURE OUTPUT "${CMAKE_SOURCE_DIR}/.vscode/c_cpp_properties.json" CONTENT [=[
+{
+    "configurations": [
+        {
+            "name": "@VSCODE_CONFIG_NAME@",
+            "compileCommands": [
+                @VSCODE_COMPILE_COMMANDS_JSON@
+            ],
+            "includePath": [
+                @VSCODE_INCLUDE_PATHS_JSON@
+            ],
+            "compilerPath": "@CMAKE_CXX_COMPILER@",
+            "cStandard": "c17",
+            "cppStandard": "c++@CMAKE_CXX_STANDARD@",
+            "intelliSenseMode": "@VSCODE_INTELLISENSE_MODE@"
+        }
+    ],
+    "version": 4
+}
+]=] @ONLY)
+    message(STATUS "Updated .vscode/c_cpp_properties.json")
+endif()
