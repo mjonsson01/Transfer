@@ -41,6 +41,15 @@ case "$ARG_LOWER" in
         ;;
 esac
 
+# =====================================================
+# Lint engine code (non-fatal; SKIP_TIDY=1 to skip)
+# =====================================================
+if [[ "${SKIP_TIDY:-0}" != "1" ]]; then
+    echo "Running clang-tidy on DynamoEngine..."
+    if ! ./TidyEngine.sh; then
+        echo "WARNING: clang-tidy reported findings (see above). Continuing build." >&2
+    fi
+fi
 
 # =====================================================
 # Compile HLSL -> MSL

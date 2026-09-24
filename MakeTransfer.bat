@@ -1,106 +1,3 @@
-@REM @echo off
-@REM setlocal enabledelayedexpansion
-
-@REM set BUILD_DIR=build
-@REM set CONFIG=Release
-@REM set DO_CLEAN=0
-
-@REM REM --- Handle Arguments ---
-@REM if /i "%1"=="clean" (
-@REM     echo Cleaning build directory...
-@REM     if exist "%BUILD_DIR%" rmdir /s /q "%BUILD_DIR%"
-@REM     exit /b 0
-@REM )
-
-@REM if /i "%1"=="debug" (
-@REM     set CONFIG=Debug
-@REM     set DO_CLEAN=1
-@REM ) else if /i "%1"=="release" (
-@REM     set CONFIG=Release
-@REM     set DO_CLEAN=1
-@REM ) else (
-@REM     echo No configuration specified. Attempting incremental build...
-@REM     set DO_CLEAN=0
-@REM )
-
-@REM REM --- Conditional Clean ---
-@REM if %DO_CLEAN% EQU 1 (
-@REM     if exist "%BUILD_DIR%" (
-@REM         echo Performing fresh build for %CONFIG%...
-@REM         rmdir /s /q "%BUILD_DIR%"
-@REM     )
-@REM )
-
-@REM if not exist "%BUILD_DIR%" mkdir "%BUILD_DIR%"
-@REM REM =====================================================
-@REM REM Compile HLSL -> SPIR-V
-@REM REM =====================================================
-
-@REM echo Compiling shaders...
-
-@REM .\LocalShaderCross\shadercross.exe ^
-@REM     .\Transfer\src\HLSL\UnifiedGravBody.vert.hlsl ^
-@REM     -o .\Transfer\Assets\Shaders\UnifiedGravBody.vert.spv
-
-@REM .\LocalShaderCross\shadercross.exe ^
-@REM     .\Transfer\src\HLSL\TwinklingStar.vert.hlsl ^
-@REM     -o .\Transfer\Assets\Shaders\TwinklingStar.vert.spv
-
-@REM .\LocalShaderCross\shadercross.exe ^
-@REM     .\Transfer\src\HLSL\UIElement.vert.hlsl ^
-@REM     -o .\Transfer\Assets\Shaders\UIElement.vert.spv
-
-@REM .\LocalShaderCross\shadercross.exe ^
-@REM     .\Transfer\src\HLSL\VelocityVector.vert.hlsl ^
-@REM     -o .\Transfer\Assets\Shaders\VelocityVector.vert.spv
-
-@REM if %ERRORLEVEL% NEQ 0 (
-@REM     echo Vertex shader compilation failed!
-@REM     exit /b 1
-@REM )
-
-@REM .\LocalShaderCross\shadercross.exe ^
-@REM     .\Transfer\src\HLSL\UnifiedGravBody.frag.hlsl ^
-@REM     -o .\Transfer\Assets\Shaders\UnifiedGravBody.frag.spv
-
-@REM .\LocalShaderCross\shadercross.exe ^
-@REM     .\Transfer\src\HLSL\TwinklingStar.frag.hlsl ^
-@REM     -o .\Transfer\Assets\Shaders\TwinklingStar.frag.spv
-
-@REM .\LocalShaderCross\shadercross.exe ^
-@REM     .\Transfer\src\HLSL\UIElement.frag.hlsl ^
-@REM      -o .\Transfer\Assets\Shaders\UIElement.frag.spv
-
-@REM .\LocalShaderCross\shadercross.exe ^
-@REM     .\Transfer\src\HLSL\VelocityVector.frag.hlsl ^
-@REM     -o .\Transfer\Assets\Shaders\VelocityVector.frag.spv
-
-
-@REM if %ERRORLEVEL% NEQ 0 (
-@REM     echo Fragment shader compilation failed!
-@REM     exit /b 1
-@REM )
-
-@REM echo Shaders compiled successfully.
-@REM REM --- Configure and Build ---
-@REM echo Building TransferGame (%CONFIG%)...
-@REM cmake -S . -B %BUILD_DIR% -DCMAKE_BUILD_TYPE=%CONFIG%
-@REM if %ERRORLEVEL% NEQ 0 exit /b 1
-
-@REM cmake --build %BUILD_DIR% --config %CONFIG%
-@REM if %ERRORLEVEL% NEQ 0 exit /b 1
-
-@REM REM --- Locate Executable ---
-@REM set EXE_PATH=%BUILD_DIR%\%CONFIG%\TransferGame.exe
-@REM if not exist "%EXE_PATH%" set EXE_PATH=%BUILD_DIR%\TransferGame.exe
-
-@REM echo Build complete!
-@REM if exist "%EXE_PATH%" (
-@REM     set /p RUN="Press Enter to run, or N to skip: "
-@REM     if "!RUN!"=="" "%EXE_PATH%"
-@REM )
-
-
 @echo off
 setlocal enabledelayedexpansion
 
@@ -142,6 +39,15 @@ if %DO_CLEAN% EQU 1 (
 )
 
 if not exist "%BUILD_DIR%" mkdir "%BUILD_DIR%"
+
+REM =====================================================
+REM Lint engine code (non-fatal; set SKIP_TIDY=1 to skip)
+REM =====================================================
+if not "%SKIP_TIDY%"=="1" (
+    echo Running clang-tidy on DynamoEngine...
+    call TidyEngine.bat
+    if errorlevel 1 echo WARNING: clang-tidy reported findings ^(see above^). Continuing build.
+)
 REM =====================================================
 REM Compile HLSL -> SPIR-V
 REM =====================================================

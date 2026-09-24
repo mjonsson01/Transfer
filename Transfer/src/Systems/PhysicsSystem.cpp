@@ -585,7 +585,7 @@ void PhysicsSystem::calculateGravity(GravitationalBody& firstBody, Gravitational
     DynamoEngine::Vector2D direction_vector = secondBody.position - firstBody.position;
 
     // 2. Calculate Distance Squared
-    double r_squared = direction_vector.square_magnitude();
+    double r_squared = direction_vector.squareMagnitude();
 
     // 3. Calculate the Denominator Term (r^2 + epsilon^2)^(3/2)
     double denominator_1 = sqrt(r_squared + epsilon_squared);
@@ -774,7 +774,7 @@ void PhysicsSystem::calculateTotalEnergy(GameState& gameState)
     double total_energy = 0.0;
     for (int i = 0; i < num_macro_bodies; ++i)
     {
-        total_energy += macro_bodies[i].mass * macro_bodies[i].velocity.square_magnitude() / 2.0;
+        total_energy += macro_bodies[i].mass * macro_bodies[i].velocity.squareMagnitude() / 2.0;
     }
 
     for (size_t i = 0; i < num_macro_bodies; i++)
@@ -788,7 +788,7 @@ void PhysicsSystem::calculateTotalEnergy(GameState& gameState)
             DynamoEngine::Vector2D distance = macro_bodies[i].position - macro_bodies[j].position;
 
             // 2. Calculate Distance Squared (r^2)
-            double r_sq = distance.square_magnitude();
+            double r_sq = distance.squareMagnitude();
 
             // 3. Calculate the Denominator Term (r^2 + epsilon^2)^(3/2)
             // The term inside the parenthesis: rSq + epsilonSq

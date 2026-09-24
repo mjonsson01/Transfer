@@ -88,7 +88,7 @@ template <std::floating_point T> struct Vector2
         }
         return *this;
     }
-    Vector2& normalize() const
+    Vector2 normalize() const
     {
         Vector2 copy = *this;
         return copy.normalizeInPlace();
