@@ -1,4 +1,4 @@
-// File: Tests/DynamoEngine/Input/Test_InputEvents.cpp
+// File: Tests/DynamoEngine/Input/Test_InputEvent.cpp
 
 // Test Framework Imports
 #include <gtest/gtest.h>
@@ -6,21 +6,9 @@
 // Custom Imports
 #include "DynamoEngine/Constants/GlobalConstants.hh"
 #include "DynamoEngine/Input/InputEvent.hpp"
+#include "TestingUtilities/VectorsNear.hh"
 
 // Standard Library Imports
-
-template <std::floating_point T>
-::testing::AssertionResult VectorsNear(const DynamoEngine::Vector2<T>& actual,
-                                       const std::type_identity_t<DynamoEngine::Vector2<T>>& expected,
-                                       std::type_identity_t<T> tolerance)
-{
-    if (std::abs(actual.xVal - expected.xVal) <= tolerance && std::abs(actual.yVal - expected.yVal) <= tolerance)
-    {
-        return ::testing::AssertionSuccess();
-    }
-    return ::testing::AssertionFailure() << "actual " << actual << " vs expected " << expected << " (tolerance "
-                                         << tolerance << ")";
-}
 
 TEST(InputEvent, DefaultsDoNothing)
 {

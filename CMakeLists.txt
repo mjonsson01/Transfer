@@ -192,7 +192,11 @@ if(TRANSFER_BUILD_TESTS)
 
     if(TEST_SRC_FILES)
         add_executable(TransferTests ${TEST_SRC_FILES} ${ENGINE_SRC_FILES})
-        target_include_directories(TransferTests PRIVATE "${CMAKE_SOURCE_DIR}/Transfer/src" ${SDL3_INCLUDE_DIRS})
+        target_include_directories(TransferTests PRIVATE
+            "${CMAKE_SOURCE_DIR}/Transfer/src"  # engine / game headers:  #include "DynamoEngine/..."
+            "${CMAKE_SOURCE_DIR}/Tests"         # test utilities:         #include "TestingUtilities/..."
+            ${SDL3_INCLUDE_DIRS}
+        )
         target_link_libraries(TransferTests PRIVATE GTest::gtest_main ${SDL3_LIBS})
 
         include(GoogleTest)

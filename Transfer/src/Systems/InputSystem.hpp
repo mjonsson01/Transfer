@@ -19,7 +19,6 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
-// struct LevelEditorInputs. TBI
 
 class InputSystem
 {
