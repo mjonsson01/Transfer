@@ -26,7 +26,8 @@ class InputState
 
   public:
     // --- Top Level Methods --- //
-    void beginInputFrame(); // cleans up all old frame vars, called before applying a new event on the following frame
+    void beginInputFrame(); // cleans up all single frame 'edge' maps, called before applying a new event on the
+                            // following frame
     void applyInputEvent(const InputEvent& event); // fold a single input event into the current state
 
     // --- Keyboard --- //
@@ -65,7 +66,7 @@ class InputState
     // Checks to see if the mouse was released this frame
     bool wasMouseButtonReleased(MouseButton button) const { return m_mouse_buttons_released_this_frame[index(button)]; }
 
-    // Checks if any mouse buttons are pressed this frame
+    // Checks if any mouse buttons are held
     bool isAnyMouseButtonDown() const { return m_mouse_buttons_down.any(); }
 
     // --- Mouse position/motion in screen space --- //
@@ -88,22 +89,22 @@ class InputState
     bool quitRequested() const { return m_quit_requested; }
 
   private:
-    // index() functions to map types into size_t values to iterate through the key and mouse button maps
+    // index() functions to map types into size_t values to iterate through mouse button maps
     static constexpr std::size_t index(MouseButton button) { return static_cast<std::size_t>(button); }
 
-    // index() functions to map types into size_t values to iterate through the key and mouse button maps
+    // index() functions to map types into size_t values to iterate through the key maps
     static constexpr std::size_t index(Key key) { return static_cast<std::size_t>(key); }
 
     // Easy lookup for Mouse Button Count
     static constexpr std::size_t MOUSE_BUTTON_COUNT = static_cast<std::size_t>(MouseButton::Count);
 
     // Lookup structures for keys and buttons
-    std::bitset<SDL_SCANCODE_COUNT> m_keys_down;                        // Keys currently down this input frame
-    std::bitset<SDL_SCANCODE_COUNT> m_keys_pressed_this_frame;          // Keys pressed this specific frame
-    std::bitset<SDL_SCANCODE_COUNT> m_keys_released_this_frame;         // Keys released this specific frame
-    std::bitset<MOUSE_BUTTON_COUNT> m_mouse_buttons_down;               // Mouse buttons currently down this input frame
-    std::bitset<MOUSE_BUTTON_COUNT> m_mouse_buttons_pressed_this_frame; // Mouse buttons pressed this specific frame
-    std::bitset<MOUSE_BUTTON_COUNT> m_mouse_buttons_released_this_frame; // Mouse buttons released this specific frame
+    std::bitset<SDL_SCANCODE_COUNT> m_keys_down;                         // Keys currently down this input frame
+    std::bitset<SDL_SCANCODE_COUNT> m_keys_pressed_this_frame;           // Keys pressed this frame (rising edge)
+    std::bitset<SDL_SCANCODE_COUNT> m_keys_released_this_frame;          // Keys released this frame (falling edge)
+    std::bitset<MOUSE_BUTTON_COUNT> m_mouse_buttons_down;                // Buttons currently down this input frame
+    std::bitset<MOUSE_BUTTON_COUNT> m_mouse_buttons_pressed_this_frame;  // Buttons pressed this frame (rising edge)
+    std::bitset<MOUSE_BUTTON_COUNT> m_mouse_buttons_released_this_frame; // Buttons released this frame(falling edge)
 
     // Current mouse position this frame
     Vector2F m_mouse_position;
@@ -120,3 +121,11 @@ class InputState
     bool m_quit_requested = false; // Flag to request a shutdown
 };
 } // namespace DynamoEngine
+
+// HELPFUL DIAGRAM:
+//             frame:   1     2     3     4     5     6
+//                            ┌─────────────────┐
+// key state:  ───────────────┘                 └───────────
+//                            ↑                 ↑
+//                       rising edge       falling edge
+//                       (pressed)         (released)
