@@ -46,7 +46,7 @@ void UniformParticleGrid::queryCandidates(size_t index, const std::vector<Gravit
 {
     outCandidates.clear();
 
-    const Vector2D& pos = particles[index].position;
+    const DynamoEngine::Vector2D& pos = particles[index].position;
     int64_t cx = static_cast<int64_t>(std::floor(pos.xVal / cellSize));
     int64_t cy = static_cast<int64_t>(std::floor(pos.yVal / cellSize));
 

@@ -8,7 +8,7 @@
 
 // Custom Imports
 #include "Core/UIState.hpp"
-#include "Engine/Math/Vector2D.hpp"
+#include "DynamoEngine/Math/Vector2.hpp"
 #include "Entities/UIElements/UIElementIdentifierEnum.hpp"
 #include "Utilities/Rendering/Colors.hpp"
 #include "Utilities/Rendering/FontAtlasUtility.hpp"
@@ -23,9 +23,9 @@ class UIElement
   public:
     UIElement();
     virtual ~UIElement();
-    virtual void slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& uiState) {
+    virtual void slideMe(DynamoEngine::Vector2D positionOfEvent, double& returnedElementValue, UIState& uiState) {
     }; // Default does nothing
-    virtual void clickMe(Vector2D positionOfEvent, UIState& uiState) {}; // Default does nothing
+    virtual void clickMe(DynamoEngine::Vector2D positionOfEvent, UIState& uiState) {}; // Default does nothing
     void setPosition(float x, float y)
     {
         posX = x;
@@ -35,7 +35,7 @@ class UIElement
     float getY() const { return posY; }
     void setVisibility(bool desiredVisibility) { visible = desiredVisibility; }
     bool isVisible() const { return visible; }
-    UIElementIdentifier checkAndReturnIfHit(const Vector2D& positionToCheck);
+    UIElementIdentifier checkAndReturnIfHit(const DynamoEngine::Vector2D& positionToCheck);
     UIElementIdentifier getUIElementID() const { return UIElementID; }
     virtual void buildGeometry(std::vector<UIElementVertex>& vertexBuffer, uint32_t zIndex,
                                const FontAtlasUtility& fontAtlas) {};    // Default does nothing

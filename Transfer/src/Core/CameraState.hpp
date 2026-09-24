@@ -3,14 +3,14 @@
 #pragma once
 
 // Custom imports
-#include "Engine/Math/Vector2D.hpp"
+#include "DynamoEngine/Math/Vector2.hpp"
 #include "Utilities/Constants/GameSystemConstants.hpp"
 
 struct CameraState
 {
     double zoom = STARTUP_ZOOM_VALUE;
-    Vector2D offset = {0.0, 0.0}; // pan offset
-    Vector2D twinklingStarOffset = {0.0, 0.0};
+    DynamoEngine::Vector2D offset = {0.0, 0.0}; // pan offset
+    DynamoEngine::Vector2D twinklingStarOffset = {0.0, 0.0};
 
     float windowWidth = static_cast<float>(SCREEN_WIDTH);
     float windowHeight = static_cast<float>(SCREEN_HEIGHT);

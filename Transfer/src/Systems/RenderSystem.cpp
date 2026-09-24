@@ -175,7 +175,7 @@ void RenderSystem::RenderFullFrame(GameState& gameState, UIState& uiState,
     }
     // if (current_scene == SceneIdentifier::TEST_VISUAL_SCENE)
     // {
-        
+
     // }
     uploadUIVertices(allUIElementsInScope, cmdbuf);
     // Acquire the display target
@@ -562,7 +562,7 @@ void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexDat
         {
             new_preview_grav_body.position = ScreenToWorldCoordinates(input_state.mouseDragStartPosition, cameraState);
 
-            Vector2D arrow_end = ScreenToWorldCoordinates(input_state.mouseCurrPosition, cameraState);
+            DynamoEngine::Vector2D arrow_end = ScreenToWorldCoordinates(input_state.mouseCurrPosition, cameraState);
             buildVelocityVectorGeometry(new_preview_grav_body.position, arrow_end);
         }
         else
@@ -578,7 +578,7 @@ void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexDat
     }
 }
 
-CameraConstants RenderSystem::buildCameraConstants(const CameraState& cameraState, const Vector2D& offset)
+CameraConstants RenderSystem::buildCameraConstants(const CameraState& cameraState, const DynamoEngine::Vector2D& offset)
 {
     CameraConstants camera_constants = {};
     camera_constants.screenWidth = cameraState.windowWidth;
@@ -1025,7 +1025,7 @@ void RenderSystem::createStarshipGPUBufferAndPipeline()
     SDL_ReleaseGPUShader(gpu, frag_shader);
 }
 
-void RenderSystem::buildVelocityVectorGeometry(Vector2D lineStart, Vector2D lineEnd)
+void RenderSystem::buildVelocityVectorGeometry(DynamoEngine::Vector2D lineStart, DynamoEngine::Vector2D lineEnd)
 {
     velocityVectorVertices.clear();
 
@@ -1047,7 +1047,7 @@ void RenderSystem::buildVelocityVectorGeometry(Vector2D lineStart, Vector2D line
     float half_T = thickness / 2.0f;
 
     // Shorten the shaft so the arrowhead has room at the tip
-    Vector2D line_end = {lineEnd.xVal - dx * arrow_length, lineEnd.yVal - dy * arrow_length};
+    DynamoEngine::Vector2D line_end = {lineEnd.xVal - dx * arrow_length, lineEnd.yVal - dy * arrow_length};
 
     float r = 1.0f, g = 1.0f, b = 1.0f, a = 1.0f; // white, matching the original
 

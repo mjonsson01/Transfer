@@ -6,7 +6,7 @@ DropDownMenu::DropDownMenu() {}
 
 DropDownMenu::~DropDownMenu() {}
 
-void DropDownMenu::clickMe(Vector2D positionOfEvent, UIState& uiState) {}
+void DropDownMenu::clickMe(DynamoEngine::Vector2D positionOfEvent, UIState& uiState) {}
 
 void DropDownMenu::buildGeometry(std::vector<UIElementVertex>& vertexBuffer, uint32_t zIndex,
                                  const FontAtlasUtility& fontAtlas)

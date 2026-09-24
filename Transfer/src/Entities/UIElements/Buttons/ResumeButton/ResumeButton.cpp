@@ -12,7 +12,7 @@ ResumeButton::ResumeButton() : Button()
     UIElementID = UIElementIdentifier::RESUME_BUTTON_INDEX;
 }
 
-void ResumeButton::clickMe(Vector2D positionOfEvent, UIState& uiState)
+void ResumeButton::clickMe(DynamoEngine::Vector2D positionOfEvent, UIState& uiState)
 {
     uiState.setCurrentScene(SceneIdentifier::GAME_SCENE);
     std::string temp = displayText;

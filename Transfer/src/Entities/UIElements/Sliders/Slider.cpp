@@ -13,7 +13,7 @@ Slider::Slider()
     maxValue = 0.0;
 }
 
-void Slider::slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& uiState)
+void Slider::slideMe(DynamoEngine::Vector2D positionOfEvent, double& returnedElementValue, UIState& uiState)
 {
 
     // Track start positions

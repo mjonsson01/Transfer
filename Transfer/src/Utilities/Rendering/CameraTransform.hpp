@@ -3,9 +3,10 @@
 #pragma once
 
 #include "Core/CameraState.hpp"
-#include "Engine/Math/Vector2D.hpp"
+#include "DynamoEngine/Math/Vector2.hpp"
 
-inline Vector2D ScreenToWorldCoordinates(const Vector2D& screenPoint, const CameraState& camera_state)
+inline DynamoEngine::Vector2D ScreenToWorldCoordinates(const DynamoEngine::Vector2D& screenPoint,
+                                                       const CameraState& camera_state)
 {
     return (screenPoint / camera_state.zoom) - camera_state.offset;
 }

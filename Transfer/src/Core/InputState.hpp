@@ -2,13 +2,13 @@
 
 #pragma once
 
-#include "Engine/Math/Vector2D.hpp"
+#include "DynamoEngine/Math/Vector2.hpp"
 
 struct InputState
 {
     // Persistent flags and details
-    Vector2D mouseCurrPosition = {0.0, 0.0}; // set by from event input router
-    Vector2D mouseDragStartPosition = {0.0, 0.0};
+    DynamoEngine::Vector2D mouseCurrPosition = {0.0, 0.0}; // set by from event input router
+    DynamoEngine::Vector2D mouseDragStartPosition = {0.0, 0.0};
 
     // Physics locations if instantiateDirty gets thrown. If the event is not
     // consumed by a UI event, then instantiate dirty will be set by the

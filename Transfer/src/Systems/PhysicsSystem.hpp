@@ -5,7 +5,7 @@
 // Custom Imports
 #include "Core/GameState.hpp"
 #include "Core/UIState.hpp"
-#include "Engine/Math/Vector2D.hpp"
+#include "DynamoEngine/Math/Vector2.hpp"
 #include "Entities/Physics/GravitationalBody.hpp"
 #include "Entities/Physics/GravitationalBodyPair.hpp"
 #include "Utilities/Constants/EngineConstants.hpp"
@@ -24,10 +24,10 @@
 struct CollisionInfo
 {
     double distance;
-    Vector2D unitNormalVector;       // unit normal (from bodyA to bodyB)
-    Vector2D relativeVelocityVector; // vB - vA
-    double normalSpeed;              // signed speed along normal vector
-    double absNormalSpeed;           // abs value of signed speed along normal vector
+    DynamoEngine::Vector2D unitNormalVector;       // unit normal (from bodyA to bodyB)
+    DynamoEngine::Vector2D relativeVelocityVector; // vB - vA
+    double normalSpeed;                            // signed speed along normal vector
+    double absNormalSpeed;                         // abs value of signed speed along normal vector
     bool shouldCollide;
     bool shouldBlowUp;
 };
@@ -64,7 +64,7 @@ class PhysicsSystem
     void promoteOversizedParticles(GameState& gameState); // TODO: Prune? currently uncalled, see UpdateSystemFrame
     void substituteWithParticles(GravitationalBody& originalBody, GameState& gameState, uint32_t targetFragmentCount);
     void substituteWithParticlesFromImpact(GravitationalBody& originalBody, GameState& gameState,
-                                           uint32_t targetFragmentCount, const Vector2D& impactPoint);
+                                           uint32_t targetFragmentCount, const DynamoEngine::Vector2D& impactPoint);
 
     // --- Gravity ---
     void updateAllForces(GameState& gameState); // Gravity calculation dispatch helper

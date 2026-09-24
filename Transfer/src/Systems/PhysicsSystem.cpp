@@ -77,11 +77,12 @@ void PhysicsSystem::UpdateGravBodyInstantiations(GameState& gameState, UIState& 
 
 static inline CollisionInfo getCollisionInfo(const GravitationalBody& a, const GravitationalBody& b)
 {
-    Vector2D r_vector = b.position - a.position;
+    DynamoEngine::Vector2D r_vector = b.position - a.position;
     double distance = r_vector.magnitude();
-    Vector2D unit_normal_vector = (distance > 1e-8) ? (r_vector / distance) : Vector2D(1.0, 0.0);
+    DynamoEngine::Vector2D unit_normal_vector =
+        (distance > 1e-8) ? (r_vector / distance) : DynamoEngine::Vector2D(1.0, 0.0);
 
-    Vector2D relative_velocity_vector = b.velocity - a.velocity;
+    DynamoEngine::Vector2D relative_velocity_vector = b.velocity - a.velocity;
     double normal_speed = relative_velocity_vector.dot(unit_normal_vector);
     double abs_normal_speed = std::abs(normal_speed);
     bool should_collide = (distance < b.radius + a.radius);
@@ -239,8 +240,8 @@ void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& gravBodyPair, 
             return;
         }
 
-        Vector2D toward_lighter = (lighter.position - heavier.position).normalize();
-        Vector2D impact_point = heavier.position + toward_lighter * heavier.radius;
+        DynamoEngine::Vector2D toward_lighter = (lighter.position - heavier.position).normalize();
+        DynamoEngine::Vector2D impact_point = heavier.position + toward_lighter * heavier.radius;
 
         if (heavier.isShatterable && gravBodyPair.ratio <= MUTUAL_SHATTER_MASS_RATIO_THRESHOLD)
         {
@@ -281,8 +282,8 @@ void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& gravBodyPair, 
             lighter.isMacro && lighter.isShatterable && gameState.getParticlesMutable().size() < MAX_LIVE_PARTICLES;
         if (can_crumble)
         {
-            Vector2D toward_lighter = (lighter.position - heavier.position).normalize();
-            Vector2D contact_point = heavier.position + toward_lighter * heavier.radius;
+            DynamoEngine::Vector2D toward_lighter = (lighter.position - heavier.position).normalize();
+            DynamoEngine::Vector2D contact_point = heavier.position + toward_lighter * heavier.radius;
             substituteWithParticlesFromImpact(lighter, gameState, DEFAULT_FRAGMENT_COUNT / 3, contact_point);
         }
         else
@@ -307,7 +308,7 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, Grav
         GravitationalBody& dyn = smallerBody.isForceStatic ? largerBody : smallerBody;
         GravitationalBody& stat = smallerBody.isForceStatic ? smallerBody : largerBody;
 
-        Vector2D n = (dyn.position - stat.position).normalize();
+        DynamoEngine::Vector2D n = (dyn.position - stat.position).normalize();
         double v_n = dyn.velocity.dot(n);
 
         if (v_n < 0.0)
@@ -322,7 +323,7 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, Grav
         return;
     }
 
-    Vector2D r_vector = largerBody.position - smallerBody.position;
+    DynamoEngine::Vector2D r_vector = largerBody.position - smallerBody.position;
     double distance = r_vector.magnitude();
 
     if (firstWithinEpsilonOfSecond(distance, 0.0))
@@ -330,7 +331,7 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, Grav
         return;
     }
 
-    Vector2D normal_vector = r_vector / distance;
+    DynamoEngine::Vector2D normal_vector = r_vector / distance;
     double v_smaller_n = smallerBody.velocity.dot(normal_vector);
     double v_larger_n = largerBody.velocity.dot(normal_vector);
     double m_smaller = smallerBody.mass;
@@ -350,7 +351,7 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, Grav
         constexpr double percent = 0.8;
         constexpr double slop = 0.01;
         double correction_magnitude = std::max(penetration - slop, 0.0) * percent;
-        Vector2D correction = normal_vector * correction_magnitude;
+        DynamoEngine::Vector2D correction = normal_vector * correction_magnitude;
 
         if (smallerBody.isForceStatic && !largerBody.isForceStatic)
         {
@@ -450,9 +451,9 @@ void PhysicsSystem::substituteWithParticles(GravitationalBody& originalBody, Gam
     uint32_t num_particles = survivableFragmentCount(originalBody, targetFragmentCount);
 
     const double R = originalBody.radius;
-    const Vector2D center = originalBody.position;
+    const DynamoEngine::Vector2D center = originalBody.position;
     const double original_mass = originalBody.mass;
-    const Vector2D original_velocity = originalBody.velocity;
+    const DynamoEngine::Vector2D original_velocity = originalBody.velocity;
 
     double density_factor = (PI * R * R) / num_particles;
     const double fragment_radius = OVERLAP_MARGIN * sqrt(density_factor / PI);
@@ -463,7 +464,7 @@ void PhysicsSystem::substituteWithParticles(GravitationalBody& originalBody, Gam
     {
         double r_k = R * sqrt((k + 0.5) / num_particles);
         double theta_k = k * GOLDEN_ANGLE;
-        Vector2D pos_k = center + Vector2D{r_k * cos(theta_k), r_k * sin(theta_k)};
+        DynamoEngine::Vector2D pos_k = center + DynamoEngine::Vector2D{r_k * cos(theta_k), r_k * sin(theta_k)};
 
         GravitationalBody p;
         p.mass = particle_mass;
@@ -485,7 +486,8 @@ void PhysicsSystem::substituteWithParticles(GravitationalBody& originalBody, Gam
 }
 
 void PhysicsSystem::substituteWithParticlesFromImpact(GravitationalBody& originalBody, GameState& gameState,
-                                                      uint32_t targetFragmentCount, const Vector2D& impactPoint)
+                                                      uint32_t targetFragmentCount,
+                                                      const DynamoEngine::Vector2D& impactPoint)
 {
     const double R = originalBody.radius;
     const double original_mass = originalBody.mass;
@@ -580,7 +582,7 @@ void PhysicsSystem::calculateGravity(GravitationalBody& firstBody, Gravitational
     double epsilon_squared = softening_constant * softening_constant;
 
     // 1. Calculate direction Vector
-    Vector2D direction_vector = secondBody.position - firstBody.position;
+    DynamoEngine::Vector2D direction_vector = secondBody.position - firstBody.position;
 
     // 2. Calculate Distance Squared
     double r_squared = direction_vector.square_magnitude();
@@ -594,7 +596,7 @@ void PhysicsSystem::calculateGravity(GravitationalBody& firstBody, Gravitational
     double coefficient = (G * firstBody.mass * secondBody.mass) / denominator_3;
 
     // Force vector is C * direction_vector (r)
-    Vector2D force = direction_vector * coefficient;
+    DynamoEngine::Vector2D force = direction_vector * coefficient;
 
     // 6. Apply Forces (Newton's Third Law)
     if (!firstBody.isForceStatic)
@@ -634,13 +636,13 @@ void PhysicsSystem::applyVelocityVerletPhase1(GravitationalBody& gravBody)
     if (has_mass && !gravBody.isForceStatic)
     {
         // Calculate the acceleration from the previous frame's final force
-        Vector2D acceleration = gravBody.netForce * gravBody.invMass;
+        DynamoEngine::Vector2D acceleration = gravBody.netForce * gravBody.invMass;
         gravBody.velocity += acceleration * (PHYSICS_TIME_STEP / 2); // Half of a full integrated step
     }
     // Step the position
     gravBody.position += gravBody.velocity * PHYSICS_TIME_STEP;
     // Reset to force 0 for next frame
-    gravBody.netForce = Vector2D(0.0, 0.0);
+    gravBody.netForce = DynamoEngine::Vector2D(0.0, 0.0);
 }
 
 void PhysicsSystem::integrateForwardsVelocityVerletPhase2(GameState& gameState)
@@ -668,7 +670,7 @@ void PhysicsSystem::applyVelocityVerletPhase2(GravitationalBody& gravBody)
     }
     else
     {
-        Vector2D acceleration = gravBody.netForce * gravBody.invMass;
+        DynamoEngine::Vector2D acceleration = gravBody.netForce * gravBody.invMass;
         gravBody.velocity += acceleration * (PHYSICS_TIME_STEP / 2.0); // Other half of full integrated step
     }
 }
@@ -782,7 +784,7 @@ void PhysicsSystem::calculateTotalEnergy(GameState& gameState)
             double epsilon_sq = epsilon * epsilon;
 
             // 1. Calculate Distance Vector
-            Vector2D distance = macro_bodies[i].position - macro_bodies[j].position;
+            DynamoEngine::Vector2D distance = macro_bodies[i].position - macro_bodies[j].position;
 
             // 2. Calculate Distance Squared (r^2)
             double r_sq = distance.square_magnitude();

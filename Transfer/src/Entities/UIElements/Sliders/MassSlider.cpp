@@ -18,7 +18,7 @@ MassSlider::MassSlider() : Slider()
     setVisibility(true);
     UIElementID = UIElementIdentifier::MASS_SLIDER_INDEX;
 }
-void MassSlider::slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& uiState)
+void MassSlider::slideMe(DynamoEngine::Vector2D positionOfEvent, double& returnedElementValue, UIState& uiState)
 {
     float track_start_x = trackRect.x;
     float track_length_x = trackRect.w - knobRect.w;

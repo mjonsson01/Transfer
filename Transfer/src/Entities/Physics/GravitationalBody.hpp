@@ -3,7 +3,7 @@
 #pragma once
 
 // Custom Imports
-#include "Engine/Math/Vector2D.hpp"
+#include "DynamoEngine/Math/Vector2.hpp"
 #include "Utilities/Rendering/GPUTypes.hpp"
 
 // Standard Library Imports
@@ -15,16 +15,16 @@
 struct GravitationalBody
 {
     // State data members
-    Vector2D position = {0.0, 0.0};         // Current position vector (measured from upper left)
-    Vector2D previousPosition = {0.0, 0.0}; // Previous frame position vector (used
-                                            // for alpha frame interpolation)
-    Vector2D velocity = {0.0, 0.0};         // Current frame net velocity vector
-    Vector2D netForce = {0.0, 0.0};         // Current frame net force vector
-    Vector2D prevForce = {0.0, 0.0};        // Net force vector from previous frame
-    double mass = 0.0;                      // Mass of Gravitational Body
-    double invMass = 0.0;                   // Inverse mass of grav body
-    double radius = 0.0;                    // Radius of Gravitational Body (units TBD)
-    double temperature = 0.0;               // Kelvin
+    DynamoEngine::Vector2D position = {0.0, 0.0};         // Current position vector (measured from upper left)
+    DynamoEngine::Vector2D previousPosition = {0.0, 0.0}; // Previous frame position vector (used
+                                                          // for alpha frame interpolation)
+    DynamoEngine::Vector2D velocity = {0.0, 0.0};         // Current frame net velocity vector
+    DynamoEngine::Vector2D netForce = {0.0, 0.0};         // Current frame net force vector
+    DynamoEngine::Vector2D prevForce = {0.0, 0.0};        // Net force vector from previous frame
+    double mass = 0.0;                                    // Mass of Gravitational Body
+    double invMass = 0.0;                                 // Inverse mass of grav body
+    double radius = 0.0;                                  // Radius of Gravitational Body (units TBD)
+    double temperature = 0.0;                             // Kelvin
 
     // Top-level type flags
     bool isMacro = false;    // Is body with macro-particle and macro-macro gravitational

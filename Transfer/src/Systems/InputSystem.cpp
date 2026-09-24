@@ -58,8 +58,9 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& uiState
 
         if (!firstWithinEpsilonOfSecond(transferInputs.pendingScrollData, 0.0f))
         {
-            Vector2D worldUnderCursor = ScreenToWorldCoordinates(transferInputs.mouseCurrPosition, camera_state);
-            Vector2D starWorldUnderCursor =
+            DynamoEngine::Vector2D worldUnderCursor =
+                ScreenToWorldCoordinates(transferInputs.mouseCurrPosition, camera_state);
+            DynamoEngine::Vector2D starWorldUnderCursor =
                 transferInputs.mouseCurrPosition / camera_state.zoom - camera_state.twinklingStarOffset;
 
             camera_state.zoom *= std::pow(1.1, transferInputs.pendingScrollData);
@@ -77,7 +78,8 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& uiState
         }
         else if (transferInputs.middleMousePressed)
         {
-            Vector2D dragDelta = transferInputs.mouseCurrPosition - transferInputs.previousMiddleDragPosition;
+            DynamoEngine::Vector2D dragDelta =
+                transferInputs.mouseCurrPosition - transferInputs.previousMiddleDragPosition;
             camera_state.offset += dragDelta / camera_state.zoom;
             camera_state.twinklingStarOffset += (dragDelta / camera_state.zoom) * STAR_PARALLAX_FACTOR;
             transferInputs.previousMiddleDragPosition = transferInputs.mouseCurrPosition;
@@ -86,7 +88,7 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& uiState
         // the generated star field.
         double starFieldHalfWidth = camera_state.maxDisplayWidth / (2.0 * MIN_ZOOM);
         double starFieldHalfHeight = camera_state.maxDisplayHeight / (2.0 * MIN_ZOOM);
-        Vector2D starFieldCenter = {SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0};
+        DynamoEngine::Vector2D starFieldCenter = {SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0};
 
         double viewHalfWidth = (camera_state.windowWidth / 2.0) / camera_state.zoom;
         double viewHalfHeight = (camera_state.windowHeight / 2.0) / camera_state.zoom;
@@ -94,9 +96,10 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& uiState
         double slackX = std::max(0.0, starFieldHalfWidth - viewHalfWidth);
         double slackY = std::max(0.0, starFieldHalfHeight - viewHalfHeight);
 
-        auto clampOffsetToStarField = [&](Vector2D& offsetToClamp)
+        auto clampOffsetToStarField = [&](DynamoEngine::Vector2D& offsetToClamp)
         {
-            Vector2D viewCenterWorld = {viewHalfWidth - offsetToClamp.xVal, viewHalfHeight - offsetToClamp.yVal};
+            DynamoEngine::Vector2D viewCenterWorld = {viewHalfWidth - offsetToClamp.xVal,
+                                                      viewHalfHeight - offsetToClamp.yVal};
 
             viewCenterWorld.xVal =
                 std::clamp(viewCenterWorld.xVal, starFieldCenter.xVal - slackX, starFieldCenter.xVal + slackX);

@@ -8,7 +8,7 @@
 
 // Custom Imports
 #include "Core/UIState.hpp"
-#include "Engine/Math/Vector2D.hpp"
+#include "DynamoEngine/Math/Vector2.hpp"
 #include "Entities/UIElements/UIElement.hpp"
 #include "Entities/UIElements/UIElementIdentifierEnum.hpp"
 
@@ -30,7 +30,8 @@ class Slider : public UIElement
     void buildGeometry(std::vector<UIElementVertex>& vertexBuffer, uint32_t zIndex,
                        const FontAtlasUtility& fontAtlas) override;
     virtual std::string getDisplayText() const { return std::to_string(sliderValue); }
-    virtual void slideMe(Vector2D positionOfEvent, double& returnedElementValue, UIState& uiState) override;
+    virtual void slideMe(DynamoEngine::Vector2D positionOfEvent, double& returnedElementValue,
+                         UIState& uiState) override;
     double getSliderValue() { return sliderValue; }
     SDL_FPoint getKnobPosition() const { return {knobRect.x, knobRect.y}; }
 

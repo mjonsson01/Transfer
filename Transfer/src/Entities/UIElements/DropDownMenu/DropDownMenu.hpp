@@ -3,7 +3,7 @@
 #pragma once
 
 #include "Core/UIState.hpp"
-#include "Engine/Math/Vector2D.hpp"
+#include "DynamoEngine/Math/Vector2.hpp"
 #include "Entities/UIElements/Buttons/VisorButton/VisorButton.hpp"
 #include <vector>
 
@@ -16,7 +16,7 @@ class DropDownMenu : public UIElement
     void buildGeometry(std::vector<UIElementVertex>& vertexBuffer, uint32_t zIndex,
                        const FontAtlasUtility& fontAtlas) override;
 
-    void clickMe(Vector2D positionOfEvent, UIState& uiState) override;
+    void clickMe(DynamoEngine::Vector2D positionOfEvent, UIState& uiState) override;
 
   private:
     // std::vector<VisorButton*> visorButtons;

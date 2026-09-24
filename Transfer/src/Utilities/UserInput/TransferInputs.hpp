@@ -3,7 +3,7 @@
 #pragma once
 
 // Custom Imports
-#include "Engine/Math/Vector2D.hpp"
+#include "DynamoEngine/Math/Vector2.hpp"
 
 // Standard Library Imports
 
@@ -40,11 +40,11 @@ struct TransferInputs
     bool shiftPressed = false;
     bool altPressed = false;
 
-    Vector2D mouseCurrPosition = {0, 0};
-    Vector2D mouseDragStartPosition = {0, 0};
+    DynamoEngine::Vector2D mouseCurrPosition = {0, 0};
+    DynamoEngine::Vector2D mouseDragStartPosition = {0, 0};
 
     // Camera vars
-    Vector2D previousMiddleDragPosition = {0, 0};
+    DynamoEngine::Vector2D previousMiddleDragPosition = {0, 0};
     float pendingScrollData = 0.0f;
 
     bool isDragging = false;

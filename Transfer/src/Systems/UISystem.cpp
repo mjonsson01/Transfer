@@ -244,7 +244,7 @@ UIElementIdentifier UISystem::findElementWeAreIn(InputState& inputsReceived)
 {
 
     UIElementIdentifier contacted_element = UIElementIdentifier::NONE; // default result
-    Vector2D curr_pos = inputsReceived.mouseCurrPosition;
+    DynamoEngine::Vector2D curr_pos = inputsReceived.mouseCurrPosition;
     std::unordered_map<UIElementIdentifier, UIElement*> allUIElements = allScenes[currentSceneID]->getSceneElements();
     for (auto& [UI_element_ID, UI_element_ptr] : allUIElements)
     {

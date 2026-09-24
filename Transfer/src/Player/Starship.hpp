@@ -9,7 +9,7 @@
 // Custom includes
 #include "Core/InputState.hpp"
 #include "Core/UIState.hpp"
-#include "Engine/Math/Vector2D.hpp"
+#include "DynamoEngine/Math/Vector2.hpp"
 #include "Utilities/Constants/PhysicsConstants.hpp"
 #include "Utilities/Rendering/GPUTypes.hpp"
 
@@ -30,12 +30,12 @@ class Starship
     void applyVelocity(UIState& uiState);
     void applyRotation(UIState& uiState);
     void buildGeometry(std::vector<StarshipVertex>& starshipVertexBuffer);
-    Vector2D getPointingVector();
+    DynamoEngine::Vector2D getPointingVector();
 
   private:
-    Vector2D velocity = {};
+    DynamoEngine::Vector2D velocity = {};
     double rotation = {};
-    Vector2D position = {};
-    Vector2D prevPosition = {};
+    DynamoEngine::Vector2D position = {};
+    DynamoEngine::Vector2D prevPosition = {};
     float shipSize = {};
 };

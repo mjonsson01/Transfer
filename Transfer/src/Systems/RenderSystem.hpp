@@ -138,9 +138,9 @@ class RenderSystem
     void renderStarship(GameState& gameState, SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
                         const CameraState& cameraState);
 
-    CameraConstants buildCameraConstants(const CameraState& cameraState, const Vector2D& offset);
+    CameraConstants buildCameraConstants(const CameraState& cameraState, const DynamoEngine::Vector2D& offset);
     // Utility Rendering Helper Functions
-    void buildVelocityVectorGeometry(Vector2D lineStart, Vector2D lineEnd);
+    void buildVelocityVectorGeometry(DynamoEngine::Vector2D lineStart, DynamoEngine::Vector2D lineEnd);
     void uploadVelocityVectorVertices(SDL_GPUCommandBuffer* cmdbuf);
     void renderVelocityVectors(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf, const CameraState& cameraState);
     SDL_Color getColorForProperty(const GravitationalBody& body);

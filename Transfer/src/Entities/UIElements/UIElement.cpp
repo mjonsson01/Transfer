@@ -7,7 +7,7 @@ UIElement::UIElement() {}
 
 UIElement::~UIElement() {}
 
-UIElementIdentifier UIElement::checkAndReturnIfHit(const Vector2D& positionToCheck)
+UIElementIdentifier UIElement::checkAndReturnIfHit(const DynamoEngine::Vector2D& positionToCheck)
 {
     SDL_FPoint point = {static_cast<float>(positionToCheck.xVal), static_cast<float>(positionToCheck.yVal)};
     UIElementIdentifier type_hit = UIElementIdentifier::NONE;

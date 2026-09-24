@@ -5,10 +5,10 @@ Starship::Starship() { shipSize = 50.0; }
 
 Starship::~Starship() {}
 
-Vector2D Starship::getPointingVector()
+DynamoEngine::Vector2D Starship::getPointingVector()
 {
     // rotation = 0 → pointing up (-y), matches your current nose placement
-    return Vector2D{std::sin(rotation), -std::cos(rotation)};
+    return DynamoEngine::Vector2D{std::sin(rotation), -std::cos(rotation)};
 }
 
 void Starship::buildGeometry(std::vector<StarshipVertex>& starshipVertexBuffer)
@@ -82,7 +82,7 @@ void Starship::applyVelocity(UIState& uiState)
         if (input_state.negativeThrust)
             sign = -1;
 
-        Vector2D direction = getPointingVector(); // unit vector, nose direction
+        DynamoEngine::Vector2D direction = getPointingVector(); // unit vector, nose direction
         const double thrustMagnitude = 10.0;
 
         velocity.xVal += sign * direction.xVal * thrustMagnitude;

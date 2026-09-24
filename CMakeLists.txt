@@ -186,9 +186,9 @@ if(TRANSFER_BUILD_TESTS)
     enable_testing()
 
     # Tests + every engine source. Engine code must build without any game code -- if this target
-    # fails to link, something in Engine/ reached into the game.
+    # fails to link, something in DynamoEngine/ reached into the game.
     file(GLOB_RECURSE TEST_SRC_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/Tests/*.cpp")
-    file(GLOB_RECURSE ENGINE_SRC_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/Transfer/src/Engine/*.cpp")
+    file(GLOB_RECURSE ENGINE_SRC_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/Transfer/src/DynamoEngine/*.cpp")
 
     if(TEST_SRC_FILES)
         add_executable(TransferTests ${TEST_SRC_FILES} ${ENGINE_SRC_FILES})
