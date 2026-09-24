@@ -171,11 +171,12 @@ void RenderSystem::RenderFullFrame(GameState& gameState, UIState& uiState,
     {
         uploadTwinklingStarField(cmdbuf);
         uploadUnifiedBodies(gameState, uiState, cmdbuf);
-    }
-    if (current_scene == SceneIdentifier::TEST_VISUAL_SCENE)
-    {
         uploadStarship(gameState, uiState, cmdbuf);
     }
+    // if (current_scene == SceneIdentifier::TEST_VISUAL_SCENE)
+    // {
+        
+    // }
     uploadUIVertices(allUIElementsInScope, cmdbuf);
     // Acquire the display target
     SDL_GPUTexture* swapchainTexture = nullptr;
@@ -221,6 +222,7 @@ void RenderSystem::renderGameFrame(GameState& gameState, UIState& uiState,
                                    SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf)
 {
     gameState.getCameraStateMutable().renderAlpha = gameState.getAlpha();
+    renderStarship(gameState, pass, cmdbuf, gameState.getCameraState());
     renderTwinklingStarField(pass, cmdbuf, gameState.getCameraState());
     renderBodies(gameState, uiState, pass, cmdbuf);
     renderVelocityVectors(pass, cmdbuf, gameState.getCameraState());
@@ -239,7 +241,7 @@ void RenderSystem::renderTestFrame(GameState& gameState, UIState& uiState,
                                    SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf)
 {
     gameState.getCameraStateMutable().renderAlpha = gameState.getAlpha();
-    renderStarship(gameState, pass, cmdbuf, gameState.getCameraState());
+    // renderStarship(gameState, pass, cmdbuf, gameState.getCameraState());
 }
 void RenderSystem::uploadUnifiedBodies(GameState& gameState, UIState& uiState, SDL_GPUCommandBuffer* cmdbuf)
 {

@@ -26,7 +26,6 @@ void Game::StartGame()
     // implemented yet.
 
     // uiState.setCurrentScene(SceneIdentifier::START_MENU_SCENE);
-    // uiState.setCurrentScene(SceneIdentifier::GAME_SCENE);
     uiState.setCurrentScene(SceneIdentifier::TEST_VISUAL_SCENE);
     uiState.setPlaySoundEffects(true);
     uiState.setPlayMusic(true);

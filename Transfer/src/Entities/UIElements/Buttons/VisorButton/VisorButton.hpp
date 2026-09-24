@@ -5,6 +5,7 @@
 class VisorButton : public Button
 
 {
-    VisorButton();
-    ~VisorButton();
+    public: 
+        VisorButton();
+        ~VisorButton();
 };
