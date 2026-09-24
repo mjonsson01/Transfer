@@ -4,7 +4,7 @@
 
 PlayGameButton::PlayGameButton() : Button()
 {
-    updateLayout(SCREEN_HEIGHT, SCREEN_WIDTH);
+    updateLayout(SCREEN_WIDTH, SCREEN_HEIGHT);
     setVisibility(true);
     displayText = "Play Game";
     altText = "";

@@ -2,7 +2,7 @@
 
 #include "Scenes/TestVisualScene/TestVisualScene.hpp"
 
-TestVisualScene::TestVisualScene() : Scene(SceneIdentifier::PAUSE_SCENE)
+TestVisualScene::TestVisualScene() : Scene(SceneIdentifier::TEST_VISUAL_SCENE)
 {
     // sceneUIElements.insert({UIElementIdentifier::RESUME_BUTTON_INDEX, nullptr});
     sceneUIElements.insert({UIElementIdentifier::VISOR_MENU_SELECTION_INDEX, nullptr});

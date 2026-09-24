@@ -1,15 +1,7 @@
 // File: Transfer/src/Player/Starship.cpp
 #include "Starship.hpp"
 
-Starship::Starship()
-{
-    velocity.xVal = 0;
-    velocity.yVal = 0;
-    shipSize = 50.0;
-    position.xVal = 0.0;
-    position.yVal = 0.0;
-    prevPosition = position;
-}
+Starship::Starship() { shipSize = 50.0; }
 
 Starship::~Starship() {}
 
@@ -101,7 +93,7 @@ void Starship::applyVelocity(UIState& uiState)
 void Starship::applyRotation(UIState& uiState)
 {
     InputState& input_state = uiState.getMutableInputState();
-    const double turnSpeed = 0.05; // radians per tick — tune to taste
+    const double turnSpeed = 0.05;
 
     // NOTE: signs are reversed on purpose because the y origin is in the upper left instead of lower left.
     if (input_state.positiveRotation)
@@ -110,11 +102,7 @@ void Starship::applyRotation(UIState& uiState)
         rotation += turnSpeed;
 
     // Optional: keep rotation in a sane range to avoid float drift over time
-    const double TWO_PI = 6.28318530718;
-    if (rotation > TWO_PI)
-        rotation -= TWO_PI;
-    if (rotation < -TWO_PI)
-        rotation += TWO_PI;
+    rotation = std::remainder(rotation, TWO_PI); // result in [-π, π]
 }
 
 void Starship::integratePosition()

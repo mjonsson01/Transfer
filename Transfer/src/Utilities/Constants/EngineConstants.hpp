@@ -5,6 +5,8 @@
 // Hardcoded Pi
 constexpr double PI = 3.14159265358979323846;
 
+constexpr double TWO_PI = 2.0 * PI;
+
 // Near-zero comparison epsilon.
 constexpr double EPSILON = 1e-8;
 
@@ -25,3 +27,5 @@ constexpr uint32_t MAX_STARSHIP_VERTICES = 32; // Unknown if needed
 // Grav body max/mins
 constexpr double MAX_MASS = 1e11;
 constexpr double MAX_RADIUS = 300;
+
+constexpr double MIN_PARTICLE_RADIUS = 1.0;
