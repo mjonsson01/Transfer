@@ -2,25 +2,29 @@
 
 #pragma once
 
-// SDL3 Imports
-#include <SDL3/SDL.h>
-
 // Custom Imports
-#include "Core/CameraState.hpp"
-#include "Core/GameState.hpp"
-#include "Core/UIState.hpp"
-#include "Scenes/SceneIdentifierEnum.hpp"
+#include "Core/CameraState.hpp"           // IWYU pragma: export
+#include "Core/GameState.hpp"             // IWYU pragma: export
+#include "Core/UIState.hpp"               // IWYU pragma: export
+#include "Scenes/SceneIdentifierEnum.hpp" // IWYU pragma: export
 #include "Utilities/Constants/EngineConstants.hpp"
-#include "Utilities/Constants/GameSystemConstants.hpp"
-#include "Utilities/Math/CustomMathUtilities.hpp"
-#include "Utilities/Rendering/CameraTransform.hpp"
-#include "Utilities/UserInput/TransferInputs.hpp"
+#include "Utilities/Constants/GameSystemConstants.hpp" // IWYU pragma: export
+#include "Utilities/Math/CustomMathUtilities.hpp"      // IWYU pragma: export
+#include "Utilities/Rendering/CameraTransform.hpp"     // IWYU pragma: export
+
+// Engine Imports
+#include "DynamoEngine/Input/InputEvent.hpp"
+#include "DynamoEngine/Input/InputState.hpp"
+#include "DynamoEngine/Input/SDLInputIntake.hpp" // IWYU pragma: export
+#include "DynamoEngine/Math/Vector2.hpp"         // IWYU pragma: export
 
 // Standard Library Imports
-#include <algorithm>
-#include <cmath>
+#include <algorithm> // IWYU pragma: export
+#include <cmath>     // IWYU pragma: export
 #include <iostream>
 
+// Game-Side Input: reads engine's InputState and turns it into Transfer's meaning
+// (camera controls, spawn requests, scene changes), written into DEPRECATED_InputState for now.
 class InputSystem
 {
   public:
@@ -30,15 +34,23 @@ class InputSystem
 
   public:
     // Main method to process input
-    void ProcessSystemInputFrame(GameState& gameState, UIState& uiState);
+    void processSystemInputFrame(GameState& game_state, UIState& ui_state);
 
     // Clean up helper
-    void CleanUp();
+    void cleanUp();
 
   private:
-    void routeSDL_EventInputInGame(SDL_Event* event);
-    void routeSDL_EventInputInMenu(SDL_Event* event);
-    void translateAndPassTransferInputsOff(UIState& uiState);
-    void translateAndPassMenuInputsOff(UIState& uiState);
-    TransferInputs transferInputs; // in game inputs
+    // Game rule: where a creation drag started (shift re-anchors it). Runs BEFORE the event is applied,
+    // because it needs the button state from before this event.
+    void trackDragAnchor(const DynamoEngine::InputEvent& event);
+    void updateCamera(GameState& game_state); // zoom around cursor, middle-mouse pan, star-field clamp
+    void translateGameInputs(UIState& ui_state);
+    void translateMenuInputs(UIState& ui_state);
+    void copySharedPointerState(DEPRECATED_InputState& legacy_state); // fields both translators pass on
+
+  private:
+    DynamoEngine::SDLInputIntake m_intake;
+    DynamoEngine::InputState m_input;
+    std::vector<DynamoEngine::InputEvent> m_frame_events;
+    DynamoEngine::Vector2F m_mouse_drag_anchor; // Transfer's drag start (pressPosition + shift re-anchor)
 };

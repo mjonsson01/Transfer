@@ -40,7 +40,7 @@ void Game::StartGame()
 // Tears down the 'systems' and cleans up allocated resources.
 void Game::EndGame()
 {
-    inputSystem.CleanUp();
+    inputSystem.cleanUp();
     audioSystem.CleanUp();
     physicsSystem.CleanUp();
     UISystem.CleanUp();
@@ -141,7 +141,7 @@ void Game::Run()
 void Game::ProcessInput()
 {
     // Dispatch to Input System
-    inputSystem.ProcessSystemInputFrame(gameState, uiState);
+    inputSystem.processSystemInputFrame(gameState, uiState);
     UISystem.UpdateUIElements(gameState, uiState);
 }
 
