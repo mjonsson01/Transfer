@@ -1,0 +1,23 @@
+// File: Transfer/src/Entities/UIElements/DropDownMenu.hpp
+
+#pragma once
+
+#include "Core/UIState.hpp"
+#include "Entities/UIElements/Buttons/VisorButton/VisorButton.hpp"
+#include "Utilities/Math/Vector2D.hpp"
+#include <vector>
+
+class DropDownMenu : public UIElement
+{
+  public:
+    DropDownMenu();
+    ~DropDownMenu();
+
+    void buildGeometry(std::vector<UIElementVertex>& vertexBuffer, uint32_t zIndex,
+                       const FontAtlasUtility& fontAtlas) override;
+
+    void clickMe(Vector2D positionOfEvent, UIState& uiState) override;
+
+  private:
+    // std::vector<VisorButton*> visorButtons;
+};

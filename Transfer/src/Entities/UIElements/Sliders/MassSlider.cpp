@@ -91,7 +91,7 @@ void MassSlider::playTickSoundIfMoved(UIState& uiState)
     else
     {
         double sign = (sliderValue < 0) ? -1.0 : 1.0;
-        centered_t = sign * (std::log10(std::abs(sliderValue)) / 7.0);
+        centered_t = sign * (std::log10(std::abs(sliderValue)) / curveExponent);
     }
 
     int currentTick = static_cast<int>(std::round(centered_t * NUM_SLIDER_TICKS));

@@ -33,10 +33,9 @@ class Starship
     Vector2D getPointingVector();
 
   private:
-    Vector2D velocity;
-    Vector2D unitPointingVector;
-    double rotation;
-    Vector2D position;
-    Vector2D prevPosition;
-    float shipSize; // square magnitude
+    Vector2D velocity = {};
+    double rotation = {};
+    Vector2D position = {};
+    Vector2D prevPosition = {};
+    float shipSize = {};
 };

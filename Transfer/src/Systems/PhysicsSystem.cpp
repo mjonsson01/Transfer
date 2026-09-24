@@ -274,7 +274,21 @@ void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& gravBodyPair, 
 
     if (lighter.isAccretable && gravBodyPair.ratio >= accretion_ratio_threshold)
     {
-        handleAccretion(gravBodyPair);
+        // Macro bodies crumble into fragments that then accrete individually; particles merge directly.
+        // This is a very gentle collision compared to our normal explosion collision and requires that major mass
+        // disparity so we decrease fragment density
+        bool can_crumble =
+            lighter.isMacro && lighter.isShatterable && gameState.getParticlesMutable().size() < MAX_LIVE_PARTICLES;
+        if (can_crumble)
+        {
+            Vector2D toward_lighter = (lighter.position - heavier.position).normalize();
+            Vector2D contact_point = heavier.position + toward_lighter * heavier.radius;
+            substituteWithParticlesFromImpact(lighter, gameState, DEFAULT_FRAGMENT_COUNT / 3, contact_point);
+        }
+        else
+        {
+            handleAccretion(gravBodyPair);
+        }
     }
     else
     {
@@ -375,6 +389,7 @@ void PhysicsSystem::handleAccretion(GravitationalBodyPair& gravBodyPair)
     }
 
     double new_mass = heavier.mass + lighter.mass;
+    heavier.velocity = (heavier.velocity * heavier.mass + lighter.velocity * lighter.mass) / new_mass;
     heavier.radius *= pow(new_mass / heavier.mass, 1.0 / 3.0);
     heavier.mass = new_mass;
     heavier.invMass = 1.0 / heavier.mass;
@@ -431,7 +446,8 @@ void PhysicsSystem::promoteOversizedParticles(GameState& gameState)
 void PhysicsSystem::substituteWithParticles(GravitationalBody& originalBody, GameState& gameState,
                                             uint32_t targetFragmentCount)
 {
-    uint32_t num_particles = std::max<uint32_t>(1, targetFragmentCount);
+    // uint32_t num_particles = std::max<uint32_t>(1, targetFragmentCount);
+    uint32_t num_particles = survivableFragmentCount(originalBody, targetFragmentCount);
 
     const double R = originalBody.radius;
     const Vector2D center = originalBody.position;
@@ -792,9 +808,9 @@ void PhysicsSystem::cleanupParticles(GameState& gameState)
     // 1. Use std::remove_if to move all elements marked for deletion
     //    to the end of the vector. It returns an iterator to the new
     //    end.
-    auto new_end =
-        std::remove_if(particles.begin(), particles.end(), [](const GravitationalBody& p)
-                       { return p.isMarkedForDeletion || firstWithinEpsilonOfSecond(p.mass, 0.0) || p.radius < 1; });
+    auto new_end = std::remove_if(
+        particles.begin(), particles.end(), [](const GravitationalBody& p)
+        { return p.isMarkedForDeletion || firstWithinEpsilonOfSecond(p.mass, 0.0) || p.radius < MIN_PARTICLE_RADIUS; });
 
     // 2. Use vector::erase to destroy the elements in the range
     // [new_end, particles.end())
@@ -822,4 +838,10 @@ void PhysicsSystem::updatePlayerPhysics(GameState& gameState, UIState& uiState)
 {
     gameState.getPlayerMutable().starship.applyRotation(uiState);
     gameState.getPlayerMutable().starship.applyVelocity(uiState);
+}
+
+uint32_t PhysicsSystem::survivableFragmentCount(const GravitationalBody& body, uint32_t maxCount)
+{
+    double max_survivable = (OVERLAP_MARGIN * body.radius) / MIN_PARTICLE_RADIUS;
+    return std::clamp(static_cast<uint32_t>(max_survivable * max_survivable), 1u, maxCount);
 }

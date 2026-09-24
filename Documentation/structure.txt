@@ -1,0 +1,162 @@
+Transfer/
+├── Assets
+│   ├── Fonts
+│   │   ├── OFL.txt
+│   │   ├── SpaceMono-Bold.ttf
+│   │   ├── SpaceMono-BoldItalic.ttf
+│   │   ├── SpaceMono-Italic.ttf
+│   │   └── SpaceMono-Regular.ttf
+│   ├── Music
+│   │   ├── Expanse1.wav
+│   │   └── TitleTheme.wav
+│   ├── Shaders
+│   │   ├── Starship.frag.msl
+│   │   ├── Starship.vert.msl
+│   │   ├── TwinklingStar.frag.msl
+│   │   ├── TwinklingStar.vert.msl
+│   │   ├── UIElement.frag.msl
+│   │   ├── UIElement.vert.msl
+│   │   ├── UnifiedGravBody.frag.msl
+│   │   ├── UnifiedGravBody.vert.msl
+│   │   ├── VelocityVector.frag.msl
+│   │   └── VelocityVector.vert.msl
+│   ├── SoundEffects
+│   │   ├── ButtonClick.wav
+│   │   └── SliderTick.wav
+│   ├── Transfer.rc
+│   └── Visual
+│       ├── Transfer.icns
+│       └── Transfer.ico
+└── src
+    ├── Core
+    │   ├── CameraState.hpp
+    │   ├── Game.cpp
+    │   ├── Game.hpp
+    │   ├── GameState.cpp
+    │   ├── GameState.hpp
+    │   ├── InputState.hpp
+    │   ├── UIState.cpp
+    │   └── UIState.hpp
+    ├── Entities
+    │   ├── Physics
+    │   │   ├── GravitationalBody.cpp
+    │   │   ├── GravitationalBody.hpp
+    │   │   └── GravitationalBodyPair.hpp
+    │   ├── Sound
+    │   │   ├── MusicModeEnum.hpp
+    │   │   └── SoundEffect.hpp
+    │   ├── UIElements
+    │   │   ├── Buttons
+    │   │   │   ├── Button.cpp
+    │   │   │   ├── Button.hpp
+    │   │   │   ├── PlayGameButton
+    │   │   │   │   ├── PlayGameButton.cpp
+    │   │   │   │   └── PlayGameButton.hpp
+    │   │   │   ├── ResumeButton
+    │   │   │   │   ├── ResumeButton.cpp
+    │   │   │   │   └── ResumeButton.hpp
+    │   │   │   └── VisorButton
+    │   │   │       ├── VisorButton.cpp
+    │   │   │       └── VisorButton.hpp
+    │   │   ├── Checkboxes
+    │   │   │   ├── Checkbox.cpp
+    │   │   │   └── Checkbox.hpp
+    │   │   ├── DropDownMenu
+    │   │   │   ├── DropDownMenu.cpp
+    │   │   │   ├── DropDownMenu.hpp
+    │   │   │   └── VisorDropDownMenu
+    │   │   ├── Overlay
+    │   │   │   ├── FPSCounter.cpp
+    │   │   │   └── FPSCounter.hpp
+    │   │   ├── PopUps
+    │   │   │   ├── PopUp.cpp
+    │   │   │   └── PopUp.hpp
+    │   │   ├── Sliders
+    │   │   │   ├── MassSlider.cpp
+    │   │   │   ├── MassSlider.hpp
+    │   │   │   ├── RadiusSlider.cpp
+    │   │   │   ├── RadiusSlider.hpp
+    │   │   │   ├── SimulationSpeedSlider.cpp
+    │   │   │   ├── SimulationSpeedSlider.hpp
+    │   │   │   ├── Slider.cpp
+    │   │   │   └── Slider.hpp
+    │   │   ├── UIElement.cpp
+    │   │   ├── UIElement.hpp
+    │   │   └── UIElementIdentifierEnum.hpp
+    │   └── VisualElements
+    │       └── TwinklingStars.hpp
+    ├── HLSL
+    │   ├── Starship.frag.hlsl
+    │   ├── Starship.vert.hlsl
+    │   ├── TwinklingStar.frag.hlsl
+    │   ├── TwinklingStar.vert.hlsl
+    │   ├── UIElement.frag.hlsl
+    │   ├── UIElement.vert.hlsl
+    │   ├── UnifiedGravBody.frag.hlsl
+    │   ├── UnifiedGravBody.vert.hlsl
+    │   ├── VelocityVector.frag.hlsl
+    │   └── VelocityVector.vert.hlsl
+    ├── main.cpp
+    ├── Player
+    │   ├── Player.cpp
+    │   ├── Player.hpp
+    │   ├── Starship.cpp
+    │   └── Starship.hpp
+    ├── Scenes
+    │   ├── GameScene
+    │   │   ├── GameScene.cpp
+    │   │   └── GameScene.hpp
+    │   ├── LevelEditorScene
+    │   │   ├── LevelEditorScene.cpp
+    │   │   └── LevelEditorScene.hpp
+    │   ├── LevelSelectScene
+    │   │   ├── LevelSelectScene.cpp
+    │   │   └── LevelSelectScene.hpp
+    │   ├── PauseScene
+    │   │   ├── PauseScene.cpp
+    │   │   └── PauseScene.hpp
+    │   ├── Scene.cpp
+    │   ├── Scene.hpp
+    │   ├── SceneIdentifierEnum.hpp
+    │   ├── StartMenuScene
+    │   │   ├── StartMenuScene.cpp
+    │   │   └── StartMenuScene.hpp
+    │   └── TestVisualScene
+    │       ├── TestVisualScene.cpp
+    │       └── TestVisualScene.hpp
+    ├── Systems
+    │   ├── AudioSystem.cpp
+    │   ├── AudioSystem.hpp
+    │   ├── InputSystem.cpp
+    │   ├── InputSystem.hpp
+    │   ├── PhysicsSystem.cpp
+    │   ├── PhysicsSystem.hpp
+    │   ├── RenderSystem.cpp
+    │   ├── RenderSystem.hpp
+    │   ├── UISystem.cpp
+    │   └── UISystem.hpp
+    └── Utilities
+        ├── Constants
+        │   ├── EngineConstants.hpp
+        │   ├── GameSystemConstants.hpp
+        │   └── PhysicsConstants.hpp
+        ├── Math
+        │   ├── CustomMathUtilities.hpp
+        │   └── Vector2D.hpp
+        ├── Physics
+        │   ├── UniformParticleGrid.cpp
+        │   └── UniformParticleGrid.hpp
+        ├── Rendering
+        │   ├── CameraData.hpp
+        │   ├── CameraTransform.hpp
+        │   ├── Colors.hpp
+        │   ├── FontAtlasUtility.cpp
+        │   ├── FontAtlasUtility.hpp
+        │   └── GPUTypes.hpp
+        ├── System
+        │   └── SystemPathUtility.hpp
+        └── UserInput
+            ├── TransferInputs.cpp
+            └── TransferInputs.hpp
+
+41 directories, 119 files

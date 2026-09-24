@@ -101,6 +101,7 @@ class PhysicsSystem
     void cleanupMacroBodies(GameState& gameState); // Clears any Macro Bodies from the screen
                                                    // flagged as marked for deletion
 
+    uint32_t survivableFragmentCount(const GravitationalBody& body, uint32_t maxCount);
     // --- Data Members ---
     UniformParticleGrid particleGrid;
 };

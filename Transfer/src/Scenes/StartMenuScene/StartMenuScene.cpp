@@ -2,7 +2,7 @@
 
 #include "StartMenuScene.hpp"
 
-StartMenuScene::StartMenuScene() : Scene(SceneIdentifier::GAME_SCENE)
+StartMenuScene::StartMenuScene() : Scene(SceneIdentifier::START_MENU_SCENE)
 {
     sceneUIElements.insert({UIElementIdentifier::PLAY_GAME_BUTTON_INDEX, nullptr});
 }

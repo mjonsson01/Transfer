@@ -1,15 +1,3 @@
-All fully capitalized methods are top level 'master' priority. Other camel case methods are lower level utility type functions.
-
-On pause, maybe display all the internally stored velocity arrows? write function to take arbitrary body and draw the arrow rather than storing all the contents of the thing in a nested struct which is nasty
-
-
-TBI will stand for To be implemented.
-
-
-
-test black/white holes. Should they inherit from grav body?
-
-
 Add animation for instantiation. Investigate bloom on stars? add grav body texture, small enough masses should be terrestrial, larges masses should be more beefy.
 
 
@@ -30,10 +18,6 @@ User Input -> InputSystem -> UIState(inputState on inside) -> UISystem (update a
 
 
 
-NEED TO FIX THE MOUSE BUTTON HOLDING BUG RECAPTURING THE UI ELEMENT
-
-Also need to add easy ui scaling?
-
 need to replace physics spawn time accumulator DTs with the true physics dt.
 
 
@@ -53,11 +37,6 @@ TBI make build just build with the last build config and not run clean? done on 
 
 
 abstract the clickMe and slideMe into one method called interact, which will check the type and then dispatch at the local ui level?
-
-
-
-NEED TO FIX: MACOS CMAKE LISTS FOR DEBUG IS BROKEN ? unknown if just normal error
-
 
 
 rework breakapart / substitute with particles mechanics to stop line segmenting issue?
@@ -96,3 +75,53 @@ If instantiating a large negative mass body explosion in positive cloud, weird e
 
 
 Need to make a toggle for the camera to follow the player around?
+
+
+
+
+
+Need to make the Visor Views. Need to find way to currently display view as Mass Visor View. Build UI Element to dropdown the different views for Charge, Temp, Realistic.
+
+Tab should cycle them, but click dropdown for specific.
+
+Need to include option to predictively integrate forward and draw lines. Maybe should be default?
+
+Time slider should also start at 0 for default mission format
+
+Need to add feature to delete most recent body
+
+Need to add feature to click and drag to move bodies
+
+Need to add settings menu to toggle frame rate caps and music mode (Funky Space/Epic Space so that tone doesn't feel like it conflits)
+
+Need to incorporate RK4 instead of current integration solution (RK3?)
+
+Need to incorporate Gravity Approx tree solution
+
+Need to bring in ship sprites
+
+Need to create fire animation for thrust
+
+Need to incorporate Tsiolkovsky Rocket Equation
+
+Need to create Mission Config file upload and download (coordinate tables?)
+
+Need to create mission success metric
+
+Fuel management/health system/Track mass instantiated
+
+Need to create Obstacle Classes -- dust/asteroid fields/gas clouds
+ 
+Create Custom Grav Body Dynamic types -- stars/planets/moons/ice planets/black holes?
+
+Need to create sound effects
+
+Need to create second and third starship classes 
+
+Rework Starship Properties
+
+Level Design Hell
+
+Create Menu to select Gameplay Mode -- Sandbox, Mission Editor, Main Missions, Play Uploaded Missions
+
+Create Rudimentary Web Server to share Level Design Files and score the main mission files publicly
