@@ -202,7 +202,7 @@ if(TRANSFER_BUILD_TESTS)
         include(GoogleTest)
         gtest_discover_tests(TransferTests)
     else()
-        message(STATUS "TransferTests: no test sources in Transfer/Tests yet -- skipping the test target")
+        message(STATUS "TransferTests: no test sources in Tests yet -- skipping the test target")
     endif()
 endif()
 
@@ -229,7 +229,7 @@ if(TRANSFER_GENERATE_VSCODE_CONFIG)
     list(JOIN VSCODE_COMPILE_COMMANDS ",\n                " VSCODE_COMPILE_COMMANDS_JSON)
 
     # Fallback include paths, used for files that aren't in any compile_commands.json (e.g. a header opened on its own)
-    set(VSCODE_INCLUDE_PATHS "\"\${workspaceFolder}/Transfer/src\"")
+    set(VSCODE_INCLUDE_PATHS "\"\${workspaceFolder}/Transfer/src\"" "\"\${workspaceFolder}/Tests\"")
     if(SDL3_INCLUDE_DIRS)
         foreach(include_dir IN LISTS SDL3_INCLUDE_DIRS) # Windows: explicit SDL folders
             list(APPEND VSCODE_INCLUDE_PATHS "\"${include_dir}\"")

@@ -4,9 +4,9 @@
 #include <gtest/gtest.h>
 
 // Custom Imports
-#include "DynamoEngine/Constants/GlobalConstants.hh"
+#include "DynamoEngine/Constants/GlobalConstants.hpp"
 #include "DynamoEngine/Input/InputEvent.hpp"
-#include "TestingUtilities/VectorsNear.hh"
+#include "TestingUtilities/VectorsNear.hpp"
 
 // Standard Library Imports
 

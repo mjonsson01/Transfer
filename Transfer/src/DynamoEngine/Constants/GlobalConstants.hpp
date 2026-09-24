@@ -1,4 +1,4 @@
-// File: Transfer/src/DynamoEngine/Constants/GlobalConstants.hh
+// File: Transfer/src/DynamoEngine/Constants/GlobalConstants.hpp
 
 #pragma once
 

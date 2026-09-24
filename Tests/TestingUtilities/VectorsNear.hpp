@@ -1,4 +1,6 @@
-// File: Tests/TestingUtilities/VectorsNear.hh
+// File: Tests/TestingUtilities/VectorsNear.hpp
+
+#pragma once
 
 // Test Framework Imports
 #include <gtest/gtest.h>
@@ -7,7 +9,9 @@
 #include "DynamoEngine/Math/Vector2.hpp"
 
 // Standard Library Includes
+#include <cmath>
 #include <concepts>
+#include <type_traits>
 
 template <std::floating_point T>
 ::testing::AssertionResult VectorsNear(const DynamoEngine::Vector2<T>& actual,
