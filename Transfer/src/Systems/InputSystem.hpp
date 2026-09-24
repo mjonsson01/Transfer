@@ -49,8 +49,8 @@ class InputSystem
     void copySharedPointerState(DEPRECATED_InputState& legacy_state); // fields both translators pass on
 
   private:
-    DynamoEngine::SDLInputIntake m_intake;
+    DynamoEngine::SDLInputIntake m_intake; // direct SDL events translated through the intake
     DynamoEngine::InputState m_input;
-    std::vector<DynamoEngine::InputEvent> m_frame_events;
-    DynamoEngine::Vector2F m_mouse_drag_anchor; // Transfer's drag start (pressPosition + shift re-anchor)
+    std::vector<DynamoEngine::InputEvent> m_frame_events; // Events piled on a frame by frame basis
+    DynamoEngine::Vector2F m_mouse_drag_anchor;           // Transfer's drag start (pressPosition + shift re-anchor)
 };

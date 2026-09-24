@@ -20,7 +20,7 @@ InputSystem::~InputSystem() {}
 void InputSystem::processSystemInputFrame(GameState& game_state, UIState& ui_state)
 {
     m_input.beginInputFrame();
-    m_frame_events.clear();
+    m_frame_events.clear(); // Clear the last frame's events
     m_intake.pollEvents(m_frame_events);
 
     for (const DynamoEngine::InputEvent& event : m_frame_events)
