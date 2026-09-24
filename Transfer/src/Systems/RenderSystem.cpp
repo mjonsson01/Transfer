@@ -339,7 +339,7 @@ void RenderSystem::renderBodies(GameState& gameState, UIState& uiState, SDL_GPUR
         if (b.visible)
             instance_count++;
 
-    if (uiState.getMutableInputState().isPreviewingMacro)
+    if (uiState.getMutableDEPRECATED_InputState().isPreviewingMacro)
     {
         instance_count++;
     }
@@ -550,7 +550,7 @@ void RenderSystem::renderUIElements(SDL_GPURenderPass* pass, SDL_GPUCommandBuffe
 void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexData, UIState& uiState,
                                        const CameraState& cameraState)
 {
-    InputState& input_state = uiState.getMutableInputState();
+    DEPRECATED_InputState& input_state = uiState.getMutableDEPRECATED_InputState();
     velocityVectorVertices.clear();
     if (input_state.isPreviewingMacro)
     {
@@ -584,8 +584,8 @@ CameraConstants RenderSystem::buildCameraConstants(const CameraState& cameraStat
     camera_constants.screenWidth = cameraState.windowWidth;
     camera_constants.screenHeight = cameraState.windowHeight;
     camera_constants.zoom = (float)cameraState.zoom;
-    camera_constants.offsetX = (float)offset.xVal;
-    camera_constants.offsetY = (float)offset.yVal;
+    camera_constants.offsetX = (float)offset.x_val;
+    camera_constants.offsetY = (float)offset.y_val;
     camera_constants.viewMode = 0;
     camera_constants.rendering_alpha = cameraState.renderAlpha;
     camera_constants._padding1 = 0.0f;
@@ -1029,8 +1029,8 @@ void RenderSystem::buildVelocityVectorGeometry(DynamoEngine::Vector2D lineStart,
 {
     velocityVectorVertices.clear();
 
-    float dx = static_cast<float>(lineEnd.xVal - lineStart.xVal);
-    float dy = static_cast<float>(lineEnd.yVal - lineStart.yVal);
+    float dx = static_cast<float>(lineEnd.x_val - lineStart.x_val);
+    float dy = static_cast<float>(lineEnd.y_val - lineStart.y_val);
     float length = static_cast<float>((lineEnd - lineStart).magnitude());
     if (length <= EPSILON)
     {
@@ -1047,15 +1047,15 @@ void RenderSystem::buildVelocityVectorGeometry(DynamoEngine::Vector2D lineStart,
     float half_T = thickness / 2.0f;
 
     // Shorten the shaft so the arrowhead has room at the tip
-    DynamoEngine::Vector2D line_end = {lineEnd.xVal - dx * arrow_length, lineEnd.yVal - dy * arrow_length};
+    DynamoEngine::Vector2D line_end = {lineEnd.x_val - dx * arrow_length, lineEnd.y_val - dy * arrow_length};
 
     float r = 1.0f, g = 1.0f, b = 1.0f, a = 1.0f; // white, matching the original
 
     // Shaft quad, expanded into 2 raw triangles
-    float v0x = float(lineStart.xVal) + px * half_T, v0y = float(lineStart.yVal) + py * half_T;
-    float v1x = float(lineStart.xVal) - px * half_T, v1y = float(lineStart.yVal) - py * half_T;
-    float v2x = float(line_end.xVal) - px * half_T, v2y = float(line_end.yVal) - py * half_T;
-    float v3x = float(line_end.xVal) + px * half_T, v3y = float(line_end.yVal) + py * half_T;
+    float v0x = float(lineStart.x_val) + px * half_T, v0y = float(lineStart.y_val) + py * half_T;
+    float v1x = float(lineStart.x_val) - px * half_T, v1y = float(lineStart.y_val) - py * half_T;
+    float v2x = float(line_end.x_val) - px * half_T, v2y = float(line_end.y_val) - py * half_T;
+    float v3x = float(line_end.x_val) + px * half_T, v3y = float(line_end.y_val) + py * half_T;
 
     velocityVectorVertices.push_back({v0x, v0y, r, g, b, a});
     velocityVectorVertices.push_back({v1x, v1y, r, g, b, a});
@@ -1065,11 +1065,11 @@ void RenderSystem::buildVelocityVectorGeometry(DynamoEngine::Vector2D lineStart,
     velocityVectorVertices.push_back({v3x, v3y, r, g, b, a});
 
     // Arrowhead triangle
-    velocityVectorVertices.push_back({float(lineEnd.xVal), float(lineEnd.yVal), r, g, b, a});
-    velocityVectorVertices.push_back({float(line_end.xVal) + px * (arrow_width / 2.0f),
-                                      float(line_end.yVal) + py * (arrow_width / 2.0f), r, g, b, a});
-    velocityVectorVertices.push_back({float(line_end.xVal) - px * (arrow_width / 2.0f),
-                                      float(line_end.yVal) - py * (arrow_width / 2.0f), r, g, b, a});
+    velocityVectorVertices.push_back({float(lineEnd.x_val), float(lineEnd.y_val), r, g, b, a});
+    velocityVectorVertices.push_back({float(line_end.x_val) + px * (arrow_width / 2.0f),
+                                      float(line_end.y_val) + py * (arrow_width / 2.0f), r, g, b, a});
+    velocityVectorVertices.push_back({float(line_end.x_val) - px * (arrow_width / 2.0f),
+                                      float(line_end.y_val) - py * (arrow_width / 2.0f), r, g, b, a});
 }
 
 void RenderSystem::uploadVelocityVectorVertices(SDL_GPUCommandBuffer* cmdbuf)

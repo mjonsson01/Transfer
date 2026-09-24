@@ -1,10 +1,10 @@
-// File: Transfer/src/Core/InputState.h
+// File: Transfer/src/Core/DEPRECATED_InputState.h
 
 #pragma once
 
 #include "DynamoEngine/Math/Vector2.hpp"
 
-struct InputState
+struct DEPRECATED_InputState
 {
     // Persistent flags and details
     DynamoEngine::Vector2D mouseCurrPosition = {0.0, 0.0}; // set by from event input router
@@ -65,7 +65,7 @@ struct InputState
     bool positiveRotation = false;
     bool negativeRotation = false;
 
-    InputState& resetTransientFlags()
+    DEPRECATED_InputState& resetTransientFlags()
     {
         // Creation type flags
         isCreatingMacro = false;
@@ -94,7 +94,7 @@ struct InputState
         return *this;
     }
 
-    InputState& resetFlagsForSceneChange()
+    DEPRECATED_InputState& resetFlagsForSceneChange()
     {
         // Creation type flags
         isCreatingMacro = false;
@@ -133,7 +133,7 @@ struct InputState
     // Toggle the pausing of the integrator while still rendering background
     // elements
     // Wipe all the bodies from the screen and internal Game State
-    InputState& clearAllBodies()
+    DEPRECATED_InputState& clearAllBodies()
     {
         clearAll = true;
         return *this;

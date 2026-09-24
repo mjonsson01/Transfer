@@ -8,7 +8,7 @@ RadiusSlider::RadiusSlider() : Slider()
     knobRect = SDL_FRect{0, 0, 20, 30}; // will set x,y below
     updateLayout(SCREEN_WIDTH, SCREEN_HEIGHT);
     // Slider range
-    maxValue = MAX_RADIUS - 100; // For throttling
+    max_value = MAX_RADIUS - 100; // For throttling
     minValue = 0.0;
     sliderValue = 0.0; // start centered
     setVisibility(true);
@@ -29,8 +29,8 @@ void RadiusSlider::updateLayout(float windowWidth, float windowHeight)
 
     // Position knob based on slider value
     float track_length_x = trackRect.w - knobRect.w;
-    knobRect.x = trackRect.x + (float)((sliderValue - minValue) / (maxValue - minValue)) * track_length_x;
-    // knobRect.x = trackRect.x + (sliderValue - minValue) / (maxValue - minValue) * trackRect.w - knobRect.w / 2.0f;
+    knobRect.x = trackRect.x + (float)((sliderValue - minValue) / (max_value - minValue)) * track_length_x;
+    // knobRect.x = trackRect.x + (sliderValue - minValue) / (max_value - minValue) * trackRect.w - knobRect.w / 2.0f;
     knobRect.y = trackRect.y - (knobRect.h - trackRect.h) / 2.0f;
 
     setPosition(trackRect.x, trackRect.y);

@@ -8,10 +8,10 @@
 
 #pragma once
 
-static double randomDouble(double minVal, double maxVal)
+static double randomDouble(double minVal, double max_val)
 {
     static thread_local std::mt19937 rng{std::random_device{}()};
-    std::uniform_real_distribution<double> dist(minVal, maxVal);
+    std::uniform_real_distribution<double> dist(minVal, max_val);
     return dist(rng);
 }
 

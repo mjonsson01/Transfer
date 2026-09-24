@@ -34,7 +34,7 @@ Transfer/
     │   ├── Game.hpp
     │   ├── GameState.cpp
     │   ├── GameState.hpp
-    │   ├── InputState.hpp
+    │   ├── DEPRECATED_InputState.hpp
     │   ├── UIState.cpp
     │   └── UIState.hpp
     ├── Entities

@@ -18,7 +18,7 @@ template <std::floating_point T>
                                        const std::type_identity_t<DynamoEngine::Vector2<T>>& expected,
                                        std::type_identity_t<T> tolerance)
 {
-    if (std::abs(actual.xVal - expected.xVal) <= tolerance && std::abs(actual.yVal - expected.yVal) <= tolerance)
+    if (std::abs(actual.x_val - expected.x_val) <= tolerance && std::abs(actual.y_val - expected.y_val) <= tolerance)
     {
         return ::testing::AssertionSuccess();
     }

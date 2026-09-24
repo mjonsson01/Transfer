@@ -41,7 +41,7 @@ class Slider : public UIElement
     SDL_FRect knobRect;
     double sliderValue;
     double minValue;
-    double maxValue;
+    double max_value;
     int lastTickIndex = -1; // -1 = no tick played yet
     void playTickSoundIfMoved(UIState& uiState);
 };

@@ -8,8 +8,8 @@
 #include <unordered_map>
 
 // Custom Imports
+#include "Core/DEPRECATED_InputState.hpp"
 #include "Core/GameState.hpp"
-#include "Core/InputState.hpp"
 #include "Core/UIState.hpp"
 #include "Entities/Sound/MusicModeEnum.hpp"
 #include "Systems/AudioSystem.hpp"

@@ -32,8 +32,8 @@ void UniformParticleGrid::build(const std::vector<GravitationalBody>& particles)
     sortedEntries.reserve(particles.size());
     for (size_t i = 0; i < particles.size(); ++i)
     {
-        int64_t cx = static_cast<int64_t>(std::floor(particles[i].position.xVal / cellSize));
-        int64_t cy = static_cast<int64_t>(std::floor(particles[i].position.yVal / cellSize));
+        int64_t cx = static_cast<int64_t>(std::floor(particles[i].position.x_val / cellSize));
+        int64_t cy = static_cast<int64_t>(std::floor(particles[i].position.y_val / cellSize));
         sortedEntries.push_back({packCell(cx, cy), i});
     }
 
@@ -47,8 +47,8 @@ void UniformParticleGrid::queryCandidates(size_t index, const std::vector<Gravit
     outCandidates.clear();
 
     const DynamoEngine::Vector2D& pos = particles[index].position;
-    int64_t cx = static_cast<int64_t>(std::floor(pos.xVal / cellSize));
-    int64_t cy = static_cast<int64_t>(std::floor(pos.yVal / cellSize));
+    int64_t cx = static_cast<int64_t>(std::floor(pos.x_val / cellSize));
+    int64_t cy = static_cast<int64_t>(std::floor(pos.y_val / cellSize));
 
     // Forward half-stencil: self + 4 directional neighbors. This specific 5-cell shape,
     // combined with the self-cell index check below, guarantees every adjacent cell pair

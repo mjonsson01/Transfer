@@ -20,7 +20,7 @@ TEST(InputEvent, DefaultsDoNothing)
     EXPECT_TRUE(VectorsNear(new_input_event.mouse_position, DynamoEngine::Vector2F(0.0f, 0.0f), DynamoEngine::EPSILON));
     EXPECT_TRUE(
         VectorsNear(new_input_event.mouse_position_delta, DynamoEngine::Vector2F(0.0f, 0.0f), DynamoEngine::EPSILON));
-    EXPECT_EQ(new_input_event.scrollDelta, 0);
+    EXPECT_EQ(new_input_event.scroll_delta, 0);
     EXPECT_EQ(new_input_event.text_input, "");
     EXPECT_EQ(new_input_event.type, DynamoEngine::InputEventType::None);
     EXPECT_EQ(new_input_event.window_height, 0);

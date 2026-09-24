@@ -97,7 +97,7 @@ void UISystem::populateScenes()
 void UISystem::updateGameUIElements(GameState& gameState, UIState& uiState)
 {
     bool consumed = false;
-    InputState& inputs_received = uiState.getMutableInputState();
+    DEPRECATED_InputState& inputs_received = uiState.getMutableDEPRECATED_InputState();
 
     if (inputs_received.leftMouseButtonJustPressed)
     {
@@ -136,7 +136,7 @@ void UISystem::updateGameUIElements(GameState& gameState, UIState& uiState)
 void UISystem::updateMenuUIElements(GameState& gameState, UIState& uiState)
 {
     bool consumed = false;
-    InputState& inputs_received = uiState.getMutableInputState();
+    DEPRECATED_InputState& inputs_received = uiState.getMutableDEPRECATED_InputState();
 
     if (inputs_received.leftMouseButtonJustPressed)
     {
@@ -188,7 +188,7 @@ void UISystem::routeSliderInput(UIElementIdentifier sliderTypeToUpdate, UIState&
 {
     std::unordered_map<UIElementIdentifier, UIElement*> allUIElements = allScenes[currentSceneID]->getSceneElements();
     UIElement* elementToUpdate = allUIElements[sliderTypeToUpdate];
-    auto& input_state = uiState.getMutableInputState();
+    auto& input_state = uiState.getMutableDEPRECATED_InputState();
     // this could be further abstracted into passing the full input state so
     // that the UIelement decides what it updates, but I want to make the ui
     // element as stupid as possible
@@ -223,7 +223,7 @@ void UISystem::routeSliderInput(UIElementIdentifier sliderTypeToUpdate, UIState&
 
 void UISystem::routeButtonClick(UIElementIdentifier buttonToUpdate, UIState& uiState)
 {
-    InputState& input_state = uiState.getMutableInputState();
+    DEPRECATED_InputState& input_state = uiState.getMutableDEPRECATED_InputState();
     std::unordered_map<UIElementIdentifier, UIElement*> allUIElements = allScenes[currentSceneID]->getSceneElements();
     UIElement* elementToUpdate = allUIElements[buttonToUpdate];
     if (buttonToUpdate == UIElementIdentifier::PLAY_GAME_BUTTON_INDEX)
@@ -240,7 +240,7 @@ void UISystem::routeButtonClick(UIElementIdentifier buttonToUpdate, UIState& uiS
     }
     // Will add other ui elements from in game here? Or maybe should just route to scene elements?
 }
-UIElementIdentifier UISystem::findElementWeAreIn(InputState& inputsReceived)
+UIElementIdentifier UISystem::findElementWeAreIn(DEPRECATED_InputState& inputsReceived)
 {
 
     UIElementIdentifier contacted_element = UIElementIdentifier::NONE; // default result

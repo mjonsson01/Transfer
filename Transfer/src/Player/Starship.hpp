@@ -7,7 +7,7 @@
 #include <vector>
 
 // Custom includes
-#include "Core/InputState.hpp"
+#include "Core/DEPRECATED_InputState.hpp"
 #include "Core/UIState.hpp"
 #include "DynamoEngine/Math/Vector2.hpp"
 #include "Utilities/Constants/PhysicsConstants.hpp"

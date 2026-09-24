@@ -44,7 +44,7 @@ void PhysicsSystem::CleanUp()
 
 void PhysicsSystem::UpdateGravBodyInstantiations(GameState& gameState, UIState& uiState)
 {
-    InputState& input_state = uiState.getMutableInputState();
+    DEPRECATED_InputState& input_state = uiState.getMutableDEPRECATED_InputState();
     if (!input_state.UIInputConsumed)
     {
         if (input_state.isCreatingMacro)
@@ -677,8 +677,9 @@ void PhysicsSystem::applyVelocityVerletPhase2(GravitationalBody& gravBody)
 
 // --------- GRAVITATIONAL BODY CREATION --------- //
 
-static inline void populateGravBodyPropertiesFromInputState(GravitationalBody& gravBody, GameState& gameState,
-                                                            InputState& inputState)
+static inline void populateGravBodyPropertiesFromDEPRECATED_InputState(GravitationalBody& gravBody,
+                                                                       GameState& gameState,
+                                                                       DEPRECATED_InputState& inputState)
 {
     // Default sets, position may be overwrriten if isCreatingWithInitialVelocity set to true
     gravBody.mass = inputState.selectedMass;
@@ -718,7 +719,7 @@ static inline void populateGravBodyPropertiesFromInputState(GravitationalBody& g
     }
 }
 
-void PhysicsSystem::createMacroBody(GameState& gameState, InputState& inputState)
+void PhysicsSystem::createMacroBody(GameState& gameState, DEPRECATED_InputState& inputState)
 {
     std::vector<GravitationalBody>& macro_bodies = gameState.getMacroBodiesMutable();
     if (inputState.selectedRadius <= 1.0)
@@ -736,13 +737,13 @@ void PhysicsSystem::createMacroBody(GameState& gameState, InputState& inputState
     macro_body.macroIdentifier = new_macro_body_id;
 
     // Pass flags from inputState as possible.
-    populateGravBodyPropertiesFromInputState(macro_body, gameState, inputState);
+    populateGravBodyPropertiesFromDEPRECATED_InputState(macro_body, gameState, inputState);
 
     // Now with populated flags, nudge particles out?
     macro_bodies.push_back(macro_body);
 }
 
-void PhysicsSystem::createParticleCluster(GameState& gameState, InputState& inputState)
+void PhysicsSystem::createParticleCluster(GameState& gameState, DEPRECATED_InputState& inputState)
 {
     std::vector<GravitationalBody>& particles = gameState.getParticlesMutable();
     if (inputState.selectedRadius <= 1.0)
@@ -757,7 +758,7 @@ void PhysicsSystem::createParticleCluster(GameState& gameState, InputState& inpu
     GravitationalBody macro_body;
 
     // Pass flags from inputState as possible.
-    populateGravBodyPropertiesFromInputState(macro_body, gameState, inputState);
+    populateGravBodyPropertiesFromDEPRECATED_InputState(macro_body, gameState, inputState);
 
     substituteWithParticles(macro_body, gameState, DEFAULT_FRAGMENT_COUNT);
 }

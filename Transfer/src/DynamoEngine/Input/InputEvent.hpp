@@ -53,7 +53,7 @@ struct InputEvent
     MouseButton mouse_button = MouseButton::None;
     Vector2F mouse_position;       // Current mouse position
     Vector2F mouse_position_delta; // The movement delta since the previous MouseMove Event
-    float scrollDelta = 0.0f;      // positive is scroll 'up', negative is scroll 'down'
+    float scroll_delta = 0.0f;     // positive is scroll 'up', negative is scroll 'down'
 
     // Text Input
     std::string text_input;

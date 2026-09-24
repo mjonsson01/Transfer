@@ -8,10 +8,10 @@ MassSlider::MassSlider() : Slider()
     knobRect = SDL_FRect{0, 0, 20, 30}; // will set x,y below
 
     // Slider range
-    maxValue = MAX_MASS / 10;
-    minValue = -MAX_MASS / 10;            // now supports negative values
-    sliderValue = 0.0;                    // start centered
-    curveExponent = std::log10(maxValue); // keeps the log curve in sync with maxValue/MAX_MASS
+    max_value = MAX_MASS / 10;
+    minValue = -MAX_MASS / 10;             // now supports negative values
+    sliderValue = 0.0;                     // start centered
+    curveExponent = std::log10(max_value); // keeps the log curve in sync with max_value/MAX_MASS
 
     updateLayout(SCREEN_WIDTH, SCREEN_HEIGHT);
 
@@ -24,7 +24,7 @@ void MassSlider::slideMe(DynamoEngine::Vector2D positionOfEvent, double& returne
     float track_length_x = trackRect.w - knobRect.w;
 
     // 1. Get normalized 0.0 to 1.0 position on the track
-    float mouse_x = positionOfEvent.xVal - (knobRect.w / 2.0f);
+    float mouse_x = positionOfEvent.x_val - (knobRect.w / 2.0f);
     float t = std::clamp((mouse_x - track_start_x) / track_length_x, 0.0f, 1.0f);
 
     // 2. Map t (0..1) to a centered range (-1.0 to 1.0)
@@ -40,7 +40,7 @@ void MassSlider::slideMe(DynamoEngine::Vector2D positionOfEvent, double& returne
     }
     else
     {
-        // Range is +/- 1 to +/- maxValue, exponent derived from maxValue (MAX_MASS / 10)
+        // Range is +/- 1 to +/- max_value, exponent derived from max_value (MAX_MASS / 10)
         sliderValue = sign * std::pow(10.0, std::abs(centered_t) * curveExponent);
     }
 

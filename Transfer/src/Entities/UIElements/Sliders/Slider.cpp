@@ -10,7 +10,7 @@ Slider::Slider()
     hotZoneRect = {0, 0, 0, 0};
     sliderValue = 0.0;
     minValue = 0.0;
-    maxValue = 0.0;
+    max_value = 0.0;
 }
 
 void Slider::slideMe(DynamoEngine::Vector2D positionOfEvent, double& returnedElementValue, UIState& uiState)
@@ -26,7 +26,7 @@ void Slider::slideMe(DynamoEngine::Vector2D positionOfEvent, double& returnedEle
 
     if (orientation == Orientation::Horizontal)
     {
-        float new_x = positionOfEvent.xVal - (knobRect.w / 2.0f);
+        float new_x = positionOfEvent.x_val - (knobRect.w / 2.0f);
 
         // Clamp the new centered position
         if (new_x < track_start_x)
@@ -35,24 +35,24 @@ void Slider::slideMe(DynamoEngine::Vector2D positionOfEvent, double& returnedEle
             new_x = track_start_x + track_length_x;
 
         // Map knob position to slider value (handles negative minValue)
-        sliderValue = minValue + ((new_x - track_start_x) / track_length_x) * (maxValue - minValue);
+        sliderValue = minValue + ((new_x - track_start_x) / track_length_x) * (max_value - minValue);
 
         // Update knob position to reflect sliderValue
-        knobRect.x = track_start_x + ((sliderValue - minValue) / (maxValue - minValue)) * track_length_x;
+        knobRect.x = track_start_x + ((sliderValue - minValue) / (max_value - minValue)) * track_length_x;
     }
     else // Vertical
     {
-        float new_y = positionOfEvent.yVal - (knobRect.h / 2.0f);
+        float new_y = positionOfEvent.y_val - (knobRect.h / 2.0f);
         if (new_y < track_start_y)
             new_y = track_start_y;
         if (new_y > track_start_y + track_length_y)
             new_y = track_start_y + track_length_y;
 
         // Vertical sliders usually invert direction (top = max, bottom = min)
-        sliderValue = maxValue - ((new_y - track_start_y) / track_length_y) * (maxValue - minValue);
+        sliderValue = max_value - ((new_y - track_start_y) / track_length_y) * (max_value - minValue);
 
         // Update knob position to match sliderValue
-        knobRect.y = track_start_y + ((maxValue - sliderValue) / (maxValue - minValue)) * track_length_y;
+        knobRect.y = track_start_y + ((max_value - sliderValue) / (max_value - minValue)) * track_length_y;
     }
 
     // Return updated value
@@ -121,10 +121,11 @@ void Slider::buildGeometry(std::vector<UIElementVertex>& vertexBuffer, uint32_t 
 
 void Slider::playTickSoundIfMoved(UIState& uiState)
 {
-    if (maxValue == minValue)
+    if (max_value == minValue)
         return; // avoid division by zero on an uninitialized/degenerate slider
 
-    int currentTick = static_cast<int>(std::round((sliderValue - minValue) / (maxValue - minValue) * NUM_SLIDER_TICKS));
+    int currentTick =
+        static_cast<int>(std::round((sliderValue - minValue) / (max_value - minValue) * NUM_SLIDER_TICKS));
 
     if (currentTick != lastTickIndex)
     {

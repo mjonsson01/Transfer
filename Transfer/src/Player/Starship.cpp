@@ -13,13 +13,13 @@ DynamoEngine::Vector2D Starship::getPointingVector()
 
 void Starship::buildGeometry(std::vector<StarshipVertex>& starshipVertexBuffer)
 {
-    float x1 = float(position.xVal);
-    float y1 = float(position.yVal);
+    float x1 = float(position.x_val);
+    float y1 = float(position.y_val);
     float x2 = x1 + shipSize;
     float y2 = y1 + shipSize;
 
-    float prev_x1 = float(prevPosition.xVal);
-    float prev_y1 = float(prevPosition.yVal);
+    float prev_x1 = float(prevPosition.x_val);
+    float prev_y1 = float(prevPosition.y_val);
     float prev_x2 = prev_x1 + shipSize;
     float prev_y2 = prev_y1 + shipSize;
 
@@ -73,7 +73,7 @@ void Starship::buildGeometry(std::vector<StarshipVertex>& starshipVertexBuffer)
 
 void Starship::applyVelocity(UIState& uiState)
 {
-    InputState& input_state = uiState.getMutableInputState();
+    DEPRECATED_InputState& input_state = uiState.getMutableDEPRECATED_InputState();
     if (input_state.isRequestingThrust)
     {
         int sign = 0;
@@ -85,14 +85,14 @@ void Starship::applyVelocity(UIState& uiState)
         DynamoEngine::Vector2D direction = getPointingVector(); // unit vector, nose direction
         const double thrustMagnitude = 10.0;
 
-        velocity.xVal += sign * direction.xVal * thrustMagnitude;
-        velocity.yVal += sign * direction.yVal * thrustMagnitude;
+        velocity.x_val += sign * direction.x_val * thrustMagnitude;
+        velocity.y_val += sign * direction.y_val * thrustMagnitude;
     }
 };
 
 void Starship::applyRotation(UIState& uiState)
 {
-    InputState& input_state = uiState.getMutableInputState();
+    DEPRECATED_InputState& input_state = uiState.getMutableDEPRECATED_InputState();
     const double turnSpeed = 0.05;
 
     // NOTE: signs are reversed on purpose because the y origin is in the upper left instead of lower left.

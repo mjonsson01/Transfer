@@ -3,10 +3,10 @@
 UnifiedBodyVertex GravitationalBody::toUnifiedVertex() const
 {
     UnifiedBodyVertex v;
-    v.x = static_cast<float>(position.xVal);
-    v.y = static_cast<float>(position.yVal);
-    v.prevX = static_cast<float>(previousPosition.xVal);
-    v.prevY = static_cast<float>(previousPosition.yVal);
+    v.x = static_cast<float>(position.x_val);
+    v.y = static_cast<float>(position.y_val);
+    v.prevX = static_cast<float>(previousPosition.x_val);
+    v.prevY = static_cast<float>(previousPosition.y_val);
     v.radius = static_cast<float>(radius);
 
     // Symmetric Log Mass logic

@@ -81,12 +81,12 @@ class PhysicsSystem
 
     // --- Gravitational Body Creation Mechanisms ---
     void createMacroBody(GameState& gameState,
-                         InputState& inputState); // Creates a Macro Gravitational Body
-                                                  // with the user-defined attributes
+                         DEPRECATED_InputState& inputState); // Creates a Macro Gravitational Body
+                                                             // with the user-defined attributes
     void createParticle(GameState& gameState,
-                        InputState& inputState); // TODO: Prune? declared, never defined or called
+                        DEPRECATED_InputState& inputState); // TODO: Prune? declared, never defined or called
     void createParticleCluster(GameState& gameState,
-                               InputState& inputState); // TODO: Prune? declared, never defined or called
+                               DEPRECATED_InputState& inputState); // TODO: Prune? declared, never defined or called
 
     // --- Utility ---
     void calculateTotalEnergy(GameState& gameState); // TODO: Prune? currently uncalled, see UpdateSystemFrame

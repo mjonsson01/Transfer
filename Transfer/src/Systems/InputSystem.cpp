@@ -16,7 +16,8 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& uiState
 {
 
     transferInputs.resetJustPressed();
-    uiState.getMutableInputState().resetTransientFlags(); // clean the input state before polling for new events.
+    uiState.getMutableDEPRECATED_InputState()
+        .resetTransientFlags(); // clean the input state before polling for new events.
     SDL_Event event;
     // int eventCount = 0;
     while (SDL_PollEvent(&event))
@@ -36,7 +37,7 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& uiState
         else
         {
             // Will ensure the event is not yet consumed by the UI.
-            uiState.getMutableInputState().UIInputConsumed = false;
+            uiState.getMutableDEPRECATED_InputState().UIInputConsumed = false;
             // First check if in start menu. If so, route input to start menu behaviors
             SceneIdentifier current_scene = uiState.getCurrentSceneID();
 
@@ -98,16 +99,16 @@ void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& uiState
 
         auto clampOffsetToStarField = [&](DynamoEngine::Vector2D& offsetToClamp)
         {
-            DynamoEngine::Vector2D viewCenterWorld = {viewHalfWidth - offsetToClamp.xVal,
-                                                      viewHalfHeight - offsetToClamp.yVal};
+            DynamoEngine::Vector2D viewCenterWorld = {viewHalfWidth - offsetToClamp.x_val,
+                                                      viewHalfHeight - offsetToClamp.y_val};
 
-            viewCenterWorld.xVal =
-                std::clamp(viewCenterWorld.xVal, starFieldCenter.xVal - slackX, starFieldCenter.xVal + slackX);
-            viewCenterWorld.yVal =
-                std::clamp(viewCenterWorld.yVal, starFieldCenter.yVal - slackY, starFieldCenter.yVal + slackY);
+            viewCenterWorld.x_val =
+                std::clamp(viewCenterWorld.x_val, starFieldCenter.x_val - slackX, starFieldCenter.x_val + slackX);
+            viewCenterWorld.y_val =
+                std::clamp(viewCenterWorld.y_val, starFieldCenter.y_val - slackY, starFieldCenter.y_val + slackY);
 
-            offsetToClamp.xVal = viewHalfWidth - viewCenterWorld.xVal;
-            offsetToClamp.yVal = viewHalfHeight - viewCenterWorld.yVal;
+            offsetToClamp.x_val = viewHalfWidth - viewCenterWorld.x_val;
+            offsetToClamp.y_val = viewHalfHeight - viewCenterWorld.y_val;
         };
 
         clampOffsetToStarField(camera_state.offset);
@@ -341,7 +342,7 @@ void InputSystem::routeSDL_EventInputInGame(SDL_Event* e)
 
 void InputSystem::translateAndPassMenuInputsOff(UIState& uiState)
 {
-    InputState& updated_input_state = uiState.getMutableInputState();
+    DEPRECATED_InputState& updated_input_state = uiState.getMutableDEPRECATED_InputState();
     updated_input_state.mouseCurrPosition = transferInputs.mouseCurrPosition;
     updated_input_state.isDragging = transferInputs.isDragging;
     updated_input_state.mouseDragStartPosition = transferInputs.mouseDragStartPosition;
@@ -363,7 +364,7 @@ void InputSystem::translateAndPassMenuInputsOff(UIState& uiState)
 void InputSystem::translateAndPassTransferInputsOff(UIState& uiState)
 {
     // Check for clear all particle orders
-    InputState& updated_input_state = uiState.getMutableInputState();
+    DEPRECATED_InputState& updated_input_state = uiState.getMutableDEPRECATED_InputState();
     if (transferInputs.clearParticlesPressed)
     {
         updated_input_state.clearAllBodies();

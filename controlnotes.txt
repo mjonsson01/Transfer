@@ -36,7 +36,7 @@ Check for Pause menu Events first. If in pause menu, mouse events and escape key
 
 If Enter pressed to toggle Ghost+Place Mode, enter main control loop.
 
-    if mouse click detected, handle mouse input (which will include shift as a modifier key). Shift as modifier will be handled as a flag set in the InputState that turns false immediately when released
+    if mouse click detected, handle mouse input (which will include shift as a modifier key). Shift as modifier will be handled as a flag set in the DEPRECATED_InputState that turns false immediately when released
 
     if key pressed, handle key input
 

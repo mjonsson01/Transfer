@@ -6,7 +6,7 @@
 #include <SDL3/SDL.h>
 
 // Custom Imports
-#include "Core/InputState.hpp"
+#include "Core/DEPRECATED_InputState.hpp"
 #include "Entities/Sound/MusicModeEnum.hpp"
 #include "Entities/UIElements/UIElementIdentifierEnum.hpp"
 #include "Scenes/SceneIdentifierEnum.hpp"
@@ -22,8 +22,8 @@ class UIState
   public:
     UIState();
     ~UIState();
-    InputState& getMutableInputState() { return inputState; }
-    const InputState& getInputState() const { return inputState; }
+    DEPRECATED_InputState& getMutableDEPRECATED_InputState() { return inputState; }
+    const DEPRECATED_InputState& getDEPRECATED_InputState() const { return inputState; }
     float getFPS() { return framesPerSecond; }
     void setFPS(float fps) { framesPerSecond = fps; }
     bool getAllUIVisibility() { return allUIElementsVisible; }
@@ -53,7 +53,7 @@ class UIState
     void setPlaySoundEffects(bool pse) { playSoundEffects = pse; }
 
   private:
-    InputState inputState;
+    DEPRECATED_InputState inputState;
     float framesPerSecond = TARGET_FPS;
 
     bool renderDebug = VIEW_DEBUG; // Toggles rendering of debug elements like

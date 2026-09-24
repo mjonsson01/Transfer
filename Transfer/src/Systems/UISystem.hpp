@@ -7,8 +7,8 @@
 #include <SDL3_ttf/SDL_ttf.h>
 
 // Custom Imports
+#include "Core/DEPRECATED_InputState.hpp"
 #include "Core/GameState.hpp"
-#include "Core/InputState.hpp"
 #include "Core/UIState.hpp"
 #include "Entities/UIElements/UIElement.hpp"
 #include "Scenes/GameScene/GameScene.hpp"
@@ -34,7 +34,7 @@ class UISystem
     void updateUISystemCurrentSceneID(UIState& uiState) { currentSceneID = uiState.getCurrentSceneID(); }
     void updateGameUIElements(GameState& gameState, UIState& uiState);
     void updateMenuUIElements(GameState& gameState, UIState& uiState);
-    UIElementIdentifier findElementWeAreIn(InputState& inputsReceived);
+    UIElementIdentifier findElementWeAreIn(DEPRECATED_InputState& inputsReceived);
     void routeSliderInput(UIElementIdentifier elementToUpdate, UIState& uiState);
     void routeButtonClick(UIElementIdentifier elementToUpdate, UIState& uiState);
     void populateScenes();

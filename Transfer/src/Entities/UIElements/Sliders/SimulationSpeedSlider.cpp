@@ -9,7 +9,7 @@ SimulationSpeedSlider::SimulationSpeedSlider() : Slider()
     updateLayout(SCREEN_WIDTH, SCREEN_HEIGHT);
     setVisibility(true);
     // Slider range
-    maxValue = MAX_TIME_SCALE_FACTOR;
+    max_value = MAX_TIME_SCALE_FACTOR;
     minValue = MIN_TIME_SCALE_FACTOR;
     sliderValue = REGULAR_TIME_SCALE_FACTOR; // start centered
     UIElementID = UIElementIdentifier::SIMULATION_SPEED_SLIDER_INDEX;
@@ -28,8 +28,8 @@ void SimulationSpeedSlider::updateLayout(float windowWidth, float windowHeight)
 
     // Position knob based on slider value
     float track_length_x = trackRect.w - knobRect.w;
-    knobRect.x = trackRect.x + (float)((sliderValue - minValue) / (maxValue - minValue)) * track_length_x;
-    // knobRect.x = trackRect.x + (sliderValue - minValue) / (maxValue - minValue) * trackRect.w - knobRect.w / 2.0f;
+    knobRect.x = trackRect.x + (float)((sliderValue - minValue) / (max_value - minValue)) * track_length_x;
+    // knobRect.x = trackRect.x + (sliderValue - minValue) / (max_value - minValue) * trackRect.w - knobRect.w / 2.0f;
     knobRect.y = trackRect.y - (knobRect.h - trackRect.h) / 2.0f;
     setPosition(trackRect.x, trackRect.y);
 }
