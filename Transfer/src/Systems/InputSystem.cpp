@@ -7,6 +7,71 @@
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_scancode.h>
 
+// Blank namespace helper functions
+namespace
+{
+void requestShutdown(GameState& game_state)
+{
+    game_state.SetPlaying(false);
+    game_state.setIsShuttingDownAudioSystem(true);
+}
+bool isSimulationScene(SceneIdentifier scene_id)
+{
+    return (scene_id == SceneIdentifier::GAME_SCENE || scene_id == SceneIdentifier::TEST_VISUAL_SCENE);
+}
+void zoomAroundCursor(CameraState& camera_state, float scroll, DynamoEngine::Vector2D mouse_position)
+{
+    if (!firstWithinEpsilonOfSecond(scroll, 0.0))
+    {
+        DynamoEngine::Vector2D world_under_cursor = ScreenToWorldCoordinates(mouse_position, camera_state);
+        DynamoEngine::Vector2D star_world_under_cursor =
+            mouse_position / camera_state.zoom - camera_state.twinklingStarOffset;
+
+        camera_state.zoom *= std::pow(1.1, scroll);
+        camera_state.zoom = std::clamp(camera_state.zoom, MIN_ZOOM, MAX_ZOOM);
+
+        camera_state.offset = mouse_position / camera_state.zoom - world_under_cursor;
+        camera_state.twinklingStarOffset = mouse_position / camera_state.zoom - star_world_under_cursor;
+    }
+}
+void panCamera(CameraState& camera_state, DynamoEngine::Vector2D screen_delta)
+{
+    camera_state.offset += screen_delta / camera_state.zoom;
+    camera_state.twinklingStarOffset += (screen_delta / camera_state.zoom) * STAR_PARALLAX_FACTOR;
+}
+void clampCameraToStarField(CameraState& camera_state)
+{
+    // Prevent panning (and the star field's own independent pan) past the edge of the generated star field.
+    double star_field_half_width = camera_state.maxDisplayWidth / (2.0 * MIN_ZOOM);
+    double star_field_half_height = camera_state.maxDisplayHeight / (2.0 * MIN_ZOOM);
+    DynamoEngine::Vector2D star_field_center = {SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0};
+
+    double view_half_width = (camera_state.windowWidth / 2.0) / camera_state.zoom;
+    double view_half_height = (camera_state.windowHeight / 2.0) / camera_state.zoom;
+
+    double slack_x = std::max(0.0, star_field_half_width - view_half_width);
+    double slack_y = std::max(0.0, star_field_half_height - view_half_height);
+
+    auto clamp_offset_to_star_field = [&](DynamoEngine::Vector2D& offset_to_clamp)
+    {
+        DynamoEngine::Vector2D view_center_world = {view_half_width - offset_to_clamp.x_val,
+                                                    view_half_height - offset_to_clamp.y_val};
+
+        view_center_world.x_val =
+            std::clamp(view_center_world.x_val, star_field_center.x_val - slack_x, star_field_center.x_val + slack_x);
+        view_center_world.y_val =
+            std::clamp(view_center_world.y_val, star_field_center.y_val - slack_y, star_field_center.y_val + slack_y);
+
+        offset_to_clamp.x_val = view_half_width - view_center_world.x_val;
+        offset_to_clamp.y_val = view_half_height - view_center_world.y_val;
+    };
+
+    clamp_offset_to_star_field(camera_state.offset);
+    clamp_offset_to_star_field(camera_state.twinklingStarOffset);
+}
+
+} // namespace
+
 InputSystem::InputSystem()
 {
     // Initialize input system variables if needed
@@ -15,8 +80,7 @@ InputSystem::InputSystem()
 
 InputSystem::~InputSystem() {}
 
-// --------- SYSTEM-LEVEL METHOD --------- //
-
+// --- SYSTEM-LEVEL METHOD --- //
 void InputSystem::processSystemInputFrame(GameState& game_state, UIState& ui_state)
 {
     m_input.beginInputFrame();
@@ -37,15 +101,13 @@ void InputSystem::processSystemInputFrame(GameState& game_state, UIState& ui_sta
     }
     if (m_input.quitRequested())
     {
-        game_state.SetPlaying(false);
-        game_state.setIsShuttingDownAudioSystem(true);
+        requestShutdown(game_state);
         return;
     }
     // Pass Engine State off into Transfer's meaning for current scene
     ui_state.getMutableDEPRECATED_InputState().resetTransientFlags();
 
-    SceneIdentifier current_scene = ui_state.getCurrentSceneID();
-    if (current_scene == SceneIdentifier::GAME_SCENE || current_scene == SceneIdentifier::TEST_VISUAL_SCENE)
+    if (isSimulationScene(ui_state.getCurrentSceneID()))
     {
         updateCamera(game_state);
         translateGameInputs(ui_state);
@@ -75,62 +137,23 @@ void InputSystem::trackDragAnchor(const DynamoEngine::InputEvent& event)
         m_mouse_drag_anchor = m_input.mousePosition(); // pressing shift mid-drag re-anchors the velocity arrow
     }
 }
-
+// --- CAMERA UPDATE --- //
 void InputSystem::updateCamera(GameState& game_state)
 {
     using DynamoEngine::MouseButton;
     CameraState& camera_state = game_state.getCameraStateMutable();
     const DynamoEngine::Vector2D mouse_position = m_input.mousePosition(); // Camera math uses doubles
-
     float scroll = m_input.mouseScrollDeltaThisFrame();
-    if (!firstWithinEpsilonOfSecond(scroll, 0.0f))
-    {
-        DynamoEngine::Vector2D world_under_cursor = ScreenToWorldCoordinates(mouse_position, camera_state);
-        DynamoEngine::Vector2D star_world_under_cursor =
-            mouse_position / camera_state.zoom - camera_state.twinklingStarOffset;
 
-        camera_state.zoom *= std::pow(1.1, scroll);
-        camera_state.zoom = std::clamp(camera_state.zoom, MIN_ZOOM, MAX_ZOOM);
-
-        camera_state.offset = mouse_position / camera_state.zoom - world_under_cursor;
-        camera_state.twinklingStarOffset = mouse_position / camera_state.zoom - star_world_under_cursor;
-    }
+    zoomAroundCursor(camera_state, scroll, mouse_position);
 
     // Middle-mouse pan: the engine already sums this frame's motion, so no "previous position" bookkeeping
     if (m_input.isMouseButtonDown(MouseButton::Middle))
     {
-        const DynamoEngine::Vector2D drag_delta = m_input.mousePositionDeltaThisFrame();
-        camera_state.offset += drag_delta / camera_state.zoom;
-        camera_state.twinklingStarOffset += (drag_delta / camera_state.zoom) * STAR_PARALLAX_FACTOR;
+        panCamera(camera_state, m_input.mousePositionDeltaThisFrame());
     }
 
-    // Prevent panning (and the star field's own independent pan) past the edge of the generated star field.
-    double star_field_half_width = camera_state.maxDisplayWidth / (2.0 * MIN_ZOOM);
-    double star_field_half_height = camera_state.maxDisplayHeight / (2.0 * MIN_ZOOM);
-    DynamoEngine::Vector2D star_field_center = {SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0};
-
-    double view_half_width = (camera_state.windowWidth / 2.0) / camera_state.zoom;
-    double view_half_height = (camera_state.windowHeight / 2.0) / camera_state.zoom;
-
-    double slack_x = std::max(0.0, star_field_half_width - view_half_width);
-    double slack_y = std::max(0.0, star_field_half_height - view_half_height);
-
-    auto clamp_offset_to_star_field = [&](DynamoEngine::Vector2D& offset_to_clamp)
-    {
-        DynamoEngine::Vector2D view_center_world = {view_half_width - offset_to_clamp.x_val,
-                                                    view_half_height - offset_to_clamp.y_val};
-
-        view_center_world.x_val =
-            std::clamp(view_center_world.x_val, star_field_center.x_val - slack_x, star_field_center.x_val + slack_x);
-        view_center_world.y_val =
-            std::clamp(view_center_world.y_val, star_field_center.y_val - slack_y, star_field_center.y_val + slack_y);
-
-        offset_to_clamp.x_val = view_half_width - view_center_world.x_val;
-        offset_to_clamp.y_val = view_half_height - view_center_world.y_val;
-    };
-
-    clamp_offset_to_star_field(camera_state.offset);
-    clamp_offset_to_star_field(camera_state.twinklingStarOffset);
+    clampCameraToStarField(camera_state);
 }
 
 void InputSystem::copySharedPointerState(DEPRECATED_InputState& legacy_state)
