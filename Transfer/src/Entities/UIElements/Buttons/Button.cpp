@@ -18,7 +18,7 @@ void Button::clickMe(DynamoEngine::Vector2D positionOfEvent, UIState& uiState)
     return;
 }
 
-void Button::buildGeometry(std::vector<UIElementVertex>& vertexBuffer, uint32_t zIndex,
+void Button::buildGeometry(std::vector<DynamoEngine::UIVertex>& vertexBuffer, uint32_t zIndex,
                            const FontAtlasUtility& fontAtlas)
 {
     float x1 = boundingRect.x;
@@ -30,7 +30,7 @@ void Button::buildGeometry(std::vector<UIElementVertex>& vertexBuffer, uint32_t 
     float g = ColorLibrary::Gray.g / 255.0f;
     float b = ColorLibrary::Gray.b / 255.0f;
     float a = ColorLibrary::Gray.a / 255.0f;
-    uint32_t mode = 0;
+    uint32_t mode = static_cast<uint32_t>(DynamoEngine::UIVertexMode::Solid);
     float u = 0.0f, v = 0.0f;
 
     vertexBuffer.push_back({x1, y1, u, v, r, g, b, a, zIndex, mode});
@@ -49,7 +49,7 @@ void Button::buildGeometry(std::vector<UIElementVertex>& vertexBuffer, uint32_t 
     float cursorX = boundingRect.x + (boundingRect.w - totalTextWidth) / 2.0f;
     float cursorY = boundingRect.y + (boundingRect.h - glyphFontHeight) / 2.0f;
 
-    uint32_t textMode = 1;
+    uint32_t textMode = static_cast<uint32_t>(DynamoEngine::UIVertexMode::Textured);
     for (char c : button_text)
     {
         // Get UV coordinates and pixel dimensions for this character from our pre-baked atlas

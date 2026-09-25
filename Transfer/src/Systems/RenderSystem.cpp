@@ -382,11 +382,11 @@ void RenderSystem::renderStarship(GameState& gameState, SDL_GPURenderPass* pass,
 void RenderSystem::createUIGPUBufferAndPipeline()
 {
     SDL_GPUBufferCreateInfo vb_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX,
-                                       .size = MAX_UI_VERTICES * sizeof(UIElementVertex)};
+                                       .size = MAX_UI_VERTICES * sizeof(DynamoEngine::UIVertex)};
 
     uiVertexBuffer = SDL_CreateGPUBuffer(gpu, &vb_info);
     SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-                                               .size = MAX_UI_VERTICES * sizeof(UIElementVertex)};
+                                               .size = MAX_UI_VERTICES * sizeof(DynamoEngine::UIVertex)};
     uiTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
 
     SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/UIElement.vert", 0, 1);
@@ -396,23 +396,23 @@ void RenderSystem::createUIGPUBufferAndPipeline()
     attrs[0] = {.location = 0,
                 .buffer_slot = 0,
                 .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
-                .offset = offsetof(UIElementVertex, x)};
+                .offset = offsetof(DynamoEngine::UIVertex, x)};
     attrs[1] = {.location = 1,
                 .buffer_slot = 0,
                 .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
-                .offset = offsetof(UIElementVertex, u)};
+                .offset = offsetof(DynamoEngine::UIVertex, u)};
     attrs[2] = {.location = 2,
                 .buffer_slot = 0,
                 .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4,
-                .offset = offsetof(UIElementVertex, r)};
+                .offset = offsetof(DynamoEngine::UIVertex, r)};
     attrs[3] = {.location = 3,
                 .buffer_slot = 0,
                 .format = SDL_GPU_VERTEXELEMENTFORMAT_UINT,
-                .offset = offsetof(UIElementVertex, zIndex)};
+                .offset = offsetof(DynamoEngine::UIVertex, z_index)};
     attrs[4] = {.location = 4,
                 .buffer_slot = 0,
                 .format = SDL_GPU_VERTEXELEMENTFORMAT_UINT,
-                .offset = offsetof(UIElementVertex, mode)};
+                .offset = offsetof(DynamoEngine::UIVertex, mode)};
     SDL_GPUGraphicsPipelineCreateInfo pipeline_info = {};
     pipeline_info.target_info.num_color_targets = 1;
 
@@ -434,7 +434,7 @@ void RenderSystem::createUIGPUBufferAndPipeline()
     pipeline_info.vertex_input_state.num_vertex_attributes = 5;
 
     SDL_GPUVertexBufferDescription vbo_desc = {
-        .slot = 0, .pitch = sizeof(UIElementVertex), .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX};
+        .slot = 0, .pitch = sizeof(DynamoEngine::UIVertex), .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX};
     pipeline_info.vertex_input_state.vertex_buffer_descriptions = &vbo_desc;
     pipeline_info.vertex_input_state.num_vertex_buffers = 1;
 
@@ -520,13 +520,13 @@ void RenderSystem::uploadUIVertices(const std::unordered_map<UIElementIdentifier
         return;
 
     void* map = SDL_MapGPUTransferBuffer(gpu, uiTransferBuffer, false);
-    SDL_memcpy(map, uiVertices.data(), uiVertices.size() * sizeof(UIElementVertex));
+    SDL_memcpy(map, uiVertices.data(), uiVertices.size() * sizeof(DynamoEngine::UIVertex));
     SDL_UnmapGPUTransferBuffer(gpu, uiTransferBuffer);
 
     SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdbuf);
     SDL_GPUTransferBufferLocation src = {.transfer_buffer = uiTransferBuffer, .offset = 0};
     SDL_GPUBufferRegion dst = {
-        .buffer = uiVertexBuffer, .offset = 0, .size = (uint32_t)(uiVertices.size() * sizeof(UIElementVertex))};
+        .buffer = uiVertexBuffer, .offset = 0, .size = (uint32_t)(uiVertices.size() * sizeof(DynamoEngine::UIVertex))};
     SDL_UploadToGPUBuffer(copyPass, &src, &dst, false);
     SDL_EndGPUCopyPass(copyPass);
 }

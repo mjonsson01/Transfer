@@ -27,7 +27,7 @@ class Slider : public UIElement
   public:
     Slider();
     ~Slider() = default;
-    void buildGeometry(std::vector<UIElementVertex>& vertexBuffer, uint32_t zIndex,
+    void buildGeometry(std::vector<DynamoEngine::UIVertex>& vertexBuffer, uint32_t z_index,
                        const FontAtlasUtility& fontAtlas) override;
     virtual std::string getDisplayText() const { return std::to_string(sliderValue); }
     virtual void slideMe(DynamoEngine::Vector2D positionOfEvent, double& returnedElementValue,

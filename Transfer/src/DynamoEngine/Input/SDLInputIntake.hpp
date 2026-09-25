@@ -3,13 +3,13 @@
 #pragma once
 
 // SDL Imports
-#include <SDL3/SDL_events.h> // IWYU pragma: export
+#include <SDL3/SDL_events.h>
 
 // Custom Imports
-#include "DynamoEngine/Input/InputEvent.hpp" // IWYU pragma: export
+#include "DynamoEngine/Input/InputEvent.hpp"
 
 // Standard Library Imports
-#include <vector> // IWYU pragma: export
+#include <vector>
 
 namespace DynamoEngine
 {

@@ -12,6 +12,7 @@
 #include "Core/CameraState.hpp"
 #include "Core/GameState.hpp"
 #include "Core/UIState.hpp"
+#include "DynamoEngine/Rendering/UIVertex.hpp"
 #include "Entities/UIElements/UIElement.hpp"
 #include "Entities/VisualElements/TwinklingStars.hpp"
 #include "Utilities/Constants/EngineConstants.hpp"
@@ -71,7 +72,7 @@ class RenderSystem
     SDL_GPUGraphicsPipeline* twinklingStarPipeline = nullptr;
 
     // UI Element Rendering Components
-    std::vector<UIElementVertex> uiVertices;
+    std::vector<DynamoEngine::UIVertex> uiVertices;
     SDL_GPUBuffer* uiVertexBuffer = nullptr;
     SDL_GPUTransferBuffer* uiTransferBuffer = nullptr;
     SDL_GPUGraphicsPipeline* uiPipeline = nullptr;

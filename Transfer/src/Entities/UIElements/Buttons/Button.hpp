@@ -7,6 +7,7 @@
 #include <SDL3_ttf/SDL_ttf.h>
 
 // Custom Imports
+#include "DynamoEngine/Rendering/UIVertex.hpp"
 #include "Entities/UIElements/UIElement.hpp"
 #include "Entities/UIElements/UIElementIdentifierEnum.hpp"
 #include "Utilities/Rendering/GPUTypes.hpp"
@@ -20,7 +21,7 @@ class Button : public UIElement
   public:
     Button();
     ~Button() = default;
-    void buildGeometry(std::vector<UIElementVertex>& vertexBuffer, uint32_t zIndex,
+    void buildGeometry(std::vector<DynamoEngine::UIVertex>& vertexBuffer, uint32_t z_index,
                        const FontAtlasUtility& fontAtlas) override;
 
     virtual std::string getDisplayText() const { return displayText; }

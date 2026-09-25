@@ -21,7 +21,7 @@ class FPSCounter : public UIElement
   public:
     FPSCounter();
     ~FPSCounter() = default;
-    virtual void buildGeometry(std::vector<UIElementVertex>& vertexBuffer, uint32_t zIndex,
+    virtual void buildGeometry(std::vector<DynamoEngine::UIVertex>& vertexBuffer, uint32_t z_index,
                                const FontAtlasUtility& fontAtlas) override;
     void updateMe(UIState& uiState) override;
     void updateLayout(float windowWidth, float windowHeight) override;

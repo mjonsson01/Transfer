@@ -11,7 +11,7 @@ SamplerState fontSampler : register(s0, space2);
 
 float4 main(VertexOutput input) : SV_Target
 {
-    if (input.mode == 1)
+    if (input.mode == 2)
     {
         float alpha = fontAtlas.Sample(fontSampler, input.uv).a;
         return float4(input.color.rgb, input.color.a * alpha);

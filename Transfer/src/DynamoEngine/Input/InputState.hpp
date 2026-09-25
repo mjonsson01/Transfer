@@ -3,11 +3,11 @@
 #pragma once
 
 // SDL Imports
-#include <SDL3/SDL_scancode.h> // IWYU pragma: export
+#include <SDL3/SDL_scancode.h>
 
 // Custom Imports
-#include "DynamoEngine/Input/InputEvent.hpp" // IWYU pragma: export
-#include "DynamoEngine/Math/Vector2.hpp"     // IWYU pragma: export
+#include "DynamoEngine/Input/InputEvent.hpp"
+#include "DynamoEngine/Math/Vector2.hpp"
 
 // Standard Library Imports
 #include <array>

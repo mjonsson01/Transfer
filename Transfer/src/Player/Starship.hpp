@@ -10,6 +10,7 @@
 #include "Core/DEPRECATED_InputState.hpp"
 #include "Core/UIState.hpp"
 #include "DynamoEngine/Math/Vector2.hpp"
+#include "DynamoEngine/Rendering/UIVertex.hpp"
 #include "Utilities/Constants/PhysicsConstants.hpp"
 #include "Utilities/Rendering/GPUTypes.hpp"
 
