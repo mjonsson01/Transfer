@@ -221,7 +221,7 @@ if(TRANSFER_BUILD_TESTS)
         include(GoogleTest)
         gtest_discover_tests(TransferTests)
     else()
-        message(STATUS "TransferTests: no test sources in Tests yet -- skipping the test target")
+        message(STATUS "TransferTests: no test sources in Tests yet, skipping the test target")
     endif()
 endif()
 
