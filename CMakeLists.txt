@@ -62,6 +62,23 @@ elseif(APPLE)
 endif()
 
 # ----------------------------------
+# DynamoEngine (static library) -- reusable engine code; must never include game code
+# ----------------------------------
+file(GLOB_RECURSE DYNAMO_ENGINE_SRC_FILES CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/Transfer/src/DynamoEngine/*.cpp"
+    "${CMAKE_SOURCE_DIR}/Transfer/src/DynamoEngine/*.hpp"
+)
+list(FILTER SRC_FILES EXCLUDE REGEX "/DynamoEngine/") # the game links the engine instead of compiling it itself
+
+add_library(DynamoEngine STATIC ${DYNAMO_ENGINE_SRC_FILES})
+target_include_directories(DynamoEngine PUBLIC "${CMAKE_SOURCE_DIR}/Transfer/src" ${SDL3_INCLUDE_DIRS})
+target_link_libraries(DynamoEngine PUBLIC ${SDL3_LIBS})
+target_compile_options(DynamoEngine PRIVATE
+    $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wimplicit-fallthrough>
+    $<$<CXX_COMPILER_ID:MSVC>:/W4>
+)
+
+# ----------------------------------
 # Executable definition
 # ----------------------------------
 if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release")
@@ -89,6 +106,7 @@ target_include_directories(${PROJECT_NAME}
 # ----------------------------------
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
+        DynamoEngine
         ${SDL3_LIBS}
 )
 
@@ -191,12 +209,13 @@ if(TRANSFER_BUILD_TESTS)
     file(GLOB_RECURSE ENGINE_SRC_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/Transfer/src/DynamoEngine/*.cpp")
 
     if(TEST_SRC_FILES)
-        add_executable(TransferTests ${TEST_SRC_FILES} ${ENGINE_SRC_FILES})
+        add_executable(TransferTests ${TEST_SRC_FILES})
         target_include_directories(TransferTests PRIVATE
             "${CMAKE_SOURCE_DIR}/Transfer/src"  # engine / game headers:  #include "DynamoEngine/..."
             "${CMAKE_SOURCE_DIR}/Tests"         # test utilities:         #include "TestingUtilities/..."
             ${SDL3_INCLUDE_DIRS}
         )
+        target_link_libraries(TransferTests PRIVATE GTest::gtest_main DynamoEngine)
         target_link_libraries(TransferTests PRIVATE GTest::gtest_main ${SDL3_LIBS})
 
         include(GoogleTest)
