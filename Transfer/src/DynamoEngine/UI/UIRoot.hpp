@@ -8,8 +8,11 @@
 #include "DynamoEngine/UI/UIElement.hpp"
 #include "DynamoEngine/UI/UIGeometryBuilder.hpp"
 #include "DynamoEngine/UI/UIInputResult.hpp"
+#include "DynamoEngine/UI/UISound.hpp"
 
 // Standard Library Imports
+#include <functional>
+#include <utility>
 #include <vector>
 
 namespace DynamoEngine
@@ -46,8 +49,14 @@ class UIRoot : public UIElement
     // then siblings by z-index
     void drawElements(UIGeometryBuilder& builder) const;
 
-    // --- Queries --- //
+    // --- Sound --- //
 
+    // The one place the game decides what UI sounds do (and whether they play at all)
+    using SoundHandler = std::function<void(UISound)>;
+    void setSoundHandler(SoundHandler handler) { m_sound_handler = std::move(handler); }
+
+    // Every element's requestSound() ends up here
+    void requestSound(UISound sound) override;
     // --- Mouse input --- //
 
     // Delivers this frame's mouse input to the elements (hover, press, drag, release) and reports what the UI took.
@@ -69,5 +78,6 @@ class UIRoot : public UIElement
     // (If a removeChild() is ever added, it must clear these when it removes one of them.)
     UIElement* m_hovered_element = nullptr;  // the element under the cursor, or nullptr
     UIElement* m_captured_element = nullptr; // the element that took the current press, or nullptr
+    SoundHandler m_sound_handler;            // empty = UI sounds do nothing
 };
 } // namespace DynamoEngine

@@ -9,6 +9,7 @@
 #include "DynamoEngine/Math/Vector2.hpp"
 #include "DynamoEngine/UI/UIGeometryBuilder.hpp"
 #include "DynamoEngine/UI/UIPlacement.hpp"
+#include "DynamoEngine/UI/UISound.hpp"
 
 // Standard Library Imports
 #include <cstdint>
@@ -32,6 +33,7 @@ class UIElement
 {
   public:
     virtual ~UIElement() = default;
+    const UIPlacement& placement() const { return m_placement; }
 
     // --- Children --- //
     UIElement& addChild(std::unique_ptr<UIElement> child); // takes ownership
@@ -51,6 +53,11 @@ class UIElement
     UILayer layer() const;                               // if never set: the parent's layer
     void setZIndex(int z_index) { m_z_index = z_index; } // order among siblings, higher on top
     int zIndex() const { return m_z_index; }
+
+    // --- Sound --- //
+    // Asks for a UI sound. The request travels up through the parents to the UIRoot, whose sound handler
+    // (set by the game) decides what plays -- or nothing, if sound effects are turned off.
+    virtual void requestSound(UISound sound);
 
     // --- Override these --- //
     virtual void update(float delta_seconds) {}

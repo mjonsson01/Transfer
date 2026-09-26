@@ -95,6 +95,15 @@ void UIRoot::drawElements(UIGeometryBuilder& builder) const
         element->draw(builder);
     }
 }
+
+void UIRoot::requestSound(UISound sound)
+{
+    if (m_sound_handler) // an empty std::function is "false": no handler set, so do nothing
+    {
+        m_sound_handler(sound);
+    }
+}
+
 UIInputResult UIRoot::processInput(const InputState& input)
 {
     const Vector2F mouse_position = screenToUISpace(input.mousePosition());

@@ -2,6 +2,9 @@
 
 #pragma once
 
+// SDL Imports
+#include <SDL3/SDL_rect.h>
+
 // Custom Imports
 #include "DynamoEngine/Math/Vector2.hpp"
 
@@ -31,5 +34,7 @@ struct UIPlacement
     UIAlign align = UIAlign::TopLeft;
     Vector2F size = {0.0f, 0.0f}; // in UI points (ignored by Fill)
     float margin = 0.0f;          // gap between the element and the parent's edge
+    // The rectangle this placement describes inside parent_rect
+    SDL_FRect placeInside(const SDL_FRect& parent_rect) const;
 };
 } // namespace DynamoEngine
