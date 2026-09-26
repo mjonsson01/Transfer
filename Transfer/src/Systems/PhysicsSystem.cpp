@@ -366,7 +366,7 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, Grav
         else
         {
             double totalInvMass = smallerBody.invMass + largerBody.invMass;
-            if (totalInvMass > EPSILON)
+            if (totalInvMass > DynamoEngine::EPSILON)
             {
                 double smaller_share = smallerBody.invMass / totalInvMass;
                 double larger_share = largerBody.invMass / totalInvMass;
@@ -455,8 +455,8 @@ void PhysicsSystem::substituteWithParticles(GravitationalBody& originalBody, Gam
     const double original_mass = originalBody.mass;
     const DynamoEngine::Vector2D original_velocity = originalBody.velocity;
 
-    double density_factor = (PI * R * R) / num_particles;
-    const double fragment_radius = OVERLAP_MARGIN * sqrt(density_factor / PI);
+    double density_factor = (DynamoEngine::PI * R * R) / num_particles;
+    const double fragment_radius = OVERLAP_MARGIN * sqrt(density_factor / DynamoEngine::PI);
     const double particle_mass = original_mass / num_particles;
 
     auto& particles = gameState.getParticlesMutable();

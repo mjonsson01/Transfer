@@ -2,14 +2,6 @@
 
 #pragma once
 
-// Hardcoded Pi
-constexpr double PI = 3.14159265358979323846;
-
-constexpr double TWO_PI = 2.0 * PI;
-
-// Near-zero comparison epsilon.
-constexpr double EPSILON = 1e-8;
-
 // Load balancing max renderable bodies on screen at once
 constexpr uint32_t MAX_UNIFIED_BODIES = 12000; // This only balances the rendering system, which is not actually the
                                                // bottleneck. Need to fix the physics system load balancing.

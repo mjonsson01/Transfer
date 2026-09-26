@@ -1,6 +1,8 @@
 // File: Transfer/src/Player/Starship.cpp
 #include "Starship.hpp"
 
+#include "DynamoEngine/Constants/GlobalConstants.hpp"
+
 Starship::Starship() { shipSize = 50.0; }
 
 Starship::~Starship() {}
@@ -102,7 +104,7 @@ void Starship::applyRotation(UIState& uiState)
         rotation += turnSpeed;
 
     // Optional: keep rotation in a sane range to avoid float drift over time
-    rotation = std::remainder(rotation, TWO_PI); // result in [-π, π]
+    rotation = std::remainder(rotation, DynamoEngine::TWO_PI); // result in [-π, π]
 }
 
 void Starship::integratePosition()

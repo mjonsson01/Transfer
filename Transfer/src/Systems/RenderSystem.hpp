@@ -42,11 +42,11 @@ class RenderSystem
     // Constructor and Destructor
     //  No arguments for now, but will need to pass through resolution and other
     //  info later
-    RenderSystem(GameState& gameState);
+    RenderSystem(GameState& game_state);
     ~RenderSystem(); // make sure to teardown destructor and window
 
     // Main Loop Rendering Function, renders engine state and the current scene's UI
-    void RenderFullFrame(GameState& gameState, UIState& uiState, const DynamoEngine::Scene& scene);
+    void RenderFullFrame(GameState& game_state, UIState& ui_state, const DynamoEngine::Scene& scene);
 
     // Main Cleanup method (tears down all the SDL components)
     void CleanUp();
@@ -98,19 +98,19 @@ class RenderSystem
 
   private:
     // Subordinate Rendering Functions
-    void renderGameFrame(GameState& gameState, UIState& uiState, const DynamoEngine::UIRoot& ui,
+    void renderGameFrame(GameState& game_state, UIState& ui_state, const DynamoEngine::UIRoot& ui,
                          SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf);
     void renderNonGameFrame(const DynamoEngine::UIRoot& ui, SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf);
 
-    void appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexData, UIState& uiState,
+    void appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexData, UIState& ui_state,
                              const CameraState& cameraState);
 
-    void renderBodies(GameState& gameState, UIState& uiState, SDL_GPURenderPass* pass,
+    void renderBodies(GameState& game_state, UIState& ui_state, SDL_GPURenderPass* pass,
                       SDL_GPUCommandBuffer* cmdbuf); // Renders all the gravitational
                                                      // bodies (both Macro and Particle)
 
-    void uploadUnifiedBodies(GameState& gameState, UIState& uiState, SDL_GPUCommandBuffer* cmdbuf);
-    SDL_GPUShader* LoadShader(SDL_GPUDevice* device, const char* baseFileName, uint32_t numSamplers = 0,
+    void uploadUnifiedBodies(GameState& game_state, UIState& ui_state, SDL_GPUCommandBuffer* cmdbuf);
+    SDL_GPUShader* LoadShader(SDL_GPUDevice* device, const char* base_file_name, uint32_t numSamplers = 0,
                               uint32_t numUniformBuffers = 0);
 
     void createUnifiedBodyGPUBufferAndPipeline();
@@ -127,10 +127,10 @@ class RenderSystem
 
     void createTwinklingStarField(float fieldMaxWidth, float fieldMaxHeight);
     void uploadTwinklingStarField(SDL_GPUCommandBuffer* cmdbuf);
-    void uploadStarship(GameState& gameState, UIState& uiState, SDL_GPUCommandBuffer* cmdbuf);
+    void uploadStarship(GameState& game_state, UIState& ui_state, SDL_GPUCommandBuffer* cmdbuf);
     void renderTwinklingStarField(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
                                   const CameraState& cameraState);
-    void renderStarship(GameState& gameState, SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
+    void renderStarship(GameState& game_state, SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
                         const CameraState& cameraState);
 
     CameraConstants buildCameraConstants(const CameraState& cameraState, const DynamoEngine::Vector2D& offset);

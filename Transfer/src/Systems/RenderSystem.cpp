@@ -2,13 +2,15 @@
 
 #include "Systems/RenderSystem.hpp"
 
+#include "DynamoEngine/Constants/GlobalConstants.hpp"
+
 namespace
 {
 constexpr float UI_FONT_SIZE = 18.0f; // UI points
 } // namespace
 
 // Constructor: Initializes SDL Window and GPU
-RenderSystem::RenderSystem(GameState& gameState)
+RenderSystem::RenderSystem(GameState& game_state)
 {
     SDL_InitSubSystem(SDL_INIT_VIDEO);
     TTF_Init();
@@ -17,12 +19,12 @@ RenderSystem::RenderSystem(GameState& gameState)
     int window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
     window = SDL_CreateWindow("Transfer", SCREEN_WIDTH, SCREEN_HEIGHT, window_flags);
 
-    SDL_DisplayID displayID = SDL_GetDisplayForWindow(window);
-    const SDL_DisplayMode* desktopMode = SDL_GetDesktopDisplayMode(displayID);
-    if (desktopMode)
+    SDL_DisplayID display_id = SDL_GetDisplayForWindow(window);
+    const SDL_DisplayMode* desktop_mode = SDL_GetDesktopDisplayMode(display_id);
+    if (desktop_mode)
     {
-        gameState.getCameraStateMutable().max_display_width = (float)desktopMode->w;
-        gameState.getCameraStateMutable().max_display_height = (float)desktopMode->h;
+        game_state.getCameraStateMutable().max_display_width = (float)desktop_mode->w;
+        game_state.getCameraStateMutable().max_display_height = (float)desktop_mode->h;
     }
 
 #ifdef __APPLE__
@@ -42,8 +44,8 @@ RenderSystem::RenderSystem(GameState& gameState)
     createUIGPUBufferAndPipeline();
     createFontAtlasSampler(); // the atlas itself is baked on the first frame, once the UI scale is known
     createStarshipGPUBufferAndPipeline();
-    createTwinklingStarField(gameState.getCameraState().max_display_width,
-                             gameState.getCameraState().max_display_height);
+    createTwinklingStarField(game_state.getCameraState().max_display_width,
+                             game_state.getCameraState().max_display_height);
     if (gpu)
     {
         SDL_GPUCommandBuffer* initCmdBuf = SDL_AcquireGPUCommandBuffer(gpu);
@@ -123,17 +125,17 @@ void RenderSystem::CleanUp()
     }
 }
 
-SDL_GPUShader* RenderSystem::LoadShader(SDL_GPUDevice* device, const char* baseFileName, uint32_t numSamplers,
+SDL_GPUShader* RenderSystem::LoadShader(SDL_GPUDevice* device, const char* base_file_name, uint32_t numSamplers,
                                         uint32_t numUniformBuffers)
 {
     size_t size;
 
 #ifdef __APPLE__
-    std::string fileName = std::string(baseFileName) + ".msl";
+    std::string fileName = std::string(base_file_name) + ".msl";
     const char* entrypoint = "main0"; // spirv-cross renames the MSL entry point away from "main"
     SDL_GPUShaderFormat format = SDL_GPU_SHADERFORMAT_MSL;
 #else
-    std::string fileName = std::string(baseFileName) + ".spv";
+    std::string fileName = std::string(base_file_name) + ".spv";
     const char* entrypoint = "main";
     SDL_GPUShaderFormat format = SDL_GPU_SHADERFORMAT_SPIRV;
 #endif
@@ -164,7 +166,7 @@ SDL_GPUShader* RenderSystem::LoadShader(SDL_GPUDevice* device, const char* baseF
 }
 // --------- RENDER FULL FRAME METHOD --------- //
 
-void RenderSystem::RenderFullFrame(GameState& gameState, UIState& uiState, const DynamoEngine::Scene& scene)
+void RenderSystem::RenderFullFrame(GameState& game_state, UIState& ui_state, const DynamoEngine::Scene& scene)
 {
 
     // Re-bake the text whenever the UI scale or the display's pixel density changes (window resized, or moved to a
@@ -182,8 +184,8 @@ void RenderSystem::RenderFullFrame(GameState& gameState, UIState& uiState, const
     if (draws_world)
     {
         uploadTwinklingStarField(cmdbuf);
-        uploadUnifiedBodies(gameState, uiState, cmdbuf);
-        uploadStarship(gameState, uiState, cmdbuf);
+        uploadUnifiedBodies(game_state, ui_state, cmdbuf);
+        uploadStarship(game_state, ui_state, cmdbuf);
     }
     uploadUIVertices(scene.ui(), cmdbuf);
     // Acquire the display target
@@ -207,7 +209,7 @@ void RenderSystem::RenderFullFrame(GameState& gameState, UIState& uiState, const
 
         if (draws_world)
         {
-            renderGameFrame(gameState, uiState, scene.ui(), pass, cmdbuf);
+            renderGameFrame(game_state, ui_state, scene.ui(), pass, cmdbuf);
         }
         else
         {
@@ -220,14 +222,14 @@ void RenderSystem::RenderFullFrame(GameState& gameState, UIState& uiState, const
     SDL_SubmitGPUCommandBuffer(cmdbuf);
 }
 
-void RenderSystem::renderGameFrame(GameState& gameState, UIState& uiState, const DynamoEngine::UIRoot& ui,
+void RenderSystem::renderGameFrame(GameState& game_state, UIState& ui_state, const DynamoEngine::UIRoot& ui,
                                    SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf)
 {
-    gameState.getCameraStateMutable().render_alpha = gameState.getAlpha();
-    renderStarship(gameState, pass, cmdbuf, gameState.getCameraState());
-    renderTwinklingStarField(pass, cmdbuf, gameState.getCameraState());
-    renderBodies(gameState, uiState, pass, cmdbuf);
-    renderVelocityVectors(pass, cmdbuf, gameState.getCameraState());
+    game_state.getCameraStateMutable().render_alpha = game_state.getAlpha();
+    renderStarship(game_state, pass, cmdbuf, game_state.getCameraState());
+    renderTwinklingStarField(pass, cmdbuf, game_state.getCameraState());
+    renderBodies(game_state, ui_state, pass, cmdbuf);
+    renderVelocityVectors(pass, cmdbuf, game_state.getCameraState());
     renderUIElements(pass, cmdbuf, ui);
 }
 
@@ -236,12 +238,12 @@ void RenderSystem::renderNonGameFrame(const DynamoEngine::UIRoot& ui, SDL_GPURen
 {
     renderUIElements(pass, cmdbuf, ui);
 }
-void RenderSystem::uploadUnifiedBodies(GameState& gameState, UIState& uiState, SDL_GPUCommandBuffer* cmdbuf)
+void RenderSystem::uploadUnifiedBodies(GameState& game_state, UIState& ui_state, SDL_GPUCommandBuffer* cmdbuf)
 {
     unifiedBodyVertices.clear();
 
-    auto& particles = gameState.getParticles();
-    auto& bodies = gameState.getMacroBodies();
+    auto& particles = game_state.getParticles();
+    auto& bodies = game_state.getMacroBodies();
 
     unifiedBodyVertices.reserve(particles.size() + bodies.size());
 
@@ -261,7 +263,7 @@ void RenderSystem::uploadUnifiedBodies(GameState& gameState, UIState& uiState, S
         }
     }
 
-    appendPreviewBodies(unifiedBodyVertices, uiState, gameState.getCameraState());
+    appendPreviewBodies(unifiedBodyVertices, ui_state, game_state.getCameraState());
     uploadVelocityVectorVertices(cmdbuf);
 
     if (unifiedBodyVertices.size() > MAX_UNIFIED_BODIES)
@@ -288,13 +290,13 @@ void RenderSystem::uploadUnifiedBodies(GameState& gameState, UIState& uiState, S
     }
 }
 
-void RenderSystem::uploadStarship(GameState& gameState, UIState& uiState, SDL_GPUCommandBuffer* cmdbuf)
+void RenderSystem::uploadStarship(GameState& game_state, UIState& ui_state, SDL_GPUCommandBuffer* cmdbuf)
 {
     starshipVertices.clear();
     starshipVertices.reserve(MAX_STARSHIP_VERTICES);
 
     // Rework into getPlayer const since this method doesn't actually do anything to the starship
-    gameState.getPlayerMutable().starship.buildGeometry(starshipVertices);
+    game_state.getPlayerMutable().starship.buildGeometry(starshipVertices);
 
     if (starshipVertices.size() > MAX_STARSHIP_VERTICES)
     {
@@ -320,19 +322,19 @@ void RenderSystem::uploadStarship(GameState& gameState, UIState& uiState, SDL_GP
     }
 }
 
-void RenderSystem::renderBodies(GameState& gameState, UIState& uiState, SDL_GPURenderPass* pass,
+void RenderSystem::renderBodies(GameState& game_state, UIState& ui_state, SDL_GPURenderPass* pass,
                                 SDL_GPUCommandBuffer* cmdbuf)
 {
     // Quickly count how many total instances are active for drawing
     uint32_t instance_count = 0;
-    for (auto& p : gameState.getParticles())
+    for (auto& p : game_state.getParticles())
         if (p.visible)
             instance_count++;
-    for (auto& b : gameState.getMacroBodies())
+    for (auto& b : game_state.getMacroBodies())
         if (b.visible)
             instance_count++;
 
-    if (uiState.getMutableDEPRECATED_InputState().isPreviewingMacro)
+    if (ui_state.getMutableDEPRECATED_InputState().isPreviewingMacro)
     {
         instance_count++;
     }
@@ -342,7 +344,7 @@ void RenderSystem::renderBodies(GameState& gameState, UIState& uiState, SDL_GPUR
     {
         SDL_BindGPUGraphicsPipeline(pass, unifiedBodyPipeline);
         CameraConstants camera_constants =
-            buildCameraConstants(gameState.getCameraState(), gameState.getCameraState().offset);
+            buildCameraConstants(game_state.getCameraState(), game_state.getCameraState().offset);
         SDL_PushGPUVertexUniformData(cmdbuf, 0, &camera_constants, sizeof(camera_constants));
 
         SDL_GPUBufferBinding vbo = {.buffer = unifiedBodyVertexBuffer, .offset = 0};
@@ -355,12 +357,12 @@ void RenderSystem::renderBodies(GameState& gameState, UIState& uiState, SDL_GPUR
     }
 }
 
-void RenderSystem::renderStarship(GameState& gameState, SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
+void RenderSystem::renderStarship(GameState& game_state, SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
                                   const CameraState& cameraState)
 {
     SDL_BindGPUGraphicsPipeline(pass, starshipPipeline);
     CameraConstants camera_constants =
-        buildCameraConstants(gameState.getCameraState(), gameState.getCameraState().offset);
+        buildCameraConstants(game_state.getCameraState(), game_state.getCameraState().offset);
     SDL_PushGPUVertexUniformData(cmdbuf, 0, &camera_constants, sizeof(camera_constants));
 
     SDL_GPUBufferBinding vbo = {.buffer = starshipVertexBuffer, .offset = 0};
@@ -550,10 +552,10 @@ void RenderSystem::renderUIElements(SDL_GPURenderPass* pass, SDL_GPUCommandBuffe
     SDL_BindGPUFragmentSamplers(pass, 0, &texBinding, 1);
     SDL_DrawGPUPrimitives(pass, (uint32_t)m_ui_vertices.size(), 1, 0, 0);
 }
-void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexData, UIState& uiState,
+void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexData, UIState& ui_state,
                                        const CameraState& cameraState)
 {
-    DEPRECATED_InputState& input_state = uiState.getMutableDEPRECATED_InputState();
+    DEPRECATED_InputState& input_state = ui_state.getMutableDEPRECATED_InputState();
     velocityVectorVertices.clear();
     if (input_state.isPreviewingMacro)
     {
@@ -1035,7 +1037,7 @@ void RenderSystem::buildVelocityVectorGeometry(DynamoEngine::Vector2D lineStart,
     float dx = static_cast<float>(lineEnd.x_val - lineStart.x_val);
     float dy = static_cast<float>(lineEnd.y_val - lineStart.y_val);
     float length = static_cast<float>((lineEnd - lineStart).magnitude());
-    if (length <= EPSILON)
+    if (length <= DynamoEngine::EPSILON)
     {
         return;
     }

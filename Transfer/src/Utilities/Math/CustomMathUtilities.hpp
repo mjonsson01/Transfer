@@ -4,6 +4,7 @@
 #include <random>
 
 // Custom Imports
+#include "DynamoEngine/Constants/GlobalConstants.hpp"
 #include "Utilities/Constants/EngineConstants.hpp"
 
 #pragma once
@@ -17,5 +18,6 @@ static double randomDouble(double minVal, double max_val)
 
 static bool firstWithinEpsilonOfSecond(double valueToCheck, double valueToCompareTo)
 {
-    return ((valueToCheck <= valueToCompareTo + EPSILON) && (valueToCheck >= valueToCompareTo - EPSILON));
+    return ((valueToCheck <= valueToCompareTo + DynamoEngine::EPSILON) &&
+            (valueToCheck >= valueToCompareTo - DynamoEngine::EPSILON));
 }
