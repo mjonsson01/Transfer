@@ -12,7 +12,9 @@
 #include "Core/CameraState.hpp"
 #include "Core/GameState.hpp"
 #include "Core/UIState.hpp"
+#include "DynamoEngine/Rendering/FontAtlas.hpp"
 #include "DynamoEngine/Rendering/UIVertex.hpp"
+#include "DynamoEngine/UI/UIGeometryBuilder.hpp"
 #include "Entities/UIElements/UIElement.hpp"
 #include "Entities/VisualElements/TwinklingStars.hpp"
 #include "Utilities/Constants/EngineConstants.hpp"
@@ -20,7 +22,6 @@
 #include "Utilities/Rendering/CameraData.hpp"
 #include "Utilities/Rendering/CameraTransform.hpp"
 #include "Utilities/Rendering/Colors.hpp"
-#include "Utilities/Rendering/FontAtlasUtility.hpp"
 #include "Utilities/Rendering/GPUTypes.hpp"
 #include "Utilities/System/SystemPathUtility.hpp"
 
@@ -72,7 +73,7 @@ class RenderSystem
     SDL_GPUGraphicsPipeline* twinklingStarPipeline = nullptr;
 
     // UI Element Rendering Components
-    std::vector<DynamoEngine::UIVertex> uiVertices;
+    std::vector<DynamoEngine::UIVertex> m_ui_vertices;
     SDL_GPUBuffer* uiVertexBuffer = nullptr;
     SDL_GPUTransferBuffer* uiTransferBuffer = nullptr;
     SDL_GPUGraphicsPipeline* uiPipeline = nullptr;
@@ -92,7 +93,7 @@ class RenderSystem
     // Text Rendering Components
     SDL_GPUTexture* fontAtlasTexture = nullptr;
     SDL_GPUSampler* fontAtlasSampler = nullptr;
-    FontAtlasUtility fontAtlas;
+    DynamoEngine::FontAtlas fontAtlas;
 
     // Font for UI Elements that require text
     TTF_Font* UIFontRegular = nullptr;

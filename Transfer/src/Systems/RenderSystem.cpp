@@ -445,8 +445,8 @@ void RenderSystem::createUIGPUBufferAndPipeline()
 
 void RenderSystem::createFontAtlasTextureAndSampler()
 {
-    SDL_Surface* atlasSurface = fontAtlas.BuildAtlas(UIFontRegular);
-    if (!atlasSurface)
+    SDL_Surface* atlas_surface = fontAtlas.buildAtlas(UIFontRegular);
+    if (!atlas_surface)
     {
         std::cerr << "Failed to bake font atlas" << std::endl;
         return;
@@ -455,8 +455,8 @@ void RenderSystem::createFontAtlasTextureAndSampler()
     SDL_GPUTextureCreateInfo tex_info = {.type = SDL_GPU_TEXTURETYPE_2D,
                                          .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
                                          .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER,
-                                         .width = (Uint32)atlasSurface->w,
-                                         .height = (Uint32)atlasSurface->h,
+                                         .width = (Uint32)atlas_surface->w,
+                                         .height = (Uint32)atlas_surface->h,
                                          .layer_count_or_depth = 1,
                                          .num_levels = 1};
     fontAtlasTexture = SDL_CreateGPUTexture(gpu, &tex_info);
@@ -467,17 +467,17 @@ void RenderSystem::createFontAtlasTextureAndSampler()
                                              .address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE};
     fontAtlasSampler = SDL_CreateGPUSampler(gpu, &sampler_info);
 
-    Uint32 pixelDataSize = (Uint32)(atlasSurface->w * atlasSurface->h * 4);
+    Uint32 pixelDataSize = (Uint32)(atlas_surface->w * atlas_surface->h * 4);
     SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD, .size = pixelDataSize};
     SDL_GPUTransferBuffer* atlasTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
 
     // Copy row by row in case the surface pitch isn't tightly packed.
     Uint8* dst = (Uint8*)SDL_MapGPUTransferBuffer(gpu, atlasTransferBuffer, false);
-    Uint8* src = (Uint8*)atlasSurface->pixels;
-    Uint32 rowBytes = (Uint32)atlasSurface->w * 4;
-    for (int row = 0; row < atlasSurface->h; row++)
+    Uint8* src = (Uint8*)atlas_surface->pixels;
+    Uint32 rowBytes = (Uint32)atlas_surface->w * 4;
+    for (int row = 0; row < atlas_surface->h; row++)
     {
-        SDL_memcpy(dst + row * rowBytes, src + row * atlasSurface->pitch, rowBytes);
+        SDL_memcpy(dst + row * rowBytes, src + row * atlas_surface->pitch, rowBytes);
     }
     SDL_UnmapGPUTransferBuffer(gpu, atlasTransferBuffer);
 
@@ -486,16 +486,16 @@ void RenderSystem::createFontAtlasTextureAndSampler()
 
     SDL_GPUTextureTransferInfo src_info = {.transfer_buffer = atlasTransferBuffer,
                                            .offset = 0,
-                                           .pixels_per_row = (Uint32)atlasSurface->w,
-                                           .rows_per_layer = (Uint32)atlasSurface->h};
+                                           .pixels_per_row = (Uint32)atlas_surface->w,
+                                           .rows_per_layer = (Uint32)atlas_surface->h};
     SDL_GPUTextureRegion dst_region = {.texture = fontAtlasTexture,
                                        .mip_level = 0,
                                        .layer = 0,
                                        .x = 0,
                                        .y = 0,
                                        .z = 0,
-                                       .w = (Uint32)atlasSurface->w,
-                                       .h = (Uint32)atlasSurface->h,
+                                       .w = (Uint32)atlas_surface->w,
+                                       .h = (Uint32)atlas_surface->h,
                                        .d = 1};
     SDL_UploadToGPUTexture(copyPass, &src_info, &dst_region, false);
 
@@ -503,30 +503,32 @@ void RenderSystem::createFontAtlasTextureAndSampler()
     SDL_SubmitGPUCommandBuffer(cmdbuf);
 
     SDL_ReleaseGPUTransferBuffer(gpu, atlasTransferBuffer);
-    SDL_DestroySurface(atlasSurface);
+    SDL_DestroySurface(atlas_surface);
 }
 
 void RenderSystem::uploadUIVertices(const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
                                     SDL_GPUCommandBuffer* cmdbuf)
 {
-    uiVertices.clear();
+    m_ui_vertices.clear();
+    DynamoEngine::UIGeometryBuilder builder(m_ui_vertices, fontAtlas); // new: one builder for this frame
     for (auto& [id, element] : allUIElementsInScope)
         if (element->isVisible())
         {
-            element->buildGeometry(uiVertices, 1, fontAtlas);
+            element->buildGeometry(builder);
         }
 
-    if (uiVertices.empty())
+    if (m_ui_vertices.empty())
         return;
 
     void* map = SDL_MapGPUTransferBuffer(gpu, uiTransferBuffer, false);
-    SDL_memcpy(map, uiVertices.data(), uiVertices.size() * sizeof(DynamoEngine::UIVertex));
+    SDL_memcpy(map, m_ui_vertices.data(), m_ui_vertices.size() * sizeof(DynamoEngine::UIVertex));
     SDL_UnmapGPUTransferBuffer(gpu, uiTransferBuffer);
 
     SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdbuf);
     SDL_GPUTransferBufferLocation src = {.transfer_buffer = uiTransferBuffer, .offset = 0};
-    SDL_GPUBufferRegion dst = {
-        .buffer = uiVertexBuffer, .offset = 0, .size = (uint32_t)(uiVertices.size() * sizeof(DynamoEngine::UIVertex))};
+    SDL_GPUBufferRegion dst = {.buffer = uiVertexBuffer,
+                               .offset = 0,
+                               .size = (uint32_t)(m_ui_vertices.size() * sizeof(DynamoEngine::UIVertex))};
     SDL_UploadToGPUBuffer(copyPass, &src, &dst, false);
     SDL_EndGPUCopyPass(copyPass);
 }
@@ -534,7 +536,7 @@ void RenderSystem::uploadUIVertices(const std::unordered_map<UIElementIdentifier
 void RenderSystem::renderUIElements(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
                                     const CameraState& cameraState)
 {
-    if (uiVertices.empty())
+    if (m_ui_vertices.empty())
         return;
     SDL_BindGPUGraphicsPipeline(pass, uiPipeline);
 
@@ -545,7 +547,7 @@ void RenderSystem::renderUIElements(SDL_GPURenderPass* pass, SDL_GPUCommandBuffe
     SDL_BindGPUVertexBuffers(pass, 0, &vbo, 1);
     SDL_GPUTextureSamplerBinding texBinding = {.texture = fontAtlasTexture, .sampler = fontAtlasSampler};
     SDL_BindGPUFragmentSamplers(pass, 0, &texBinding, 1);
-    SDL_DrawGPUPrimitives(pass, (uint32_t)uiVertices.size(), 1, 0, 0);
+    SDL_DrawGPUPrimitives(pass, (uint32_t)m_ui_vertices.size(), 1, 0, 0);
 }
 void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexData, UIState& uiState,
                                        const CameraState& cameraState)

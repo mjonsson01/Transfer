@@ -21,8 +21,7 @@ class Button : public UIElement
   public:
     Button();
     ~Button() = default;
-    void buildGeometry(std::vector<DynamoEngine::UIVertex>& vertexBuffer, uint32_t z_index,
-                       const FontAtlasUtility& fontAtlas) override;
+    void buildGeometry(DynamoEngine::UIGeometryBuilder& builder) override;
 
     virtual std::string getDisplayText() const { return displayText; }
     virtual void clickMe(DynamoEngine::Vector2D positionOfEvent, UIState& uiState) override;

@@ -10,9 +10,9 @@
 #include "Core/UIState.hpp"
 #include "DynamoEngine/Math/Vector2.hpp"
 #include "DynamoEngine/Rendering/UIVertex.hpp"
+#include "DynamoEngine/UI/UIGeometryBuilder.hpp"
 #include "Entities/UIElements/UIElementIdentifierEnum.hpp"
 #include "Utilities/Rendering/Colors.hpp"
-#include "Utilities/Rendering/FontAtlasUtility.hpp"
 #include "Utilities/Rendering/GPUTypes.hpp"
 
 // Standard Library Imports
@@ -38,10 +38,9 @@ class UIElement
     bool isVisible() const { return visible; }
     UIElementIdentifier checkAndReturnIfHit(const DynamoEngine::Vector2D& positionToCheck);
     UIElementIdentifier getUIElementID() const { return UIElementID; }
-    virtual void buildGeometry(std::vector<DynamoEngine::UIVertex>& vertexBuffer, uint32_t z_index,
-                               const FontAtlasUtility& fontAtlas) {};    // Default does nothing
-    virtual void updateMe(UIState& uiState) {};                          // Default does nothing
-    virtual void updateLayout(float windowWidth, float windowHeight) {}; // Default does nothing
+    virtual void buildGeometry(DynamoEngine::UIGeometryBuilder& builder) {}; // Default does nothing
+    virtual void updateMe(UIState& uiState) {};                              // Default does nothing
+    virtual void updateLayout(float windowWidth, float windowHeight) {};     // Default does nothing
 
   private:
     float posX = 0;

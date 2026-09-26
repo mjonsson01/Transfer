@@ -13,7 +13,7 @@ Slider::Slider()
     max_value = 0.0;
 }
 
-void Slider::slideMe(DynamoEngine::Vector2D positionOfEvent, double& returnedElementValue, UIState& uiState)
+void Slider::slideMe(DynamoEngine::Vector2D positionOfEvent, double& returnedElementValue, UIState& ui_state)
 {
 
     // Track start positions
@@ -57,79 +57,28 @@ void Slider::slideMe(DynamoEngine::Vector2D positionOfEvent, double& returnedEle
 
     // Return updated value
     returnedElementValue = sliderValue;
-    playTickSoundIfMoved(uiState);
+    playTickSoundIfMoved(ui_state);
     return;
 }
 
-static void pushQuad(std::vector<DynamoEngine::UIVertex>& vertexBuffer, const SDL_FRect& rect, SDL_Color color,
-                     uint32_t z_index)
+void Slider::buildGeometry(DynamoEngine::UIGeometryBuilder& builder)
 {
-    float x1 = rect.x;
-    float y1 = rect.y;
-    float x2 = rect.x + rect.w;
-    float y2 = rect.y + rect.h;
-
-    float r = color.r / 255.0f;
-    float g = color.g / 255.0f;
-    float b = color.b / 255.0f;
-    float a = color.a / 255.0f;
-    uint32_t mode = static_cast<uint32_t>(DynamoEngine::UIVertexMode::Solid);
-    float u = 0.0f, v = 0.0f;
-
-    vertexBuffer.push_back({x1, y1, u, v, r, g, b, a, z_index, mode});
-    vertexBuffer.push_back({x2, y1, u, v, r, g, b, a, z_index, mode});
-    vertexBuffer.push_back({x1, y2, u, v, r, g, b, a, z_index, mode});
-    vertexBuffer.push_back({x2, y1, u, v, r, g, b, a, z_index, mode});
-    vertexBuffer.push_back({x2, y2, u, v, r, g, b, a, z_index, mode});
-    vertexBuffer.push_back({x1, y2, u, v, r, g, b, a, z_index, mode});
+    builder.addRect(trackRect, ColorLibrary::Gray);
+    builder.addRect(knobRect, ColorLibrary::White);
+    builder.addText(getDisplayText(), {getX(), getY() + knobRect.h});
 }
 
-static void pushText(std::vector<DynamoEngine::UIVertex>& vertexBuffer, const std::string& text, float startX,
-                     float startY, const FontAtlasUtility& fontAtlas, uint32_t z_index)
-{
-    float cursorX = startX;
-    uint32_t textMode = static_cast<uint32_t>(DynamoEngine::UIVertexMode::Textured);
-    for (char c : text)
-    {
-        GlyphMetrics metrics = fontAtlas.GetGlyph(c);
-
-        float tx1 = cursorX + metrics.offsetX;
-        float ty1 = startY + metrics.offsetY;
-        float tx2 = tx1 + metrics.width;
-        float ty2 = ty1 + metrics.height;
-
-        vertexBuffer.push_back({tx1, ty1, metrics.u1, metrics.v1, 1.0f, 1.0f, 1.0f, 1.0f, z_index, textMode});
-        vertexBuffer.push_back({tx2, ty1, metrics.u2, metrics.v1, 1.0f, 1.0f, 1.0f, 1.0f, z_index, textMode});
-        vertexBuffer.push_back({tx1, ty2, metrics.u1, metrics.v2, 1.0f, 1.0f, 1.0f, 1.0f, z_index, textMode});
-        vertexBuffer.push_back({tx2, ty1, metrics.u2, metrics.v1, 1.0f, 1.0f, 1.0f, 1.0f, z_index, textMode});
-        vertexBuffer.push_back({tx2, ty2, metrics.u2, metrics.v2, 1.0f, 1.0f, 1.0f, 1.0f, z_index, textMode});
-        vertexBuffer.push_back({tx1, ty2, metrics.u1, metrics.v2, 1.0f, 1.0f, 1.0f, 1.0f, z_index, textMode});
-
-        cursorX += metrics.advanceX;
-    }
-}
-
-void Slider::buildGeometry(std::vector<DynamoEngine::UIVertex>& vertexBuffer, uint32_t z_index,
-                           const FontAtlasUtility& fontAtlas)
-{
-    pushQuad(vertexBuffer, trackRect, ColorLibrary::Gray, z_index);
-    pushQuad(vertexBuffer, knobRect, ColorLibrary::White, z_index);
-
-    std::string slider_text = getDisplayText();
-    pushText(vertexBuffer, slider_text, getX(), getY() + knobRect.h, fontAtlas, z_index);
-}
-
-void Slider::playTickSoundIfMoved(UIState& uiState)
+void Slider::playTickSoundIfMoved(UIState& ui_state)
 {
     if (max_value == minValue)
         return; // avoid division by zero on an uninitialized/degenerate slider
 
-    int currentTick =
+    int current_tick =
         static_cast<int>(std::round((sliderValue - minValue) / (max_value - minValue) * NUM_SLIDER_TICKS));
 
-    if (currentTick != lastTickIndex)
+    if (current_tick != lastTickIndex)
     {
-        uiState.QueueSoundEffect("SliderTick");
-        lastTickIndex = currentTick;
+        ui_state.QueueSoundEffect("SliderTick");
+        lastTickIndex = current_tick;
     }
 }

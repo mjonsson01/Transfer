@@ -13,8 +13,7 @@ class DropDownMenu : public UIElement
     DropDownMenu();
     ~DropDownMenu();
 
-    void buildGeometry(std::vector<DynamoEngine::UIVertex>& vertexBuffer, uint32_t z_index,
-                       const FontAtlasUtility& fontAtlas) override;
+    void buildGeometry(DynamoEngine::UIGeometryBuilder& builder) override;
 
     void clickMe(DynamoEngine::Vector2D positionOfEvent, UIState& uiState) override;
 

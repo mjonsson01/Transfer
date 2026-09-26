@@ -11,7 +11,6 @@
 #include "Entities/UIElements/UIElement.hpp"
 #include "Entities/UIElements/UIElementIdentifierEnum.hpp"
 #include "Utilities/Rendering/Colors.hpp"
-#include "Utilities/Rendering/FontAtlasUtility.hpp"
 
 // Standard Library Imports
 #include <string>
@@ -21,8 +20,7 @@ class FPSCounter : public UIElement
   public:
     FPSCounter();
     ~FPSCounter() = default;
-    virtual void buildGeometry(std::vector<DynamoEngine::UIVertex>& vertexBuffer, uint32_t z_index,
-                               const FontAtlasUtility& fontAtlas) override;
+    void buildGeometry(DynamoEngine::UIGeometryBuilder& builder) override;
     void updateMe(UIState& uiState) override;
     void updateLayout(float windowWidth, float windowHeight) override;
     std::string getDisplayText() const
