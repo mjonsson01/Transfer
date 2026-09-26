@@ -42,8 +42,8 @@ void panCamera(CameraState& camera_state, DynamoEngine::Vector2D screen_delta)
 void clampCameraToStarField(CameraState& camera_state)
 {
     // Prevent panning (and the star field's own independent pan) past the edge of the generated star field.
-    double star_field_half_width = camera_state.maxDisplayWidth / (2.0 * MIN_ZOOM);
-    double star_field_half_height = camera_state.maxDisplayHeight / (2.0 * MIN_ZOOM);
+    double star_field_half_width = camera_state.max_display_width / (2.0 * MIN_ZOOM);
+    double star_field_half_height = camera_state.max_display_height / (2.0 * MIN_ZOOM);
     DynamoEngine::Vector2D star_field_center = {SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0};
 
     double view_half_width = (camera_state.window_width / 2.0) / camera_state.zoom;

@@ -95,6 +95,74 @@ void UIRoot::drawElements(UIGeometryBuilder& builder) const
         element->draw(builder);
     }
 }
+UIInputResult UIRoot::processInput(const InputState& input)
+{
+    const Vector2F mouse_position = screenToUISpace(input.mousePosition());
+    UIInputResult result;
+
+    // 1. Hover: tell elements when the cursor moves onto or off them
+    updateHover(mouse_position);
+
+    // 2. Press: offer the click to elements under the cursor, top to bottom, until one takes it
+    if (input.wasMouseButtonPressed(MouseButton::Left) && m_captured_element == nullptr)
+    {
+        pressTopmostElementThatWantsIt(mouse_position);
+    }
+
+    // 3. While a press is captured, the element that took it gets every drag and the release
+    if (m_captured_element != nullptr)
+    {
+        result.pointer_captured = true; // stays true on the release frame too, so the game never sees that release
+
+        if (input.isMouseButtonDown(MouseButton::Left))
+        {
+            m_captured_element->onMouseDragged(mouse_position);
+        }
+        else // released this frame (or the window lost focus, which also lets go of the button)
+        {
+            const bool released_inside = m_captured_element->containsPoint(mouse_position);
+            m_captured_element->onMouseReleased(mouse_position, released_inside);
+            m_captured_element = nullptr;
+        }
+    }
+
+    result.pointer_over_ui = (m_hovered_element != nullptr);
+    return result;
+}
+
+void UIRoot::updateHover(Vector2F ui_mouse_position)
+{
+    UIElement* element_under_mouse = topmostElementAt(ui_mouse_position);
+    if (element_under_mouse == m_hovered_element)
+    {
+        return; // still over the same element (or still over nothing)
+    }
+
+    if (m_hovered_element != nullptr)
+    {
+        m_hovered_element->onMouseExited();
+    }
+    if (element_under_mouse != nullptr)
+    {
+        element_under_mouse->onMouseEntered();
+    }
+    m_hovered_element = element_under_mouse;
+}
+
+void UIRoot::pressTopmostElementThatWantsIt(Vector2F ui_mouse_position)
+{
+    const std::vector<UIElement*> draw_order = elementsInDrawOrder();
+
+    // Front to back: the top element gets the first chance; if it says no (returns false), the next one down does
+    for (auto element = draw_order.rbegin(); element != draw_order.rend(); ++element)
+    {
+        if ((*element)->containsPoint(ui_mouse_position) && (*element)->onMousePressed(ui_mouse_position))
+        {
+            m_captured_element = *element;
+            return;
+        }
+    }
+}
 
 UIElement* UIRoot::topmostElementAt(Vector2F ui_point) const
 {

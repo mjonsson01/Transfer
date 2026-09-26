@@ -15,8 +15,8 @@ struct CameraState
     float window_width = static_cast<float>(SCREEN_WIDTH);
     float window_height = static_cast<float>(SCREEN_HEIGHT);
 
-    float maxDisplayWidth = static_cast<float>(SCREEN_WIDTH);
-    float maxDisplayHeight = static_cast<float>(SCREEN_HEIGHT);
+    float max_display_width = static_cast<float>(SCREEN_WIDTH);
+    float max_display_height = static_cast<float>(SCREEN_HEIGHT);
 
-    float renderAlpha;
+    float render_alpha;
 };

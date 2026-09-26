@@ -16,8 +16,8 @@ RenderSystem::RenderSystem(GameState& gameState)
     const SDL_DisplayMode* desktopMode = SDL_GetDesktopDisplayMode(displayID);
     if (desktopMode)
     {
-        gameState.getCameraStateMutable().maxDisplayWidth = (float)desktopMode->w;
-        gameState.getCameraStateMutable().maxDisplayHeight = (float)desktopMode->h;
+        gameState.getCameraStateMutable().max_display_width = (float)desktopMode->w;
+        gameState.getCameraStateMutable().max_display_height = (float)desktopMode->h;
     }
 
 #ifdef __APPLE__
@@ -38,7 +38,8 @@ RenderSystem::RenderSystem(GameState& gameState)
     createUIGPUBufferAndPipeline();
     createFontAtlasTextureAndSampler();
     createStarshipGPUBufferAndPipeline();
-    createTwinklingStarField(gameState.getCameraState().maxDisplayWidth, gameState.getCameraState().maxDisplayHeight);
+    createTwinklingStarField(gameState.getCameraState().max_display_width,
+                             gameState.getCameraState().max_display_height);
     if (gpu)
     {
         SDL_GPUCommandBuffer* initCmdBuf = SDL_AcquireGPUCommandBuffer(gpu);
@@ -221,7 +222,7 @@ void RenderSystem::renderGameFrame(GameState& gameState, UIState& uiState,
                                    const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
                                    SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf)
 {
-    gameState.getCameraStateMutable().renderAlpha = gameState.getAlpha();
+    gameState.getCameraStateMutable().render_alpha = gameState.getAlpha();
     renderStarship(gameState, pass, cmdbuf, gameState.getCameraState());
     renderTwinklingStarField(pass, cmdbuf, gameState.getCameraState());
     renderBodies(gameState, uiState, pass, cmdbuf);
@@ -240,7 +241,7 @@ void RenderSystem::renderTestFrame(GameState& gameState, UIState& uiState,
                                    const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
                                    SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf)
 {
-    gameState.getCameraStateMutable().renderAlpha = gameState.getAlpha();
+    gameState.getCameraStateMutable().render_alpha = gameState.getAlpha();
     // renderStarship(gameState, pass, cmdbuf, gameState.getCameraState());
 }
 void RenderSystem::uploadUnifiedBodies(GameState& gameState, UIState& uiState, SDL_GPUCommandBuffer* cmdbuf)
@@ -589,7 +590,7 @@ CameraConstants RenderSystem::buildCameraConstants(const CameraState& cameraStat
     camera_constants.offsetX = (float)offset.x_val;
     camera_constants.offsetY = (float)offset.y_val;
     camera_constants.viewMode = 0;
-    camera_constants.rendering_alpha = cameraState.renderAlpha;
+    camera_constants.rendering_alpha = cameraState.render_alpha;
     camera_constants._padding1 = 0.0f;
     return camera_constants;
 }

@@ -3,9 +3,11 @@
 #pragma once
 
 // Custom Imports
+#include "DynamoEngine/Input/InputState.hpp"
 #include "DynamoEngine/Math/Vector2.hpp"
 #include "DynamoEngine/UI/UIElement.hpp"
 #include "DynamoEngine/UI/UIGeometryBuilder.hpp"
+#include "DynamoEngine/UI/UIInputResult.hpp"
 
 // Standard Library Imports
 #include <vector>
@@ -46,6 +48,12 @@ class UIRoot : public UIElement
 
     // --- Queries --- //
 
+    // --- Mouse input --- //
+
+    // Delivers this frame's mouse input to the elements (hover, press, drag, release) and reports what the UI took.
+    // Call once per frame, after updateElements() so every element is in its current place.
+    UIInputResult processInput(const InputState& input);
+
     // The element drawn on top at `ui_point` (the one a click would reach first), or nullptr if none
     UIElement* topmostElementAt(Vector2F ui_point) const;
 
@@ -55,5 +63,11 @@ class UIRoot : public UIElement
   private:
     Vector2F m_window_size = {1280.0f, 720.0f};
     float m_player_scale = 1.0f;
+    void updateHover(Vector2F ui_mouse_position);
+    void pressTopmostElementThatWantsIt(Vector2F ui_mouse_position);
+    // Non-owning: these point INTO the tree. Safe because elements are only destroyed along with the root.
+    // (If a removeChild() is ever added, it must clear these when it removes one of them.)
+    UIElement* m_hovered_element = nullptr;  // the element under the cursor, or nullptr
+    UIElement* m_captured_element = nullptr; // the element that took the current press, or nullptr
 };
 } // namespace DynamoEngine
