@@ -4,7 +4,10 @@
 #include <gtest/gtest.h>
 
 // Custom Imports
+#include "DynamoEngine/Input/InputEvent.hpp"
+#include "DynamoEngine/Input/InputState.hpp"
 #include "DynamoEngine/Scenes/SceneManager.hpp"
+#include "DynamoEngine/UI/Widgets/UIButton.hpp"
 
 // Standard Library Imports
 #include <memory>
@@ -156,4 +159,46 @@ TEST_F(SceneManagerTest, RegisteringAnIdTwiceIsCaught)
 {
     EXPECT_DEBUG_DEATH(scenes.addScene(TestScene::Game, std::make_unique<Scene>(SceneSettings::menu())),
                        "duplicate scene id");
+}
+
+// --------- UI ACROSS A SWITCH --------- //
+
+TEST_F(SceneManagerTest, SwitchingAwayLetsGoOfAHeldButton)
+{
+    scenes.requestSwitch(TestScene::Pause);
+    scenes.applyPendingSwitch();
+
+    bool was_clicked = false;
+    auto resume_button = std::make_unique<UIButton>("Resume");
+    resume_button->setPlacement({.align = UIAlign::TopLeft, .size = {100.0f, 100.0f}});
+    resume_button->setOnClick([&was_clicked]() { was_clicked = true; });
+    UIRoot& pause_ui = scenes.currentScene().ui();
+    pause_ui.addChild(std::move(resume_button));
+
+    // Press the button...
+    InputState input;
+    InputEvent press;
+    press.type = InputEventType::MouseButtonDown;
+    press.mouse_button = MouseButton::Left;
+    press.mouse_position = {50.0f, 50.0f};
+    input.beginInputFrame();
+    input.applyInputEvent(press);
+    pause_ui.updateElements(0.016f);
+    pause_ui.processInput(input);
+
+    // ...then leave the scene (e.g. Esc) and come back while still holding the mouse button
+    scenes.requestSwitch(TestScene::Game);
+    scenes.applyPendingSwitch();
+    scenes.requestSwitch(TestScene::Pause);
+    scenes.applyPendingSwitch();
+
+    // Letting go over the button now must not click it: that press belonged to the earlier visit
+    InputEvent release = press;
+    release.type = InputEventType::MouseButtonUp;
+    input.beginInputFrame();
+    input.applyInputEvent(release);
+    pause_ui.updateElements(0.016f);
+    pause_ui.processInput(input);
+
+    EXPECT_FALSE(was_clicked);
 }

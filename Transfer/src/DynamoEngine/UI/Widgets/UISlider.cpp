@@ -60,7 +60,8 @@ SDL_FRect UISlider::knobRect() const
 void UISlider::draw(UIGeometryBuilder& builder) const
 {
     builder.addRect(trackRect(), TRACK_COLOR);
-    builder.addRect(knobRect(), m_is_hovered ? KNOB_HOVERED_COLOR : KNOB_COLOR);
+    const bool is_knob_highlighted = m_is_knob_hovered || m_is_dragging;
+    builder.addRect(knobRect(), is_knob_highlighted ? KNOB_HOVERED_COLOR : KNOB_COLOR);
     builder.addText(m_label + ": " + std::to_string(m_value), {m_rect.x, m_rect.y + KNOB_HEIGHT});
 }
 
@@ -68,6 +69,7 @@ void UISlider::draw(UIGeometryBuilder& builder) const
 
 bool UISlider::onMousePressed(Vector2F mouse_position)
 {
+    m_is_dragging = true;
     moveKnobTo(mouse_position.x_val); // clicking anywhere on the slider jumps the knob there
     return true;
 }
@@ -75,6 +77,20 @@ bool UISlider::onMousePressed(Vector2F mouse_position)
 void UISlider::onMouseDragged(Vector2F mouse_position)
 {
     moveKnobTo(mouse_position.x_val);
+}
+
+void UISlider::onMouseReleased(Vector2F mouse_position, bool released_inside)
+{
+    m_is_dragging = false;
+}
+
+void UISlider::onMouseHover(Vector2F mouse_position)
+{
+    // Same edge rule as UIElement::containsPoint: left and top edges are inside, right and bottom are not
+    const SDL_FRect knob = knobRect();
+    const bool inside_x = mouse_position.x_val >= knob.x && mouse_position.x_val < knob.x + knob.w;
+    const bool inside_y = mouse_position.y_val >= knob.y && mouse_position.y_val < knob.y + knob.h;
+    m_is_knob_hovered = inside_x && inside_y;
 }
 
 void UISlider::moveKnobTo(float mouse_x)

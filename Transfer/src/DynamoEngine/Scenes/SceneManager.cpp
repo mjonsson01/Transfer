@@ -49,6 +49,7 @@ void SceneManager::applyPendingSwitch()
 
     if (hasCurrentScene())
     {
+        currentScene().ui().cancelPointerInput(); // a button held down now must not click when we come back
         currentScene().onExit();
     }
     m_current_scene_id = next_scene_id;

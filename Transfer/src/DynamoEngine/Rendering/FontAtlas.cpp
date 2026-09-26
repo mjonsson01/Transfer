@@ -3,6 +3,7 @@
 #include "DynamoEngine/Rendering/FontAtlas.hpp"
 
 // SDL Imports
+#include <SDL3/SDL_log.h>
 #include <SDL3/SDL_pixels.h>
 #include <SDL3/SDL_rect.h>
 #include <SDL3/SDL_stdinc.h>
@@ -12,15 +13,23 @@
 
 namespace DynamoEngine
 {
-SDL_Surface* FontAtlas::buildAtlas(TTF_Font* font)
+SDL_Surface* FontAtlas::buildAtlas(TTF_Font* font, float font_size, float pixel_scale)
 {
-    if (font == nullptr)
+    if (font == nullptr || font_size <= 0.0f || pixel_scale <= 0.0f)
     {
         return nullptr;
     }
 
-    constexpr int ATLAS_WIDTH = 512;
-    constexpr int ATLAS_HEIGHT = 512;
+    // Render the glyphs at their real on-screen size in pixels
+    if (!TTF_SetFontSize(font, font_size * pixel_scale))
+    {
+        return nullptr;
+    }
+    m_pixel_scale = pixel_scale;
+
+    // Big enough for text up to ~100 pixels tall (e.g. 18-point text on a 4K Retina screen at full size)
+    constexpr int ATLAS_WIDTH = 1024;
+    constexpr int ATLAS_HEIGHT = 1024;
     constexpr int PADDING = 2; // gap between glyphs so linear filtering doesn't bleed neighbors in
 
     SDL_Surface* atlas = SDL_CreateSurface(ATLAS_WIDTH, ATLAS_HEIGHT, SDL_PIXELFORMAT_RGBA32);
@@ -30,7 +39,8 @@ SDL_Surface* FontAtlas::buildAtlas(TTF_Font* font)
     }
     SDL_FillSurfaceRect(atlas, nullptr, SDL_MapSurfaceRGBA(atlas, 255, 255, 255, 0));
 
-    m_font_height = static_cast<float>(TTF_GetFontHeight(font));
+    // Everything is measured in pixels while baking, then divided by pixel_scale to store it in UI points
+    m_font_height = static_cast<float>(TTF_GetFontHeight(font)) / pixel_scale;
 
     int cursor_x = 0;
     int cursor_y = 0;
@@ -52,6 +62,13 @@ SDL_Surface* FontAtlas::buildAtlas(TTF_Font* font)
             cursor_y += row_height + PADDING;
             row_height = 0;
         }
+        if (cursor_y + glyph_surface->h > ATLAS_HEIGHT)
+        {
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                         "FontAtlas: text too large for the atlas, glyphs from '%c' missing", character);
+            SDL_DestroySurface(glyph_surface);
+            break;
+        }
 
         SDL_Rect destination = {cursor_x, cursor_y, glyph_surface->w, glyph_surface->h};
         SDL_BlitSurface(glyph_surface, nullptr, atlas, &destination);
@@ -64,9 +81,9 @@ SDL_Surface* FontAtlas::buildAtlas(TTF_Font* font)
         metrics.v1 = static_cast<float>(cursor_y) / ATLAS_HEIGHT;
         metrics.u2 = static_cast<float>(cursor_x + glyph_surface->w) / ATLAS_WIDTH;
         metrics.v2 = static_cast<float>(cursor_y + glyph_surface->h) / ATLAS_HEIGHT;
-        metrics.width = static_cast<float>(glyph_surface->w);
-        metrics.height = static_cast<float>(glyph_surface->h);
-        metrics.advance_x = static_cast<float>(advance);
+        metrics.width = static_cast<float>(glyph_surface->w) / pixel_scale;
+        metrics.height = static_cast<float>(glyph_surface->h) / pixel_scale;
+        metrics.advance_x = static_cast<float>(advance) / pixel_scale;
 
         cursor_x += glyph_surface->w + PADDING;
         row_height = std::max(row_height, glyph_surface->h);

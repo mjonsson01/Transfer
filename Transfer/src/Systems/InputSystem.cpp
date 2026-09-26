@@ -15,10 +15,6 @@ void requestShutdown(GameState& game_state)
     game_state.SetPlaying(false);
     game_state.setIsShuttingDownAudioSystem(true);
 }
-bool isSimulationScene(SceneIdentifier scene_id)
-{
-    return (scene_id == SceneIdentifier::GAME_SCENE || scene_id == SceneIdentifier::TEST_VISUAL_SCENE);
-}
 void zoomAroundCursor(CameraState& camera_state, float scroll, DynamoEngine::Vector2D mouse_position)
 {
     if (!firstWithinEpsilonOfSecond(scroll, 0.0))
@@ -81,7 +77,8 @@ InputSystem::InputSystem()
 InputSystem::~InputSystem() {}
 
 // --- SYSTEM-LEVEL METHOD --- //
-void InputSystem::processSystemInputFrame(GameState& game_state, UIState& ui_state)
+void InputSystem::processSystemInputFrame(GameState& game_state, UIState& ui_state, DynamoEngine::SceneManager& scenes,
+                                          float frame_seconds)
 {
     m_input.beginInputFrame();
     m_frame_events.clear(); // Clear the last frame's events
@@ -104,18 +101,38 @@ void InputSystem::processSystemInputFrame(GameState& game_state, UIState& ui_sta
         requestShutdown(game_state);
         return;
     }
-    // Pass Engine State off into Transfer's meaning for current scene
-    ui_state.getMutableDEPRECATED_InputState().resetTransientFlags();
+    // The current scene's UI gets the mouse first; the game only acts on what the UI didn't take
+    DynamoEngine::Scene& scene = scenes.currentScene();
+    const DynamoEngine::UIInputResult ui_result = updateSceneUI(scene.ui(), game_state.getCameraState(), frame_seconds);
 
-    if (isSimulationScene(ui_state.getCurrentSceneID()))
+    // Pass Engine State off into Transfer's meaning for current scene
+    DEPRECATED_InputState& legacy_state = ui_state.getMutableDEPRECATED_InputState();
+    legacy_state.resetTransientFlags();
+    legacy_state.UIInputConsumed = ui_result.pointer_captured;
+
+    const bool runs_simulation = scene.settings().runs_simulation;
+    if (runs_simulation)
     {
         updateCamera(game_state);
-        translateGameInputs(ui_state);
+        translateGameInputs(ui_state, scenes);
     }
     else
     {
-        translateMenuInputs(ui_state);
+        translateMenuInputs(ui_state, scenes);
     }
+
+    // The ghost body follows the cursor while the left button is held down on the world (not on the UI)
+    legacy_state.isPreviewingMacro =
+        runs_simulation && m_input.isMouseButtonDown(DynamoEngine::MouseButton::Left) && !ui_result.pointer_captured;
+    legacy_state.isPreviewingWithInitialVelocity = legacy_state.isPreviewingMacro && m_input.isShiftDown();
+}
+
+DynamoEngine::UIInputResult InputSystem::updateSceneUI(DynamoEngine::UIRoot& ui, const CameraState& camera_state,
+                                                       float frame_seconds)
+{
+    ui.setWindowSize({camera_state.window_width, camera_state.window_height});
+    ui.updateElements(frame_seconds); // lays everything out for this window size, then e.g. refreshes the FPS text
+    return ui.processInput(m_input);
 }
 
 void InputSystem::trackDragAnchor(const DynamoEngine::InputEvent& event)
@@ -171,19 +188,19 @@ void InputSystem::copySharedPointerState(DEPRECATED_InputState& legacy_state)
     legacy_state.leftMouseButtonJustReleased = m_input.wasMouseButtonReleased(MouseButton::Left);
 }
 
-void InputSystem::translateMenuInputs(UIState& ui_state)
+void InputSystem::translateMenuInputs(UIState& ui_state, DynamoEngine::SceneManager& scenes)
 {
     DEPRECATED_InputState& legacy_state = ui_state.getMutableDEPRECATED_InputState();
     copySharedPointerState(legacy_state);
 
     if (m_input.wasKeyPressed(SDL_SCANCODE_ESCAPE))
     {
-        ui_state.setCurrentScene(SceneIdentifier::GAME_SCENE);
+        scenes.requestSwitch(TransferScene::Game);
         legacy_state.resetFlagsForSceneChange();
     }
 }
 
-void InputSystem::translateGameInputs(UIState& ui_state)
+void InputSystem::translateGameInputs(UIState& ui_state, DynamoEngine::SceneManager& scenes)
 {
     using DynamoEngine::MouseButton;
 
@@ -198,7 +215,7 @@ void InputSystem::translateGameInputs(UIState& ui_state)
     }
     if (m_input.wasKeyPressed(SDL_SCANCODE_ESCAPE))
     {
-        ui_state.setCurrentScene(SceneIdentifier::PAUSE_SCENE);
+        scenes.requestSwitch(TransferScene::Pause);
         legacy_state.resetFlagsForSceneChange();
         return;
     }

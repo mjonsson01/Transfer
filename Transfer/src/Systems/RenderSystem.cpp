@@ -2,6 +2,11 @@
 
 #include "Systems/RenderSystem.hpp"
 
+namespace
+{
+constexpr float UI_FONT_SIZE = 18.0f; // UI points
+} // namespace
+
 // Constructor: Initializes SDL Window and GPU
 RenderSystem::RenderSystem(GameState& gameState)
 {
@@ -29,14 +34,14 @@ RenderSystem::RenderSystem(GameState& gameState)
     if (gpu)
         SDL_ClaimWindowForGPUDevice(gpu, window);
     // 2. Resource/Font Setup
-    UIFontRegular = TTF_OpenFont(Utilities::GetResourcePath("Fonts/SpaceMono-Regular.ttf").c_str(), 18);
+    UIFontRegular = TTF_OpenFont(Utilities::GetResourcePath("Fonts/SpaceMono-Regular.ttf").c_str(), UI_FONT_SIZE);
     UIFontTitle = TTF_OpenFont(Utilities::GetResourcePath("Fonts/SpaceMono-Bold.ttf").c_str(), 32);
 
     createUnifiedBodyGPUBufferAndPipeline();
     createTwinklingStarGPUBufferAndPipeline();
     createVelocityVectorGPUBufferAndPipeline();
     createUIGPUBufferAndPipeline();
-    createFontAtlasTextureAndSampler();
+    createFontAtlasSampler(); // the atlas itself is baked on the first frame, once the UI scale is known
     createStarshipGPUBufferAndPipeline();
     createTwinklingStarField(gameState.getCameraState().max_display_width,
                              gameState.getCameraState().max_display_height);
@@ -160,25 +165,28 @@ SDL_GPUShader* RenderSystem::LoadShader(SDL_GPUDevice* device, const char* baseF
 }
 // --------- RENDER FULL FRAME METHOD --------- //
 
-void RenderSystem::RenderFullFrame(GameState& gameState, UIState& uiState,
-                                   const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope)
+void RenderSystem::RenderFullFrame(GameState& gameState, UIState& uiState, const DynamoEngine::Scene& scene)
 {
+
+    // Re-bake the text whenever the UI scale or the display's pixel density changes (window resized, or moved to a
+    // screen with a different density), so text is always drawn at exactly one atlas pixel per screen pixel
+    const float pixel_scale = scene.ui().uiScale() * SDL_GetWindowPixelDensity(window);
+    if (fontAtlasTexture == nullptr || pixel_scale != fontAtlas.pixelScale())
+    {
+        rebuildFontAtlas(pixel_scale);
+    }
 
     SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(gpu);
 
-    SceneIdentifier current_scene = uiState.getCurrentSceneID();
+    const bool draws_world = scene.settings().draws_world;
 
-    if (current_scene == SceneIdentifier::GAME_SCENE)
+    if (draws_world)
     {
         uploadTwinklingStarField(cmdbuf);
         uploadUnifiedBodies(gameState, uiState, cmdbuf);
         uploadStarship(gameState, uiState, cmdbuf);
     }
-    // if (current_scene == SceneIdentifier::TEST_VISUAL_SCENE)
-    // {
-
-    // }
-    uploadUIVertices(allUIElementsInScope, cmdbuf);
+    uploadUIVertices(scene.ui(), cmdbuf);
     // Acquire the display target
     SDL_GPUTexture* swapchainTexture = nullptr;
     Uint32 w = 0, h = 0;
@@ -198,18 +206,13 @@ void RenderSystem::RenderFullFrame(GameState& gameState, UIState& uiState,
 
         SDL_GPURenderPass* pass = SDL_BeginGPURenderPass(cmdbuf, &color_info, 1, nullptr);
 
-        if (current_scene == SceneIdentifier::GAME_SCENE)
+        if (draws_world)
         {
-            // Update your renderGameFrame signature to match
-            renderGameFrame(gameState, uiState, allUIElementsInScope, pass, cmdbuf);
-        }
-        else if (current_scene != SceneIdentifier::TEST_VISUAL_SCENE)
-        {
-            renderNonGameFrame(gameState, uiState, allUIElementsInScope, pass, cmdbuf);
+            renderGameFrame(gameState, uiState, scene.ui(), pass, cmdbuf);
         }
         else
         {
-            renderTestFrame(gameState, uiState, allUIElementsInScope, pass, cmdbuf);
+            renderNonGameFrame(scene.ui(), pass, cmdbuf);
         }
 
         SDL_EndGPURenderPass(pass);
@@ -218,8 +221,7 @@ void RenderSystem::RenderFullFrame(GameState& gameState, UIState& uiState,
     SDL_SubmitGPUCommandBuffer(cmdbuf);
 }
 
-void RenderSystem::renderGameFrame(GameState& gameState, UIState& uiState,
-                                   const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
+void RenderSystem::renderGameFrame(GameState& gameState, UIState& uiState, const DynamoEngine::UIRoot& ui,
                                    SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf)
 {
     gameState.getCameraStateMutable().render_alpha = gameState.getAlpha();
@@ -227,22 +229,13 @@ void RenderSystem::renderGameFrame(GameState& gameState, UIState& uiState,
     renderTwinklingStarField(pass, cmdbuf, gameState.getCameraState());
     renderBodies(gameState, uiState, pass, cmdbuf);
     renderVelocityVectors(pass, cmdbuf, gameState.getCameraState());
-    renderUIElements(pass, cmdbuf, gameState.getCameraState());
+    renderUIElements(pass, cmdbuf, ui);
 }
 
-void RenderSystem::renderNonGameFrame(GameState& gameState, UIState& uiState,
-                                      const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
-                                      SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf)
+void RenderSystem::renderNonGameFrame(const DynamoEngine::UIRoot& ui, SDL_GPURenderPass* pass,
+                                      SDL_GPUCommandBuffer* cmdbuf)
 {
-    renderUIElements(pass, cmdbuf, gameState.getCameraState());
-}
-
-void RenderSystem::renderTestFrame(GameState& gameState, UIState& uiState,
-                                   const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
-                                   SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf)
-{
-    gameState.getCameraStateMutable().render_alpha = gameState.getAlpha();
-    // renderStarship(gameState, pass, cmdbuf, gameState.getCameraState());
+    renderUIElements(pass, cmdbuf, ui);
 }
 void RenderSystem::uploadUnifiedBodies(GameState& gameState, UIState& uiState, SDL_GPUCommandBuffer* cmdbuf)
 {
@@ -444,13 +437,28 @@ void RenderSystem::createUIGPUBufferAndPipeline()
     SDL_ReleaseGPUShader(gpu, frag_shader);
 }
 
-void RenderSystem::createFontAtlasTextureAndSampler()
+void RenderSystem::createFontAtlasSampler()
 {
-    SDL_Surface* atlas_surface = fontAtlas.buildAtlas(UIFontRegular);
+    SDL_GPUSamplerCreateInfo sampler_info = {.min_filter = SDL_GPU_FILTER_LINEAR,
+                                             .mag_filter = SDL_GPU_FILTER_LINEAR,
+                                             .address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
+                                             .address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE};
+    fontAtlasSampler = SDL_CreateGPUSampler(gpu, &sampler_info);
+}
+
+void RenderSystem::rebuildFontAtlas(float pixel_scale)
+{
+    SDL_Surface* atlas_surface = fontAtlas.buildAtlas(UIFontRegular, UI_FONT_SIZE, pixel_scale);
     if (!atlas_surface)
     {
         std::cerr << "Failed to bake font atlas" << std::endl;
         return;
+    }
+
+    // A frame still on the GPU may be using the old texture; SDL_GPU only frees it once that frame is done
+    if (fontAtlasTexture != nullptr)
+    {
+        SDL_ReleaseGPUTexture(gpu, fontAtlasTexture);
     }
 
     SDL_GPUTextureCreateInfo tex_info = {.type = SDL_GPU_TEXTURETYPE_2D,
@@ -461,12 +469,6 @@ void RenderSystem::createFontAtlasTextureAndSampler()
                                          .layer_count_or_depth = 1,
                                          .num_levels = 1};
     fontAtlasTexture = SDL_CreateGPUTexture(gpu, &tex_info);
-
-    SDL_GPUSamplerCreateInfo sampler_info = {.min_filter = SDL_GPU_FILTER_LINEAR,
-                                             .mag_filter = SDL_GPU_FILTER_LINEAR,
-                                             .address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
-                                             .address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE};
-    fontAtlasSampler = SDL_CreateGPUSampler(gpu, &sampler_info);
 
     Uint32 pixelDataSize = (Uint32)(atlas_surface->w * atlas_surface->h * 4);
     SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD, .size = pixelDataSize};
@@ -507,16 +509,13 @@ void RenderSystem::createFontAtlasTextureAndSampler()
     SDL_DestroySurface(atlas_surface);
 }
 
-void RenderSystem::uploadUIVertices(const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
-                                    SDL_GPUCommandBuffer* cmdbuf)
+void RenderSystem::uploadUIVertices(const DynamoEngine::UIRoot& ui, SDL_GPUCommandBuffer* cmdbuf)
 {
     m_ui_vertices.clear();
-    DynamoEngine::UIGeometryBuilder builder(m_ui_vertices, fontAtlas); // new: one builder for this frame
-    for (auto& [id, element] : allUIElementsInScope)
-        if (element->isVisible())
-        {
-            element->buildGeometry(builder);
-        }
+    DynamoEngine::UIGeometryBuilder builder(m_ui_vertices, fontAtlas); // one builder for this frame
+
+    // Every visible element of the scene's UI, back to front
+    ui.drawElements(builder);
 
     if (m_ui_vertices.empty())
         return;
@@ -535,14 +534,16 @@ void RenderSystem::uploadUIVertices(const std::unordered_map<UIElementIdentifier
 }
 
 void RenderSystem::renderUIElements(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
-                                    const CameraState& cameraState)
+                                    const DynamoEngine::UIRoot& ui)
 {
     if (m_ui_vertices.empty())
         return;
     SDL_BindGPUGraphicsPipeline(pass, uiPipeline);
 
-    float screen_size[2] = {cameraState.window_width, cameraState.window_height};
-    SDL_PushGPUVertexUniformData(cmdbuf, 0, screen_size, sizeof(screen_size));
+    // The UI is built in UI space (window size / UI scale); the shader stretches that space over the whole window
+    const DynamoEngine::Vector2F ui_space_size = ui.uiSpaceSize();
+    float ui_space[2] = {ui_space_size.x_val, ui_space_size.y_val};
+    SDL_PushGPUVertexUniformData(cmdbuf, 0, ui_space, sizeof(ui_space));
 
     SDL_GPUBufferBinding vbo = {.buffer = uiVertexBuffer, .offset = 0};
     SDL_BindGPUVertexBuffers(pass, 0, &vbo, 1);

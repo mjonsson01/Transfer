@@ -14,8 +14,9 @@
 #include "Core/UIState.hpp"
 #include "DynamoEngine/Rendering/FontAtlas.hpp"
 #include "DynamoEngine/Rendering/UIVertex.hpp"
+#include "DynamoEngine/Scenes/Scene.hpp"
 #include "DynamoEngine/UI/UIGeometryBuilder.hpp"
-#include "Entities/UIElements/UIElement.hpp"
+#include "DynamoEngine/UI/UIRoot.hpp"
 #include "Entities/VisualElements/TwinklingStars.hpp"
 #include "Utilities/Constants/EngineConstants.hpp"
 #include "Utilities/Constants/GameSystemConstants.hpp"
@@ -45,9 +46,8 @@ class RenderSystem
     RenderSystem(GameState& gameState);
     ~RenderSystem(); // make sure to teardown destructor and window
 
-    // Main Loop Rendering Function, renders engine state and UI state
-    void RenderFullFrame(GameState& gameState, UIState& uiState,
-                         const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope);
+    // Main Loop Rendering Function, renders engine state and the current scene's UI
+    void RenderFullFrame(GameState& gameState, UIState& uiState, const DynamoEngine::Scene& scene);
 
     // Main Cleanup method (tears down all the SDL components)
     void CleanUp();
@@ -101,15 +101,9 @@ class RenderSystem
 
   private:
     // Subordinate Rendering Functions
-    void renderGameFrame(GameState& gameState, UIState& uiState,
-                         const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
+    void renderGameFrame(GameState& gameState, UIState& uiState, const DynamoEngine::UIRoot& ui,
                          SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf);
-    void renderNonGameFrame(GameState& gameState, UIState& uiState,
-                            const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
-                            SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf);
-    void renderTestFrame(GameState& gameState, UIState& uiState,
-                         const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
-                         SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf);
+    void renderNonGameFrame(const DynamoEngine::UIRoot& ui, SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf);
 
     void appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexData, UIState& uiState,
                              const CameraState& cameraState);
@@ -127,10 +121,12 @@ class RenderSystem
     void createVelocityVectorGPUBufferAndPipeline();
     void createTwinklingStarGPUBufferAndPipeline();
     void createStarshipGPUBufferAndPipeline();
-    void createFontAtlasTextureAndSampler(); // bakes fontAtlas from UIFontRegular and uploads it to the GPU
-    void uploadUIVertices(const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
-                          SDL_GPUCommandBuffer* cmdbuf);
-    void renderUIElements(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf, const CameraState& cameraState);
+    void createFontAtlasSampler();
+    // Bakes fontAtlas from UIFontRegular for `pixel_scale` (screen pixels per UI point) and uploads it to the GPU,
+    // replacing the previous atlas texture
+    void rebuildFontAtlas(float pixel_scale);
+    void uploadUIVertices(const DynamoEngine::UIRoot& ui, SDL_GPUCommandBuffer* cmdbuf);
+    void renderUIElements(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf, const DynamoEngine::UIRoot& ui);
 
     void createTwinklingStarField(float fieldMaxWidth, float fieldMaxHeight);
     void uploadTwinklingStarField(SDL_GPUCommandBuffer* cmdbuf);

@@ -3,6 +3,7 @@
 #include "DynamoEngine/UI/UIGeometryBuilder.hpp"
 
 // Standard Library Imports
+#include <cmath>
 #include <cstdint>
 
 namespace DynamoEngine
@@ -19,13 +20,15 @@ void UIGeometryBuilder::addRect(const SDL_FRect& rect, SDL_Color color)
 
 void UIGeometryBuilder::addText(std::string_view text, Vector2F top_left, SDL_Color color)
 {
-    float cursor_x = top_left.x_val;
+    // Start on a whole screen pixel. Glyph sizes and advances are whole pixels too, so every glyph stays on the
+    // pixel grid and each atlas pixel covers exactly one screen pixel: crisp text at any UI scale.
+    float cursor_x = snapToPixel(top_left.x_val);
+    const float top = snapToPixel(top_left.y_val);
     for (char character : text)
     {
         GlyphMetrics metrics = m_font_atlas.glyph(character);
 
-        SDL_FRect glyph_rect = {cursor_x + metrics.offset_x, top_left.y_val + metrics.offset_y, metrics.width,
-                                metrics.height};
+        SDL_FRect glyph_rect = {cursor_x + metrics.offset_x, top + metrics.offset_y, metrics.width, metrics.height};
         SDL_FRect uv_rect = {metrics.u1, metrics.v1, metrics.u2 - metrics.u1, metrics.v2 - metrics.v1};
         addQuad(glyph_rect, uv_rect, color, UIVertexMode::Textured);
 
@@ -37,6 +40,12 @@ void UIGeometryBuilder::addTextCentered(std::string_view text, const SDL_FRect& 
 {
     Vector2F top_left = {area.x + (area.w - measureTextWidth(text)) / 2.0f, area.y + (area.h - fontHeight()) / 2.0f};
     addText(text, top_left, color);
+}
+
+float UIGeometryBuilder::snapToPixel(float ui_coordinate) const
+{
+    const float pixel_scale = m_font_atlas.pixelScale(); // screen pixels per UI point
+    return std::round(ui_coordinate * pixel_scale) / pixel_scale;
 }
 
 void UIGeometryBuilder::addQuad(const SDL_FRect& rect, const SDL_FRect& uv_rect, SDL_Color color, UIVertexMode mode)

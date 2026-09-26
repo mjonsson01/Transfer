@@ -32,6 +32,16 @@ float firstVertexRed(const UIElement& element)
     return vertices.empty() ? -1.0f : vertices[0].r;
 }
 
+// A slider draws its track first (vertices 0-5), then its knob (vertices 6-11): this is the knob's red channel
+float knobRed(const UISlider& slider)
+{
+    std::vector<UIVertex> vertices;
+    FontAtlas empty_atlas;
+    UIGeometryBuilder builder(vertices, empty_atlas);
+    slider.draw(builder);
+    return vertices.size() < 12 ? -1.0f : vertices[6].r;
+}
+
 // --------- SOUND --------- //
 
 TEST(UISound, RequestsTravelUpToTheRootHandler)
@@ -185,6 +195,38 @@ TEST_F(UISliderTest, SetValueMovesTheKnobWithoutReporting)
     slider->setValue(2.0);
     EXPECT_DOUBLE_EQ(slider->value(), 2.0);
     EXPECT_TRUE(values_reported.empty());
+}
+
+TEST_F(UISliderTest, KnobDarkensOnlyWhileTheCursorIsOnTheKnob)
+{
+    // Starting value 1.0 = position 0.5: the knob covers x 100-120, y 0-30
+    const float normal = knobRed(*slider);
+
+    slider->onMouseEntered();
+    slider->onMouseHover({200.0f, 10.0f}); // on the slider, but away from the knob
+    EXPECT_FLOAT_EQ(knobRed(*slider), normal);
+
+    slider->onMouseHover({110.0f, 10.0f}); // on the knob
+    EXPECT_LT(knobRed(*slider), normal);
+
+    slider->onMouseHover({110.0f, 45.0f}); // below the knob, on the label
+    EXPECT_FLOAT_EQ(knobRed(*slider), normal);
+
+    slider->onMouseHover({110.0f, 10.0f});
+    slider->onMouseExited(); // left the slider entirely
+    EXPECT_FLOAT_EQ(knobRed(*slider), normal);
+}
+
+TEST_F(UISliderTest, KnobStaysDarkWhileDraggedEvenOffTheSlider)
+{
+    const float normal = knobRed(*slider);
+
+    slider->onMousePressed({mouseXForPosition(0.2f), 10.0f});
+    slider->onMouseExited(); // dragged off the slider
+    EXPECT_LT(knobRed(*slider), normal);
+
+    slider->onMouseReleased({900.0f, 900.0f}, /*released_inside=*/false);
+    EXPECT_FLOAT_EQ(knobRed(*slider), normal);
 }
 
 TEST(SliderMapping, LinearGoesBothWays)

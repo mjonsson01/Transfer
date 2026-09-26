@@ -221,6 +221,52 @@ TEST_F(UIRootInputTest, LosingWindowFocusReleasesTheCapture)
     EXPECT_FALSE(frame({}).pointer_captured);
 }
 
+// Remembers where it was last told the cursor is (onMouseHover)
+class HoverPositionElement : public UIElement
+{
+  public:
+    void onMouseHover(Vector2F mouse_position) override
+    {
+        last_hover_position = mouse_position;
+        hover_calls += 1;
+    }
+    Vector2F last_hover_position = {-1.0f, -1.0f};
+    int hover_calls = 0;
+};
+
+TEST_F(UIRootInputTest, HoveredElementHearsWhereTheCursorIsEveryFrame)
+{
+    auto element = std::make_unique<HoverPositionElement>();
+    element->setPlacement({.align = UIAlign::TopLeft, .size = {100.0f, 100.0f}});
+    HoverPositionElement& hover_element = *element;
+    root.addChild(std::move(element));
+
+    frame({moveTo({20.0f, 30.0f})});
+    frame({}); // the cursor didn't move: still reported
+    EXPECT_EQ(hover_element.hover_calls, 2);
+    EXPECT_FLOAT_EQ(hover_element.last_hover_position.x_val, 20.0f);
+    EXPECT_FLOAT_EQ(hover_element.last_hover_position.y_val, 30.0f);
+
+    frame({moveTo({500.0f, 500.0f})}); // off the element: no more hover calls
+    EXPECT_EQ(hover_element.hover_calls, 2);
+}
+
+TEST_F(UIRootInputTest, CancellingLetsGoWithoutAClick)
+{
+    addElement("button", UIAlign::TopLeft);
+
+    frame({moveTo({50.0f, 50.0f}), press({50.0f, 50.0f})});
+    log.clear();
+    root.cancelPointerInput(); // e.g. the scene is switched away while the button is held down
+
+    EXPECT_EQ(log, (std::vector<std::string>{"button released outside", "button exited"}));
+
+    log.clear();
+    const UIInputResult result = frame({release({50.0f, 50.0f})}); // the real release arrives later
+    EXPECT_FALSE(result.pointer_captured);
+    EXPECT_EQ(log, (std::vector<std::string>{"button entered"})); // hover starts over; no release, no click
+}
+
 TEST_F(UIRootInputTest, KeyboardIsNeverCapturedYet)
 {
     addElement("button", UIAlign::TopLeft);

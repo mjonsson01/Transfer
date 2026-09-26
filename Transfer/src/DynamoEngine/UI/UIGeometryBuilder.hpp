@@ -36,6 +36,9 @@ class UIGeometryBuilder
     float fontHeight() const { return m_font_atlas.fontHeight(); }
 
   private:
+    // Rounds a UI-space coordinate to the nearest whole screen pixel
+    float snapToPixel(float ui_coordinate) const;
+
     // Pushes 2 triangles to cover rect textured with the uv_rect from the atlas
     void addQuad(const SDL_FRect& rect, const SDL_FRect& uv_rect, SDL_Color color, UIVertexMode);
 

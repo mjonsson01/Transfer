@@ -76,3 +76,13 @@ TEST_F(UIGeometryBuilderTest, CenteredTextStartsAtAreaCenterWhenTextHasNoSize)
     EXPECT_FLOAT_EQ(vertices[0].x, 200.0f); // 100 + 200/2
     EXPECT_FLOAT_EQ(vertices[0].y, 90.0f);  // 50 + 80/2
 }
+
+TEST_F(UIGeometryBuilderTest, TextStartsOnAWholePixel)
+{
+    // The empty atlas has a pixel scale of 1 (one screen pixel per UI point), so text snaps to whole numbers
+    builder.addText("x", Vector2F(10.4f, 20.6f));
+
+    ASSERT_EQ(vertices.size(), 6u);
+    EXPECT_FLOAT_EQ(vertices[0].x, 10.0f);
+    EXPECT_FLOAT_EQ(vertices[0].y, 21.0f);
+}

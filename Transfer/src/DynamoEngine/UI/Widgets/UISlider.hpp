@@ -24,6 +24,7 @@ struct SliderMapping
 
 // A horizontal slider: a track, a knob, and a "Label: value" line underneath.
 // The whole rect is clickable; pressing anywhere jumps the knob there, then it follows the mouse until release.
+// The knob darkens slightly while the cursor is over the knob itself, and while it is being dragged.
 class UISlider : public UIElement
 {
   public:
@@ -38,8 +39,9 @@ class UISlider : public UIElement
     void draw(UIGeometryBuilder& builder) const override;
     bool onMousePressed(Vector2F mouse_position) override;
     void onMouseDragged(Vector2F mouse_position) override;
-    void onMouseEntered() override { m_is_hovered = true; }
-    void onMouseExited() override { m_is_hovered = false; }
+    void onMouseReleased(Vector2F mouse_position, bool released_inside) override;
+    void onMouseHover(Vector2F mouse_position) override;
+    void onMouseExited() override { m_is_knob_hovered = false; }
 
   private:
     void moveKnobTo(float mouse_x);
@@ -52,6 +54,9 @@ class UISlider : public UIElement
     double m_value = 0.0;
     double m_position = 0.0; // 0..1, where the knob is along the track
     int m_last_tick = -1;    // the tick mark the knob was last at (for the tick sound)
-    bool m_is_hovered = false;
+
+    // The knob is highlighted while the cursor is on the knob itself, or while it's being dragged
+    bool m_is_knob_hovered = false;
+    bool m_is_dragging = false;
 };
 } // namespace DynamoEngine

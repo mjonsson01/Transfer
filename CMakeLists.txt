@@ -215,6 +215,9 @@ if(TRANSFER_BUILD_TESTS)
             "${CMAKE_SOURCE_DIR}/Tests"         # test utilities:         #include "TestingUtilities/..."
             ${SDL3_INCLUDE_DIRS}
         )
+        # A real font for the FontAtlas tests
+        target_compile_definitions(TransferTests PRIVATE
+            TRANSFER_TEST_FONT_PATH="${CMAKE_SOURCE_DIR}/Transfer/Assets/Fonts/SpaceMono-Regular.ttf")
         target_link_libraries(TransferTests PRIVATE GTest::gtest_main DynamoEngine)
         target_link_libraries(TransferTests PRIVATE ${SDL3_LIBS})
 

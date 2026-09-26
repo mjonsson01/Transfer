@@ -66,6 +66,7 @@ class UIElement
     virtual void onMouseDragged(Vector2F mouse_position) {}
     virtual void onMouseReleased(Vector2F mouse_position, bool released_inside) {}
     virtual void onMouseEntered() {}
+    virtual void onMouseHover(Vector2F mouse_position) {} // every frame the cursor is over this element
     virtual void onMouseExited() {}
 
   protected:

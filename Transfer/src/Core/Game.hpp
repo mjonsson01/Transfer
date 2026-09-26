@@ -11,12 +11,13 @@
 #include "Core/DEPRECATED_InputState.hpp"
 #include "Core/GameState.hpp"
 #include "Core/UIState.hpp"
+#include "DynamoEngine/Scenes/SceneManager.hpp"
 #include "Entities/Sound/MusicModeEnum.hpp"
+#include "Scenes/TransferScenes.hpp"
 #include "Systems/AudioSystem.hpp"
 #include "Systems/InputSystem.hpp"
 #include "Systems/PhysicsSystem.hpp"
 #include "Systems/RenderSystem.hpp"
-#include "Systems/UISystem.hpp"
 #include "Utilities/Constants/EngineConstants.hpp"
 #include "Utilities/Constants/GameSystemConstants.hpp"
 // #include "Utilities/System/SystemPathUtility.hpp"
@@ -39,7 +40,8 @@ class Game
   public:
   private:
     // Core Game Loop Methods
-    void ProcessInput();          // Handles User Input from keyboard and mouse events
+    // Handles User Input from keyboard and mouse events (the current scene's UI gets it first)
+    void ProcessInput(float frame_seconds);
     void IntegratePhysicsFrame(); // Integrate Game State Bodies forward by 1 time step
     void UpdateInstantiations();  // Updates Game State Bodies from User Input
     void RenderFrame();           // Renders the current frame to the screen including UI
@@ -61,5 +63,7 @@ class Game
     PhysicsSystem physicsSystem; // Manages physics calculations and Frame Updates
     RenderSystem renderSystem;   // Manages all rendering operations
     AudioSystem audioSystem;     // Manages all audio operations
-    UISystem UISystem;
+
+    // Every scene (and its UI), and which one is active
+    DynamoEngine::SceneManager scenes;
 };

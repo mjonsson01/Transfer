@@ -69,6 +69,10 @@ class UIRoot : public UIElement
     // Every visible element, back to front (the order drawElements uses). The root itself is not included.
     std::vector<UIElement*> elementsInDrawOrder() const;
 
+    // Lets go of the current press without it counting as a click, and clears the hover.
+    // The SceneManager calls this when the scene stops being active, so nothing is still "held" when it comes back.
+    void cancelPointerInput();
+
   private:
     Vector2F m_window_size = {1280.0f, 720.0f};
     float m_player_scale = 1.0f;
@@ -79,5 +83,8 @@ class UIRoot : public UIElement
     UIElement* m_hovered_element = nullptr;  // the element under the cursor, or nullptr
     UIElement* m_captured_element = nullptr; // the element that took the current press, or nullptr
     SoundHandler m_sound_handler;            // empty = UI sounds do nothing
+
+    // Where the mouse was at the latest processInput(), in UI space
+    Vector2F m_last_mouse_position;
 };
 } // namespace DynamoEngine

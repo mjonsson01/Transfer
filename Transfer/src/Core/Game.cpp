@@ -3,10 +3,9 @@
 // Custom Imports
 #include "Core/Game.hpp"
 
-Game::Game()
-    : gameState(), uiState(), inputSystem(), physicsSystem(), renderSystem(gameState), audioSystem(), UISystem()
+Game::Game() : gameState(), uiState(), inputSystem(), physicsSystem(), renderSystem(gameState), audioSystem(), scenes()
 {
-    // fill in imp here
+    addTransferScenes(scenes, uiState);
 }
 
 // Handle destruction of any new allocations. None for now, just default.
@@ -25,8 +24,9 @@ void Game::StartGame()
     // Default to starting in the level scene since other scenes are not
     // implemented yet.
 
-    uiState.setCurrentScene(SceneIdentifier::START_MENU_SCENE);
-    // uiState.setCurrentScene(SceneIdentifier::TEST_VISUAL_SCENE);
+    scenes.requestSwitch(TransferScene::StartMenu);
+    // scenes.requestSwitch(TransferScene::TestVisual);
+    scenes.applyPendingSwitch(); // start there right away, before the first frame
     uiState.setPlaySoundEffects(true);
     uiState.setPlayMusic(true);
     // uiState.setRequestedMusicMode(MusicMode::TITLE_THEME);
@@ -43,7 +43,6 @@ void Game::EndGame()
     inputSystem.cleanUp();
     audioSystem.CleanUp();
     physicsSystem.CleanUp();
-    UISystem.CleanUp();
     renderSystem.CleanUp();
 }
 void Game::Run()
@@ -62,13 +61,14 @@ void Game::Run()
     while (gameState.IsPlaying())
     {
         Uint64 frame_start = SDL_GetPerformanceCounter();
+        float frame_seconds = (float)(frame_start - last_frame_start_tick) / perf_freq; // how long the last frame took
 
         Game::updateFPS(frame_start, last_frame_start_tick, fps_time_accumulator, current_fps);
         last_frame_start_tick = frame_start;
 
         // 1. Profile Input
         Uint64 input_start = SDL_GetPerformanceCounter();
-        Game::ProcessInput();
+        Game::ProcessInput(frame_seconds);
         if (!gameState.IsPlaying())
             break;
         Uint64 input_end = SDL_GetPerformanceCounter();
@@ -89,8 +89,8 @@ void Game::Run()
         last_physics_update_tick = now_tick;
 
         // Physics Scaling Logic
-        if (uiState.getCurrentSceneID() == SceneIdentifier::GAME_SCENE ||
-            uiState.getCurrentSceneID() == SceneIdentifier::TEST_VISUAL_SCENE)
+        const bool runs_simulation = scenes.currentScene().settings().runs_simulation;
+        if (runs_simulation)
         {
             physics_time_accumulator += (frame_delta * uiState.getTimeScaleFactor());
         }
@@ -101,9 +101,7 @@ void Game::Run()
 
         // 4. Profile Physics Integration
         Uint64 phys_total_start = SDL_GetPerformanceCounter();
-        while (physics_time_accumulator >= PHYSICS_TIME_STEP &&
-               ((uiState.getCurrentSceneID() == SceneIdentifier::GAME_SCENE) ||
-                (uiState.getCurrentSceneID() == SceneIdentifier::TEST_VISUAL_SCENE)))
+        while (physics_time_accumulator >= PHYSICS_TIME_STEP && runs_simulation)
         {
             Game::IntegratePhysicsFrame();
             physics_time_accumulator -= PHYSICS_TIME_STEP;
@@ -116,6 +114,9 @@ void Game::Run()
         Uint64 render_start = SDL_GetPerformanceCounter();
         Game::RenderFrame();
         Uint64 render_end = SDL_GetPerformanceCounter();
+
+        // Scene switches requested this frame (buttons, Esc) happen here, once nothing is using the old scene
+        scenes.applyPendingSwitch();
 
         // --- FRAME LIMITING ---
         // We limit based on how much work we did since frame_start
@@ -138,11 +139,10 @@ void Game::Run()
 
 // --------- DISPATCH TO SYSTEM METHODS --------- //
 
-void Game::ProcessInput()
+void Game::ProcessInput(float frame_seconds)
 {
-    // Dispatch to Input System
-    inputSystem.processSystemInputFrame(gameState, uiState);
-    UISystem.UpdateUIElements(gameState, uiState);
+    // Dispatch to Input System (which gives the current scene's UI the first look)
+    inputSystem.processSystemInputFrame(gameState, uiState, scenes, frame_seconds);
 }
 
 void Game::IntegratePhysicsFrame()
@@ -154,10 +154,8 @@ void Game::IntegratePhysicsFrame()
 void Game::UpdateInstantiations() { physicsSystem.UpdateGravBodyInstantiations(gameState, uiState); }
 void Game::RenderFrame()
 {
-    // Dispatch to Render System -- renders UI as well.
-    Scene* current_scene = UISystem.getScene(uiState.getCurrentSceneID());
-    const std::unordered_map<UIElementIdentifier, UIElement*>& UI_elements_in_scene = current_scene->getSceneElements();
-    renderSystem.RenderFullFrame(gameState, uiState, UI_elements_in_scene);
+    // Dispatch to Render System -- renders the current scene's UI as well.
+    renderSystem.RenderFullFrame(gameState, uiState, scenes.currentScene());
 }
 
 void Game::PlayAudio() { audioSystem.ProcessSystemAudioFrame(gameState, uiState); }

@@ -107,6 +107,7 @@ void UIRoot::requestSound(UISound sound)
 UIInputResult UIRoot::processInput(const InputState& input)
 {
     const Vector2F mouse_position = screenToUISpace(input.mousePosition());
+    m_last_mouse_position = mouse_position; // cancelPointerInput() needs it later
     UIInputResult result;
 
     // 1. Hover: tell elements when the cursor moves onto or off them
@@ -142,20 +143,24 @@ UIInputResult UIRoot::processInput(const InputState& input)
 void UIRoot::updateHover(Vector2F ui_mouse_position)
 {
     UIElement* element_under_mouse = topmostElementAt(ui_mouse_position);
-    if (element_under_mouse == m_hovered_element)
+    if (element_under_mouse != m_hovered_element) // moved onto a different element (or onto / off nothing)
     {
-        return; // still over the same element (or still over nothing)
+        if (m_hovered_element != nullptr)
+        {
+            m_hovered_element->onMouseExited();
+        }
+        if (element_under_mouse != nullptr)
+        {
+            element_under_mouse->onMouseEntered();
+        }
+        m_hovered_element = element_under_mouse;
     }
 
+    // Every frame, tell the hovered element where the cursor is on it (e.g. a slider checks for its knob)
     if (m_hovered_element != nullptr)
     {
-        m_hovered_element->onMouseExited();
+        m_hovered_element->onMouseHover(ui_mouse_position);
     }
-    if (element_under_mouse != nullptr)
-    {
-        element_under_mouse->onMouseEntered();
-    }
-    m_hovered_element = element_under_mouse;
 }
 
 void UIRoot::pressTopmostElementThatWantsIt(Vector2F ui_mouse_position)
@@ -200,5 +205,19 @@ std::vector<UIElement*> UIRoot::elementsInDrawOrder() const
     // 2. Group by layer. stable_sort keeps the tree order inside each layer.
     std::stable_sort(draw_order.begin(), draw_order.end(), isInLowerLayer);
     return draw_order;
+}
+
+void UIRoot::cancelPointerInput()
+{
+    if (m_captured_element != nullptr)
+    {
+        m_captured_element->onMouseReleased(m_last_mouse_position, false); // released_inside = false: never a click
+        m_captured_element = nullptr;
+    }
+    if (m_hovered_element != nullptr)
+    {
+        m_hovered_element->onMouseExited();
+        m_hovered_element = nullptr;
+    }
 }
 } // namespace DynamoEngine

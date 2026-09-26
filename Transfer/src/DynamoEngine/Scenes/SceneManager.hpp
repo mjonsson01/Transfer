@@ -30,7 +30,8 @@ class SceneManager
     // An unknown id is logged, stops Debug builds, and is ignored in Release builds (the game stays where it is).
     void requestSwitch(SceneId id);
 
-    // Performs the requested switch, if there is one: onExit() on the old scene, then onEnter() on the new one.
+    // Performs the requested switch, if there is one: the old scene's UI lets go of any press or hover,
+    // then onExit() on the old scene, then onEnter() on the new one.
     // Call once per frame, after everything else. Requesting the scene that is already active does nothing.
     void applyPendingSwitch();
 
