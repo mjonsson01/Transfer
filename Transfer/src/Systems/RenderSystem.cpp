@@ -35,7 +35,6 @@ RenderSystem::RenderSystem(GameState& gameState)
         SDL_ClaimWindowForGPUDevice(gpu, window);
     // 2. Resource/Font Setup
     UIFontRegular = TTF_OpenFont(Utilities::GetResourcePath("Fonts/SpaceMono-Regular.ttf").c_str(), UI_FONT_SIZE);
-    UIFontTitle = TTF_OpenFont(Utilities::GetResourcePath("Fonts/SpaceMono-Bold.ttf").c_str(), 32);
 
     createUnifiedBodyGPUBufferAndPipeline();
     createTwinklingStarGPUBufferAndPipeline();

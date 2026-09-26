@@ -8,8 +8,6 @@
 // Custom Imports
 #include "Core/DEPRECATED_InputState.hpp"
 #include "Entities/Sound/MusicModeEnum.hpp"
-#include "Entities/UIElements/UIElementIdentifierEnum.hpp"
-#include "Scenes/SceneIdentifierEnum.hpp"
 #include "Utilities/Constants/GameSystemConstants.hpp"
 
 // Standard Library Imports
@@ -26,13 +24,10 @@ class UIState
     const DEPRECATED_InputState& getDEPRECATED_InputState() const { return inputState; }
     float getFPS() { return framesPerSecond; }
     void setFPS(float fps) { framesPerSecond = fps; }
-    bool getAllUIVisibility() { return allUIElementsVisible; }
-    void invertUIElementsVisibility() { allUIElementsVisible = !allUIElementsVisible; }
     bool getRenderDebug() { return renderDebug; }
     void setRenderDebug(bool rd) { renderDebug = rd; }
     float getTimeScaleFactor() const { return static_cast<float>(inputState.selectedSimSpeedScale); }
-    SceneIdentifier getCurrentSceneID() const { return currentScene; }
-    void setCurrentScene(SceneIdentifier scene_desired) { currentScene = scene_desired; }
+
     void QueueSoundEffect(const std::string& soundName) { pendingSoundEffects.push(soundName); };
     bool HasPendingSoundEffects() const { return !pendingSoundEffects.empty(); };
     std::string PopNextSoundEffect()
@@ -58,9 +53,7 @@ class UIState
 
     bool renderDebug = VIEW_DEBUG; // Toggles rendering of debug elements like
     // collision boxes, spawn areas, etc.
-    bool allUIElementsVisible = true; // Default to true because we want all elements visible.
 
-    SceneIdentifier currentScene = SceneIdentifier::NONE;
     // SOUND STUFF
     bool playMusic = false;
     bool playSoundEffects = false;

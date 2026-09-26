@@ -22,7 +22,6 @@
 #include "Utilities/Constants/GameSystemConstants.hpp"
 #include "Utilities/Rendering/CameraData.hpp"
 #include "Utilities/Rendering/CameraTransform.hpp"
-#include "Utilities/Rendering/Colors.hpp"
 #include "Utilities/Rendering/GPUTypes.hpp"
 #include "Utilities/System/SystemPathUtility.hpp"
 
@@ -53,7 +52,6 @@ class RenderSystem
     void CleanUp();
     // Getters for SDL Components
     TTF_Font* getUIFontRegular() const { return UIFontRegular; }
-    TTF_Font* getUIFontTitle() const { return UIFontTitle; }
 
   private:
     // SDL Components
@@ -97,7 +95,6 @@ class RenderSystem
 
     // Font for UI Elements that require text
     TTF_Font* UIFontRegular = nullptr;
-    TTF_Font* UIFontTitle = nullptr;
 
   private:
     // Subordinate Rendering Functions
