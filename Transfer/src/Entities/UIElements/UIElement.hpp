@@ -40,7 +40,7 @@ class UIElement
     UIElementIdentifier getUIElementID() const { return UIElementID; }
     virtual void buildGeometry(DynamoEngine::UIGeometryBuilder& builder) {}; // Default does nothing
     virtual void updateMe(UIState& uiState) {};                              // Default does nothing
-    virtual void updateLayout(float windowWidth, float windowHeight) {};     // Default does nothing
+    virtual void updateLayout(float window_width, float window_height) {};   // Default does nothing
 
   private:
     float posX = 0;

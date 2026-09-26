@@ -74,8 +74,8 @@ add_library(DynamoEngine STATIC ${DYNAMO_ENGINE_SRC_FILES})
 target_include_directories(DynamoEngine PUBLIC "${CMAKE_SOURCE_DIR}/Transfer/src" ${SDL3_INCLUDE_DIRS})
 target_link_libraries(DynamoEngine PUBLIC ${SDL3_LIBS})
 target_compile_options(DynamoEngine PRIVATE
-    $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wimplicit-fallthrough>
-    $<$<CXX_COMPILER_ID:MSVC>:/W4>
+    $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wimplicit-fallthrough -Wno-unused-parameter>
+    $<$<CXX_COMPILER_ID:MSVC>:/W4 /wd4100>
 )
 
 # ----------------------------------
@@ -216,7 +216,7 @@ if(TRANSFER_BUILD_TESTS)
             ${SDL3_INCLUDE_DIRS}
         )
         target_link_libraries(TransferTests PRIVATE GTest::gtest_main DynamoEngine)
-        target_link_libraries(TransferTests PRIVATE GTest::gtest_main ${SDL3_LIBS})
+        target_link_libraries(TransferTests PRIVATE ${SDL3_LIBS})
 
         include(GoogleTest)
         gtest_discover_tests(TransferTests)

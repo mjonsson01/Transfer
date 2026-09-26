@@ -25,19 +25,19 @@ void zoomAroundCursor(CameraState& camera_state, float scroll, DynamoEngine::Vec
     {
         DynamoEngine::Vector2D world_under_cursor = ScreenToWorldCoordinates(mouse_position, camera_state);
         DynamoEngine::Vector2D star_world_under_cursor =
-            mouse_position / camera_state.zoom - camera_state.twinklingStarOffset;
+            mouse_position / camera_state.zoom - camera_state.twinkling_star_offset;
 
         camera_state.zoom *= std::pow(1.1, scroll);
         camera_state.zoom = std::clamp(camera_state.zoom, MIN_ZOOM, MAX_ZOOM);
 
         camera_state.offset = mouse_position / camera_state.zoom - world_under_cursor;
-        camera_state.twinklingStarOffset = mouse_position / camera_state.zoom - star_world_under_cursor;
+        camera_state.twinkling_star_offset = mouse_position / camera_state.zoom - star_world_under_cursor;
     }
 }
 void panCamera(CameraState& camera_state, DynamoEngine::Vector2D screen_delta)
 {
     camera_state.offset += screen_delta / camera_state.zoom;
-    camera_state.twinklingStarOffset += (screen_delta / camera_state.zoom) * STAR_PARALLAX_FACTOR;
+    camera_state.twinkling_star_offset += (screen_delta / camera_state.zoom) * STAR_PARALLAX_FACTOR;
 }
 void clampCameraToStarField(CameraState& camera_state)
 {
@@ -46,8 +46,8 @@ void clampCameraToStarField(CameraState& camera_state)
     double star_field_half_height = camera_state.maxDisplayHeight / (2.0 * MIN_ZOOM);
     DynamoEngine::Vector2D star_field_center = {SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0};
 
-    double view_half_width = (camera_state.windowWidth / 2.0) / camera_state.zoom;
-    double view_half_height = (camera_state.windowHeight / 2.0) / camera_state.zoom;
+    double view_half_width = (camera_state.window_width / 2.0) / camera_state.zoom;
+    double view_half_height = (camera_state.window_height / 2.0) / camera_state.zoom;
 
     double slack_x = std::max(0.0, star_field_half_width - view_half_width);
     double slack_y = std::max(0.0, star_field_half_height - view_half_height);
@@ -67,7 +67,7 @@ void clampCameraToStarField(CameraState& camera_state)
     };
 
     clamp_offset_to_star_field(camera_state.offset);
-    clamp_offset_to_star_field(camera_state.twinklingStarOffset);
+    clamp_offset_to_star_field(camera_state.twinkling_star_offset);
 }
 
 } // namespace
@@ -95,8 +95,8 @@ void InputSystem::processSystemInputFrame(GameState& game_state, UIState& ui_sta
         if (event.type == DynamoEngine::InputEventType::WindowResize)
         {
             CameraState& camera_state = game_state.getCameraStateMutable();
-            camera_state.windowWidth = static_cast<float>(event.window_width);
-            camera_state.windowHeight = static_cast<float>(event.window_height);
+            camera_state.window_width = static_cast<float>(event.window_width);
+            camera_state.window_height = static_cast<float>(event.window_height);
         }
     }
     if (m_input.quitRequested())

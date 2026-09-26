@@ -10,10 +10,10 @@ struct CameraState
 {
     double zoom = STARTUP_ZOOM_VALUE;
     DynamoEngine::Vector2D offset = {0.0, 0.0}; // pan offset
-    DynamoEngine::Vector2D twinklingStarOffset = {0.0, 0.0};
+    DynamoEngine::Vector2D twinkling_star_offset = {0.0, 0.0};
 
-    float windowWidth = static_cast<float>(SCREEN_WIDTH);
-    float windowHeight = static_cast<float>(SCREEN_HEIGHT);
+    float window_width = static_cast<float>(SCREEN_WIDTH);
+    float window_height = static_cast<float>(SCREEN_HEIGHT);
 
     float maxDisplayWidth = static_cast<float>(SCREEN_WIDTH);
     float maxDisplayHeight = static_cast<float>(SCREEN_HEIGHT);

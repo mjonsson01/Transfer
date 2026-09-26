@@ -15,10 +15,10 @@ SimulationSpeedSlider::SimulationSpeedSlider() : Slider()
     UIElementID = UIElementIdentifier::SIMULATION_SPEED_SLIDER_INDEX;
 }
 
-void SimulationSpeedSlider::updateLayout(float windowWidth, float windowHeight)
+void SimulationSpeedSlider::updateLayout(float window_width, float window_height)
 {
     // Track size and position
-    trackRect = SDL_FRect{1 * windowWidth / 24, 4 * windowHeight / 5, 300, 12};
+    trackRect = SDL_FRect{1 * window_width / 24, 4 * window_height / 5, 300, 12};
 
     // Dead zone
     float deadzonePaddingX = 30.0f;

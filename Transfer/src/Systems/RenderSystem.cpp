@@ -540,7 +540,7 @@ void RenderSystem::renderUIElements(SDL_GPURenderPass* pass, SDL_GPUCommandBuffe
         return;
     SDL_BindGPUGraphicsPipeline(pass, uiPipeline);
 
-    float screen_size[2] = {cameraState.windowWidth, cameraState.windowHeight};
+    float screen_size[2] = {cameraState.window_width, cameraState.window_height};
     SDL_PushGPUVertexUniformData(cmdbuf, 0, screen_size, sizeof(screen_size));
 
     SDL_GPUBufferBinding vbo = {.buffer = uiVertexBuffer, .offset = 0};
@@ -583,8 +583,8 @@ void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexDat
 CameraConstants RenderSystem::buildCameraConstants(const CameraState& cameraState, const DynamoEngine::Vector2D& offset)
 {
     CameraConstants camera_constants = {};
-    camera_constants.screenWidth = cameraState.windowWidth;
-    camera_constants.screenHeight = cameraState.windowHeight;
+    camera_constants.screenWidth = cameraState.window_width;
+    camera_constants.screenHeight = cameraState.window_height;
     camera_constants.zoom = (float)cameraState.zoom;
     camera_constants.offsetX = (float)offset.x_val;
     camera_constants.offsetY = (float)offset.y_val;
@@ -876,7 +876,7 @@ void RenderSystem::renderTwinklingStarField(SDL_GPURenderPass* pass, SDL_GPUComm
 {
     SDL_BindGPUGraphicsPipeline(pass, twinklingStarPipeline);
 
-    CameraConstants camera_constants = buildCameraConstants(cameraState, cameraState.twinklingStarOffset);
+    CameraConstants camera_constants = buildCameraConstants(cameraState, cameraState.twinkling_star_offset);
 
     SDL_PushGPUVertexUniformData(cmdbuf, 0, &camera_constants, sizeof(camera_constants));
 

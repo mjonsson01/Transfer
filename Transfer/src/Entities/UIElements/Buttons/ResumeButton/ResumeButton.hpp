@@ -10,5 +10,5 @@ class ResumeButton : public Button
     ResumeButton();
     ~ResumeButton() = default;
     void clickMe(DynamoEngine::Vector2D positionOfEvent, UIState& uiState) override;
-    void updateLayout(float windowWidth, float windowHeight) override;
+    void updateLayout(float window_width, float window_height) override;
 };

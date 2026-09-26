@@ -38,7 +38,7 @@ class UISystem
     void routeSliderInput(UIElementIdentifier elementToUpdate, UIState& uiState);
     void routeButtonClick(UIElementIdentifier elementToUpdate, UIState& uiState);
     void populateScenes();
-    void updateAllUILayouts(float windowWidth, float windowHeight);
+    void updateAllUILayouts(float window_width, float window_height);
 
   private:
     SceneIdentifier currentSceneID = SceneIdentifier::NONE;

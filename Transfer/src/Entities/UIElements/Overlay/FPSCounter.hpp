@@ -22,7 +22,7 @@ class FPSCounter : public UIElement
     ~FPSCounter() = default;
     void buildGeometry(DynamoEngine::UIGeometryBuilder& builder) override;
     void updateMe(UIState& uiState) override;
-    void updateLayout(float windowWidth, float windowHeight) override;
+    void updateLayout(float window_width, float window_height) override;
     std::string getDisplayText() const
     {
         return std::to_string(fps);

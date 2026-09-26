@@ -25,7 +25,7 @@ void UISystem::UpdateUIElements(GameState& gameState, UIState& uiState)
     updateUISystemCurrentSceneID(uiState); // get most up to date current scene
 
     const CameraState& cam = gameState.getCameraState();
-    updateAllUILayouts(cam.windowWidth, cam.windowHeight);
+    updateAllUILayouts(cam.window_width, cam.window_height);
 
     // Clunky fix but whatever
     std::unordered_map<UIElementIdentifier, UIElement*> allUIElements = allScenes[currentSceneID]->getSceneElements();
@@ -171,7 +171,7 @@ void UISystem::updateMenuUIElements(GameState& gameState, UIState& uiState)
     inputs_received.isPreviewingWithInitialVelocity = false;
 }
 
-void UISystem::updateAllUILayouts(float windowWidth, float windowHeight)
+void UISystem::updateAllUILayouts(float window_width, float window_height)
 {
     for (auto& [scene_ID, scene_ptr] : allScenes)
     {
@@ -179,7 +179,7 @@ void UISystem::updateAllUILayouts(float windowWidth, float windowHeight)
             continue;
         for (auto& [UI_element_ID, UI_element_ptr] : scene_ptr->getSceneElements())
         {
-            UI_element_ptr->updateLayout(windowWidth, windowHeight);
+            UI_element_ptr->updateLayout(window_width, window_height);
         }
     }
 }

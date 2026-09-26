@@ -28,5 +28,5 @@ class SimulationSpeedSlider : public Slider
     {
         return "Simulation Speed: " + std::to_string(sliderValue); // add units?
     }
-    void updateLayout(float windowWidth, float windowHeight) override;
+    void updateLayout(float window_width, float window_height) override;
 };

@@ -30,7 +30,7 @@ class MassSlider : public Slider
         return "Mass: " + std::to_string(sliderValue); // add units?
     }
     void slideMe(DynamoEngine::Vector2D positionOfEvent, double& returnedElementValue, UIState& uiState) override;
-    void updateLayout(float windowWidth, float windowHeight) override;
+    void updateLayout(float window_width, float window_height) override;
     void playTickSoundIfMoved(UIState& uiState);
 
   private:

@@ -19,11 +19,11 @@ void PlayGameButton::clickMe(DynamoEngine::Vector2D positionOfEvent, UIState& ui
     return;
 }
 
-void PlayGameButton::updateLayout(float windowWidth, float windowHeight)
+void PlayGameButton::updateLayout(float window_width, float window_height)
 {
     float width = 300.0f;
     float height = 200.0f;
-    boundingRect = SDL_FRect{windowWidth / 2 - width / 2, windowHeight / 2 - height / 2, width, height};
+    boundingRect = SDL_FRect{window_width / 2 - width / 2, window_height / 2 - height / 2, width, height};
     setPosition(boundingRect.x, boundingRect.y);
     hotZoneRect = boundingRect;
 }

@@ -52,9 +52,9 @@ void MassSlider::slideMe(DynamoEngine::Vector2D positionOfEvent, double& returne
     return;
 }
 
-void MassSlider::updateLayout(float windowWidth, float windowHeight)
+void MassSlider::updateLayout(float window_width, float window_height)
 {
-    trackRect = SDL_FRect{17 * windowWidth / 24, 4 * windowHeight / 5, 300, 12};
+    trackRect = SDL_FRect{17 * window_width / 24, 4 * window_height / 5, 300, 12};
     knobRect = SDL_FRect{0, 0, 20, 30};
 
     float hotzonePaddingX = 30.0f;

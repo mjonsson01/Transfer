@@ -19,7 +19,7 @@ void FPSCounter::buildGeometry(DynamoEngine::UIGeometryBuilder& builder)
 {
     builder.addText("FPS: " + getDisplayText(), {getX(), getY()});
 }
-void FPSCounter::updateLayout(float windowWidth, float windowHeight)
+void FPSCounter::updateLayout(float window_width, float window_height)
 {
-    setPosition(windowWidth / SCREEN_WIDTH * 10, windowHeight / SCREEN_HEIGHT * 10);
+    setPosition(window_width / SCREEN_WIDTH * 10, window_height / SCREEN_HEIGHT * 10);
 }
