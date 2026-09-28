@@ -52,9 +52,11 @@ class InputSystem
     DynamoEngine::UIInputResult updateSceneUI(DynamoEngine::UIRoot& ui, const CameraState& camera_state,
                                               float frame_seconds);
     void updateCamera(GameState& game_state); // zoom around cursor, middle-mouse pan, star-field clamp
-    void translateGameInputs(UIState& ui_state, DynamoEngine::SceneManager& scenes);
+    void translateGameInputs(GameState& game_state, UIState& ui_state, DynamoEngine::SceneManager& scenes);
     void translateMenuInputs(UIState& ui_state, DynamoEngine::SceneManager& scenes);
     void copySharedPointerState(DEPRECATED_InputState& legacy_state); // fields both translators pass on
+
+    void updateVisor(CameraState& camera_state); // tab cycles the visor view;
 
   private:
     DynamoEngine::SDLInputIntake m_intake; // direct SDL events translated through the intake

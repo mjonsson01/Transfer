@@ -57,8 +57,8 @@ class Game
 
   private:
     // Systems and State
-    GameState gameState;         // Contains all game entities and their states
-    UIState uiState;             // Contains all UI related states
+    GameState game_state;        // Contains all game entities and their states
+    UIState ui_state;            // Contains all UI related states
     InputSystem inputSystem;     // Manages all user input
     PhysicsSystem physicsSystem; // Manages physics calculations and Frame Updates
     RenderSystem renderSystem;   // Manages all rendering operations

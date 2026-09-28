@@ -3,9 +3,10 @@
 // Custom Imports
 #include "Core/Game.hpp"
 
-Game::Game() : gameState(), uiState(), inputSystem(), physicsSystem(), renderSystem(gameState), audioSystem(), scenes()
+Game::Game()
+    : game_state(), ui_state(), inputSystem(), physicsSystem(), renderSystem(game_state), audioSystem(), scenes()
 {
-    addTransferScenes(scenes, uiState);
+    addTransferScenes(scenes, ui_state, game_state);
 }
 
 // Handle destruction of any new allocations. None for now, just default.
@@ -18,8 +19,8 @@ Game::~Game()
 // Initializes SDL windows and starts the main game loop
 void Game::StartGame()
 {
-    // Initialize any other useful gameState variables here.
-    gameState.SetPlaying(true);
+    // Initialize any other useful game_state variables here.
+    game_state.SetPlaying(true);
 
     // Default to starting in the level scene since other scenes are not
     // implemented yet.
@@ -27,10 +28,10 @@ void Game::StartGame()
     scenes.requestSwitch(TransferScene::StartMenu);
     // scenes.requestSwitch(TransferScene::TestVisual);
     scenes.applyPendingSwitch(); // start there right away, before the first frame
-    uiState.setPlaySoundEffects(true);
-    uiState.setPlayMusic(true);
-    // uiState.setRequestedMusicMode(MusicMode::TITLE_THEME);
-    uiState.setRequestedMusicMode(MusicMode::MAIN_SHUFFLE);
+    ui_state.setPlaySoundEffects(true);
+    ui_state.setPlayMusic(true);
+    // ui_state.setRequestedMusicMode(MusicMode::TITLE_THEME);
+    ui_state.setRequestedMusicMode(MusicMode::MAIN_SHUFFLE);
     // Start the main game loop
     Game::Run();
 
@@ -58,7 +59,7 @@ void Game::Run()
     float physics_time_accumulator = 0.0f;
     float fps_time_accumulator = 0.0f;
     float current_fps = (float)TARGET_FPS;
-    while (gameState.IsPlaying())
+    while (game_state.IsPlaying())
     {
         Uint64 frame_start = SDL_GetPerformanceCounter();
         float frame_seconds = (float)(frame_start - last_frame_start_tick) / perf_freq; // how long the last frame took
@@ -69,7 +70,7 @@ void Game::Run()
         // 1. Profile Input
         Uint64 input_start = SDL_GetPerformanceCounter();
         Game::ProcessInput(frame_seconds);
-        if (!gameState.IsPlaying())
+        if (!game_state.IsPlaying())
             break;
         Uint64 input_end = SDL_GetPerformanceCounter();
 
@@ -92,7 +93,7 @@ void Game::Run()
         const bool runs_simulation = scenes.currentScene().settings().runs_simulation;
         if (runs_simulation)
         {
-            physics_time_accumulator += (frame_delta * uiState.getTimeScaleFactor());
+            physics_time_accumulator += (frame_delta * ui_state.getTimeScaleFactor());
         }
         else
         {
@@ -109,7 +110,7 @@ void Game::Run()
         Uint64 phys_total_end = SDL_GetPerformanceCounter();
 
         // 5. Profile Rendering
-        gameState.setAlpha(physics_time_accumulator / PHYSICS_TIME_STEP);
+        game_state.setAlpha(physics_time_accumulator / PHYSICS_TIME_STEP);
 
         Uint64 render_start = SDL_GetPerformanceCounter();
         Game::RenderFrame();
@@ -129,8 +130,8 @@ void Game::Run()
         float physics_time = (float)((phys_total_end - phys_total_start) * 1000) / perf_freq;
         float rendering_time = (float)((render_end - render_start) * 1000) / perf_freq;
 
-        // printf("N=%zu | Rend: %.3f | Phys: %.3f\n", gameState.getParticles().size() +
-        // gameState.getMacroBodies().size(),
+        // printf("N=%zu | Rend: %.3f | Phys: %.3f\n", game_state.getParticles().size() +
+        // game_state.getMacroBodies().size(),
         //        rendering_time, physics_time);
         // printf("Profile Time [ms] | Input: %.3f | Inst: %.3f | Audio: %.3f | Phys: %.3f | Rend: %.3f\n", input_time,
         //        instantiation_time, audio_playback_time, physics_time, rendering_time);
@@ -142,23 +143,23 @@ void Game::Run()
 void Game::ProcessInput(float frame_seconds)
 {
     // Dispatch to Input System (which gives the current scene's UI the first look)
-    inputSystem.processSystemInputFrame(gameState, uiState, scenes, frame_seconds);
+    inputSystem.processSystemInputFrame(game_state, ui_state, scenes, frame_seconds);
 }
 
 void Game::IntegratePhysicsFrame()
 {
     // Dispatch to Physics System
-    physicsSystem.UpdateSystemFrame(gameState, uiState);
+    physicsSystem.UpdateSystemFrame(game_state, ui_state);
 }
 
-void Game::UpdateInstantiations() { physicsSystem.UpdateGravBodyInstantiations(gameState, uiState); }
+void Game::UpdateInstantiations() { physicsSystem.UpdateGravBodyInstantiations(game_state, ui_state); }
 void Game::RenderFrame()
 {
     // Dispatch to Render System -- renders the current scene's UI as well.
-    renderSystem.RenderFullFrame(gameState, uiState, scenes.currentScene());
+    renderSystem.RenderFullFrame(game_state, ui_state, scenes.currentScene());
 }
 
-void Game::PlayAudio() { audioSystem.ProcessSystemAudioFrame(gameState, uiState); }
+void Game::PlayAudio() { audioSystem.ProcessSystemAudioFrame(game_state, ui_state); }
 // --------- UTILITY METHODS FOR FPS --------- //
 void Game::updateFPS(Uint64 renderEnd, Uint64 lastRender, float& fpsAccumulator, float& currentFPS)
 {
@@ -184,7 +185,7 @@ void Game::updateFPS(Uint64 renderEnd, Uint64 lastRender, float& fpsAccumulator,
         float target_fps_max = static_cast<float>(TARGET_FPS) * 1.1f;
         currentFPS = std::min(currentFPS, target_fps_max);
 
-        uiState.setFPS(currentFPS);
+        ui_state.setFPS(currentFPS);
         fpsAccumulator = 0.0f;
     }
 }

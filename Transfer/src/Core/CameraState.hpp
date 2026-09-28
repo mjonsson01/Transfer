@@ -32,3 +32,20 @@ struct CameraState
     float render_alpha;
     VisorView visor_view = VisorView::Realistic;
 };
+
+// The view Tab switches to: Realistic -> Mass -> Charge -> Temperature -> back to Realistic
+inline VisorView nextVisorView(VisorView view)
+{
+    switch (view)
+    {
+    case VisorView::Realistic:
+        return VisorView::Mass;
+    case VisorView::Mass:
+        return VisorView::Charge;
+    case VisorView::Charge:
+        return VisorView::Temperature;
+    case VisorView::Temperature:
+        return VisorView::Realistic;
+    }
+    return VisorView::Realistic; // unreachable: every view is handled above
+}

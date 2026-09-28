@@ -114,7 +114,7 @@ void InputSystem::processSystemInputFrame(GameState& game_state, UIState& ui_sta
     if (runs_simulation)
     {
         updateCamera(game_state);
-        translateGameInputs(ui_state, scenes);
+        translateGameInputs(game_state, ui_state, scenes);
     }
     else
     {
@@ -200,7 +200,7 @@ void InputSystem::translateMenuInputs(UIState& ui_state, DynamoEngine::SceneMana
     }
 }
 
-void InputSystem::translateGameInputs(UIState& ui_state, DynamoEngine::SceneManager& scenes)
+void InputSystem::translateGameInputs(GameState& game_state, UIState& ui_state, DynamoEngine::SceneManager& scenes)
 {
     using DynamoEngine::MouseButton;
 
@@ -246,6 +246,17 @@ void InputSystem::translateGameInputs(UIState& ui_state, DynamoEngine::SceneMana
         legacy_state.isCreatingCollidable = true;
         legacy_state.isCreatingWithInitialVelocity = m_input.isShiftDown();
         legacy_state.isCreatingParticleCluster = true;
+    }
+
+    // Update the visor if necessary
+    updateVisor(game_state.getCameraStateMutable());
+}
+
+void InputSystem::updateVisor(CameraState& camera_state)
+{
+    if (m_input.wasKeyPressed(SDL_SCANCODE_TAB))
+    {
+        camera_state.visor_view = nextVisorView(camera_state.visor_view);
     }
 }
 // --------- CLEANUP HELPER METHOD --------- //

@@ -5,11 +5,11 @@
 // Custom Imports
 #include "Core/DEPRECATED_InputState.hpp"
 #include "DynamoEngine/UI/Widgets/UIButton.hpp"
+#include "DynamoEngine/UI/Widgets/UIDropdown.hpp"
 #include "DynamoEngine/UI/Widgets/UILabel.hpp"
 #include "DynamoEngine/UI/Widgets/UIRow.hpp"
 #include "DynamoEngine/UI/Widgets/UISlider.hpp"
 #include "Utilities/Constants/EngineConstants.hpp"
-#include "Utilities/Constants/GameSystemConstants.hpp"
 
 // Standard Library Imports
 #include <cmath>
@@ -25,6 +25,7 @@ using DynamoEngine::SceneSettings;
 using DynamoEngine::SliderMapping;
 using DynamoEngine::UIAlign;
 using DynamoEngine::UIButton;
+using DynamoEngine::UIDropdown;
 using DynamoEngine::UILabel;
 using DynamoEngine::UIRow;
 using DynamoEngine::UISlider;
@@ -106,7 +107,7 @@ std::unique_ptr<Scene> buildStartMenuScene(SceneManager& scenes, UIState& ui_sta
     return scene;
 }
 
-std::unique_ptr<Scene> buildGameScene(UIState& ui_state)
+std::unique_ptr<Scene> buildGameScene(UIState& ui_state, GameState& game_state)
 {
     std::unique_ptr<Scene> scene = makeScene(SceneSettings::simulation(), ui_state);
     DEPRECATED_InputState& choices = ui_state.getMutableDEPRECATED_InputState(); // where the slider values go
@@ -116,6 +117,18 @@ std::unique_ptr<Scene> buildGameScene(UIState& ui_state)
     fps_label->setPlacement({.align = UIAlign::TopLeft, .margin = 10.0f});
     fps_label->setTextSource([&ui_state]() { return "FPS: " + std::to_string(static_cast<int>(ui_state.getFPS())); });
     scene->ui().addChild(std::move(fps_label));
+
+    // Visor Dropdown, shows what bodies are colored by
+    // camera_state.visor_view is the source of truth, the dropdown reads it every frame
+    // and makes requests to change it
+    CameraState& camera_state = game_state.getCameraStateMutable();
+    std::unique_ptr<UIDropdown> visor_dropdown = std::make_unique<UIDropdown>(
+        "Visor", std::vector<std::string>{"Realistic", "Mass", "Charge", "Temperature"}); // Same order as VisorView
+    visor_dropdown->setPlacement({.align = UIAlign::TopRight, .size = {260.0f, 36.0f}, .margin = 10.0f});
+    visor_dropdown->setOnOptionChosen([&camera_state](int option_index)
+                                      { camera_state.visor_view = static_cast<VisorView>(option_index); });
+    visor_dropdown->setSelectionSource([&camera_state]() { return static_cast<int>(camera_state.visor_view); });
+    scene->ui().addChild(std::move(visor_dropdown));
 
     // The three sliders, left to right: simulation speed, radius, mass
     std::unique_ptr<UISlider> speed_slider = std::make_unique<UISlider>(
@@ -162,10 +175,10 @@ std::unique_ptr<Scene> buildTestVisualScene(UIState& ui_state)
 }
 } // namespace
 
-void addTransferScenes(SceneManager& scenes, UIState& ui_state)
+void addTransferScenes(SceneManager& scenes, UIState& ui_state, GameState& game_state)
 {
     scenes.addScene(TransferScene::StartMenu, buildStartMenuScene(scenes, ui_state));
-    scenes.addScene(TransferScene::Game, buildGameScene(ui_state));
+    scenes.addScene(TransferScene::Game, buildGameScene(ui_state, game_state));
     scenes.addScene(TransferScene::Pause, buildPauseScene(scenes, ui_state));
     scenes.addScene(TransferScene::TestVisual, buildTestVisualScene(ui_state));
 }
