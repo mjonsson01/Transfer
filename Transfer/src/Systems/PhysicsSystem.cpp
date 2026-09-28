@@ -338,19 +338,26 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, Grav
         return;
     }
 
-    DynamoEngine::Vector2D normal_vector = r_vector / distance;
+    DynamoEngine::Vector2D normal_vector = r_vector / distance; // points from the smaller body to the larger one
     double v_smaller_n = smallerBody.velocity.dot(normal_vector);
     double v_larger_n = largerBody.velocity.dot(normal_vector);
     double m_smaller = smallerBody.mass;
     double m_larger = largerBody.mass;
 
-    double v_smaller_n_new =
-        (v_smaller_n * (m_smaller - m_larger) + 2 * m_larger * v_larger_n) / (m_smaller + m_larger);
-    double v_larger_n_new =
-        (v_larger_n * (m_larger - m_smaller) + 2 * m_smaller * v_smaller_n) / (m_smaller + m_larger);
+    // Only bounce bodies that are moving TOWARD each other. Overlapping bodies that are already separating (e.g.
+    // fragments born overlapping) must keep separating -- bouncing them would flip them back together every tick, so
+    // they'd stick.
+    double closing_speed = v_smaller_n - v_larger_n; // > 0: the gap along the normal is shrinking
+    if (closing_speed > 0.0)
+    {
+        double v_smaller_n_new =
+            (v_smaller_n * (m_smaller - m_larger) + 2 * m_larger * v_larger_n) / (m_smaller + m_larger);
+        double v_larger_n_new =
+            (v_larger_n * (m_larger - m_smaller) + 2 * m_smaller * v_smaller_n) / (m_smaller + m_larger);
 
-    smallerBody.velocity += normal_vector * (v_smaller_n_new - v_smaller_n) * ELASTIC_LOSS_FACTOR;
-    largerBody.velocity += normal_vector * (v_larger_n_new - v_larger_n) * ELASTIC_LOSS_FACTOR;
+        smallerBody.velocity += normal_vector * (v_smaller_n_new - v_smaller_n) * ELASTIC_LOSS_FACTOR;
+        largerBody.velocity += normal_vector * (v_larger_n_new - v_larger_n) * ELASTIC_LOSS_FACTOR;
+    }
 
     double penetration = (smallerBody.radius + largerBody.radius) - distance;
     if (penetration > 0.0)
@@ -561,7 +568,7 @@ void PhysicsSystem::updateGravityForSystem(GameState& gameState)
         }
     }
 
-    // TODO: Review?
+    // TODO: Review? -- Works now with elastic collision fix, need to majorly optimize
     // for (size_t i = 0; i < num_particles; ++i)
     // {
     //     for (size_t j = i + 1; j < num_particles; ++j)

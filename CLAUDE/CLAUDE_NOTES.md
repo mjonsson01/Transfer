@@ -186,7 +186,7 @@ Lambdas capture Game members by reference, which is safe because they outlive th
   The `reserve(+32000)` hack and MAX_SIMULTANEOUS_SHATTERS_PER_TICK are gone. Verified with an ASan crash test:
   `CLAUDE/drafts/PendingFragments/stress_harness.cpp` (build command in its header). Marco first tried a member-only variant and
   flushed inside substituteWithParticles, which re-created the bug. Lesson: only empty the waiting list where no loop over particles is running.
-- Sub-pixel fade (2026-09-27) DRAFTED, NOT applied: `CLAUDE/drafts/SubPixelFade/subpixel_fade.diff` (9 files, on top of the physics fix).
+- Sub-pixel fade (2026-09-27) REJECTED by Marco for now ("not sure it's necessary, needlessly complex"); he's restoring the original. Draft kept: `CLAUDE/drafts/SubPixelFade/subpixel_fade.diff` (9 files, on top of the physics fix).
   CameraConstants `_padding1` -> `pixelDensity` (set from SDL_GetWindowPixelDensity; same name in all 5 cbuffers). Vertex shader: d = 2*r*zoom*density;
   d < 1 -> draw a 1-px quad, `nointerpolation float coverage = d*d` (TEXCOORD15, last in both structs; MSL locn8 flat); frag skips the circle
   discard when coverage < 1 (square = no flicker) and alpha *= coverage. CPU: uploadUnifiedBodies skips d < 0.0627 (= sqrt(1/255), fade is
@@ -235,3 +235,15 @@ Lambdas capture Game members by reference, which is safe because they outlive th
   (the failure prints both values); one assertion per promise in the test name; break the code on purpose and watch the test go red.
 - Open physics question he raised: runaway spinning of particle clumps. Hypotheses: sequential impulse order bias, elastic re-bounce
   without an approaching check, positional correction adding energy.
+- 2026-09-27: With MIN_PARTICLE_RADIUS temporarily at 40, fragments looked like self-attracting "grav bodies". Particle-particle gravity is
+  commented out, and particles CANNOT merge (handleAccretion returns early when heavier.isParticle; REWORK [BUG]; Marco caught Claude's wrong
+  "they merge" claim). Real cause: handleElasticCollisions' dynamic branch has NO approaching check (the static branch has `if (v_n < 0.0)`),
+  so born-overlapping fragments get their separating normal velocity swapped back toward each other every tick -> they stick/jiggle = looks
+  like attraction; ratio >= 8 pairs ghost through. Fix next session = one approaching check (REWORK handleElasticCollisions [BUG]); also the
+  prime suspect for the open "runaway spinning clumps" question.
+- 2026-09-28 FIXED (applied by Claude at Marco's request, uncommitted): handleElasticCollisions dynamic branch now only exchanges normal
+  velocities when closing_speed = v_smaller_n - v_larger_n > 0 (normal points smaller -> larger); positional correction still always runs.
+  Verified: overlapping separating pair keeps -50/+50 (before: flipped every tick); head-on pair bounces once; 120/120; ASan stress clean
+  with MIN=1. NOTE: Marco's working tree still has MIN_PARTICLE_RADIUS = 40 -- at 40, cleanupParticles also deletes ANY particle under
+  radius 40 (the stress harness's radius-30 heavy particle vanished). New REWORK [BUG]: getCollisionInfo's should_blow_up uses |normal speed|.
+
