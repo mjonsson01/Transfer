@@ -62,9 +62,14 @@ class PhysicsSystem
     void handleElasticCollisions(GravitationalBody& smallerBody, GravitationalBody& largerBody);
     void handleAccretion(GravitationalBodyPair& gravBodyPair);
     void promoteOversizedParticles(GameState& gameState); // TODO: Prune? currently uncalled, see UpdateSystemFrame
-    void substituteWithParticles(GravitationalBody& originalBody, GameState& gameState, uint32_t targetFragmentCount);
-    void substituteWithParticlesFromImpact(GravitationalBody& originalBody, GameState& gameState,
+    // Both append the new fragments to `fragments_out`. During collisions that is m_pending_fragments, never the
+    // particles vector itself: the collision loops are still walking over (and holding references into) particles.
+    void substituteWithParticles(GravitationalBody& originalBody, std::vector<GravitationalBody>& fragments_out,
+                                 uint32_t targetFragmentCount);
+    void substituteWithParticlesFromImpact(GravitationalBody& originalBody, std::vector<GravitationalBody>& fragments_out,
                                            uint32_t targetFragmentCount, const DynamoEngine::Vector2D& impactPoint);
+    // Particles alive now plus fragments waiting to join them (what MAX_LIVE_PARTICLES limits)
+    size_t liveParticleCount(const GameState& gameState) const;
 
     // --- Gravity ---
     void updateAllForces(GameState& gameState); // Gravity calculation dispatch helper
@@ -104,4 +109,8 @@ class PhysicsSystem
     uint32_t survivableFragmentCount(const GravitationalBody& body, uint32_t maxCount);
     // --- Data Members ---
     UniformParticleGrid particleGrid;
+
+    // Fragments created during this tick's collision passes. Appended to the particles vector only after all three
+    // passes are done, so nothing is ever added to particles while a loop is iterating over it.
+    std::vector<GravitationalBody> m_pending_fragments;
 };

@@ -102,13 +102,20 @@ static inline GravitationalBodyPair pickMassPair(GravitationalBody& a, Gravitati
 
 void PhysicsSystem::handleCollisions(GameState& gameState)
 {
-    auto& particles = gameState.getParticlesMutable();
-    particles.reserve(particles.size() +
-                      static_cast<size_t>(MAX_SIMULTANEOUS_SHATTERS_PER_TICK) * DEFAULT_FRAGMENT_COUNT * 2);
-
+    // Shatters during these passes put their fragments in m_pending_fragments, not in particles
     handleMacroMacroCollisions(gameState);
     handleMacroParticleCollisions(gameState);
     handleParticleParticleCollisions(gameState);
+
+    // All loops over particles are finished: now it's safe to grow the vector
+    std::vector<GravitationalBody>& particles = gameState.getParticlesMutable();
+    particles.insert(particles.end(), m_pending_fragments.begin(), m_pending_fragments.end());
+    m_pending_fragments.clear(); // clear() keeps the memory, so next tick's shatters don't allocate again
+}
+
+size_t PhysicsSystem::liveParticleCount(const GameState& gameState) const
+{
+    return gameState.getParticles().size() + m_pending_fragments.size();
 }
 
 void PhysicsSystem::handleMacroMacroCollisions(GameState& gameState)
@@ -234,7 +241,7 @@ void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& gravBodyPair, 
 
         // Hard safety net: never let a shatter push live particle count past a cap, regardless
         // of any tuning elsewhere that might otherwise cascade (see point 2).
-        if (gameState.getParticlesMutable().size() >= MAX_LIVE_PARTICLES)
+        if (liveParticleCount(gameState) >= MAX_LIVE_PARTICLES)
         {
             handleElasticCollisions(lighter, heavier);
             return;
@@ -245,9 +252,9 @@ void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& gravBodyPair, 
 
         if (heavier.isShatterable && gravBodyPair.ratio <= MUTUAL_SHATTER_MASS_RATIO_THRESHOLD)
         {
-            substituteWithParticlesFromImpact(heavier, gameState, DEFAULT_FRAGMENT_COUNT, impact_point);
+            substituteWithParticlesFromImpact(heavier, m_pending_fragments, DEFAULT_FRAGMENT_COUNT, impact_point);
         }
-        substituteWithParticlesFromImpact(lighter, gameState, DEFAULT_FRAGMENT_COUNT, impact_point);
+        substituteWithParticlesFromImpact(lighter, m_pending_fragments, DEFAULT_FRAGMENT_COUNT, impact_point);
         return;
     }
 
@@ -279,12 +286,12 @@ void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& gravBodyPair, 
         // This is a very gentle collision compared to our normal explosion collision and requires that major mass
         // disparity so we decrease fragment density
         bool can_crumble =
-            lighter.isMacro && lighter.isShatterable && gameState.getParticlesMutable().size() < MAX_LIVE_PARTICLES;
+            lighter.isMacro && lighter.isShatterable && liveParticleCount(gameState) < MAX_LIVE_PARTICLES;
         if (can_crumble)
         {
             DynamoEngine::Vector2D toward_lighter = (lighter.position - heavier.position).normalize();
             DynamoEngine::Vector2D contact_point = heavier.position + toward_lighter * heavier.radius;
-            substituteWithParticlesFromImpact(lighter, gameState, DEFAULT_FRAGMENT_COUNT / 3, contact_point);
+            substituteWithParticlesFromImpact(lighter, m_pending_fragments, DEFAULT_FRAGMENT_COUNT / 3, contact_point);
         }
         else
         {
@@ -444,8 +451,8 @@ void PhysicsSystem::promoteOversizedParticles(GameState& gameState)
     }
 }
 
-void PhysicsSystem::substituteWithParticles(GravitationalBody& originalBody, GameState& gameState,
-                                            uint32_t targetFragmentCount)
+void PhysicsSystem::substituteWithParticles(GravitationalBody& originalBody,
+                                            std::vector<GravitationalBody>& fragments_out, uint32_t targetFragmentCount)
 {
     // uint32_t num_particles = std::max<uint32_t>(1, targetFragmentCount);
     uint32_t num_particles = survivableFragmentCount(originalBody, targetFragmentCount);
@@ -459,7 +466,6 @@ void PhysicsSystem::substituteWithParticles(GravitationalBody& originalBody, Gam
     const double fragment_radius = OVERLAP_MARGIN * sqrt(density_factor / DynamoEngine::PI);
     const double particle_mass = original_mass / num_particles;
 
-    auto& particles = gameState.getParticlesMutable();
     for (uint32_t k = 0; k < num_particles; ++k)
     {
         double r_k = R * sqrt((k + 0.5) / num_particles);
@@ -479,31 +485,31 @@ void PhysicsSystem::substituteWithParticles(GravitationalBody& originalBody, Gam
         p.isParticle = true;
         p.velocity = original_velocity * randomDouble(0.8, 1.1);
 
-        particles.push_back(p);
+        fragments_out.push_back(p);
     }
 
     originalBody.isMarkedForDeletion = true;
 }
 
-void PhysicsSystem::substituteWithParticlesFromImpact(GravitationalBody& originalBody, GameState& gameState,
+void PhysicsSystem::substituteWithParticlesFromImpact(GravitationalBody& originalBody,
+                                                      std::vector<GravitationalBody>& fragments_out,
                                                       uint32_t targetFragmentCount,
                                                       const DynamoEngine::Vector2D& impactPoint)
 {
     const double R = originalBody.radius;
     const double original_mass = originalBody.mass;
 
-    auto& particles = gameState.getParticlesMutable();
-    size_t start_index = particles.size();
+    size_t start_index = fragments_out.size(); // this body's fragments are the ones added after this point
 
-    substituteWithParticles(originalBody, gameState, targetFragmentCount);
+    substituteWithParticles(originalBody, fragments_out, targetFragmentCount);
 
     // Grow radius with distance from the impact point: near-impact fragments stay small and
     // pulverized, far-side fragments stay large and coherent -- keyed off the actual contact
     // point (not the body's own center), so a graze reads differently from a direct hit.
     double total_weighted_volume = 0.0;
-    for (size_t i = start_index; i < particles.size(); ++i)
+    for (size_t i = start_index; i < fragments_out.size(); ++i)
     {
-        GravitationalBody& p = particles[i];
+        GravitationalBody& p = fragments_out[i];
         double distance = (p.position - impactPoint).magnitude();
         double t = std::clamp(distance / (2.0 * R), 0.0, 1.0);
         double size_multiplier = 1.0 + t * (IMPACT_SKEW_GROWTH_FACTOR - 1.0) * randomDouble(0.5, 0.9);
@@ -513,9 +519,9 @@ void PhysicsSystem::substituteWithParticlesFromImpact(GravitationalBody& origina
 
     // Re-normalize mass so the biased fragments still sum to originalMass, weighted by volume
     // (radius^3) to stay consistent with handleAccretion's mass<->radius law.
-    for (size_t i = start_index; i < particles.size(); ++i)
+    for (size_t i = start_index; i < fragments_out.size(); ++i)
     {
-        GravitationalBody& p = particles[i];
+        GravitationalBody& p = fragments_out[i];
         p.mass = original_mass * (p.radius * p.radius * p.radius) / total_weighted_volume;
         p.invMass = 1.0 / p.mass;
     }
@@ -760,7 +766,7 @@ void PhysicsSystem::createParticleCluster(GameState& gameState, DEPRECATED_Input
     // Pass flags from inputState as possible.
     populateGravBodyPropertiesFromDEPRECATED_InputState(macro_body, gameState, inputState);
 
-    substituteWithParticles(macro_body, gameState, DEFAULT_FRAGMENT_COUNT);
+    substituteWithParticles(macro_body, particles, DEFAULT_FRAGMENT_COUNT); // no loop is running: add them directly
 }
 
 // --------- UTILITY --------- //

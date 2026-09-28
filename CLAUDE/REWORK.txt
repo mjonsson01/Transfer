@@ -1,0 +1,61 @@
+TRANSFER — REWORK LIST
+Format: [LABEL] Function — File — context. Labels: [BUG] = correctness issue (fix first), [REFACTOR] = structure/cleanup, [PERFORMANCE UPDATE] = speed/memory.
+Read-through done 2026-09-24 on branch VisorViews. The old UI (UISystem, old scenes, Entities/UIElements) was deleted 2026-09-26 (B5c) along with its items.
+
+==================== CORE ====================
+
+[BUG] Game::Run — src/Core/Game.cpp — physics_time_accumulator has no upper clamp, so one long frame (a drag, a breakpoint, a big shatter) can start a "spiral of death" of catch-up ticks.
+[PERFORMANCE UPDATE] Game::limitFrameRate — src/Core/Game.cpp — the busy-wait tail pins a CPU core every frame; VSync (the swapchain present mode) or a coarser sleep would do the same job.
+[REFACTOR] Game::updateFPS — src/Core/Game.cpp — the "average" is an EMA fed by one instantaneous frame sample every 250ms instead of frames/elapsed over the window, so it is noisy and biased toward whichever frame it samples.
+[REFACTOR] Game::~Game / all System::CleanUp — src/Core/Game.cpp — SDL_Quit/TTF_Quit run in ~Game's body, BEFORE the member systems are destroyed, and AudioSystem::CleanUp quits the audio subsystem before its members die; any RAII (unique_ptr) SDL handle in a system would then be freed after SDL shuts down (likely the old unique_ptr crash). Fix: an SDLContext guard declared as Game's FIRST member (so it's destroyed LAST), and move each CleanUp into its destructor in dependency order.
+[REFACTOR] DEPRECATED_InputState::resetTransientFlags / resetFlagsForSceneChange — src/Core/DEPRECATED_InputState.hpp — the two reset lists are largely copy-pasted (with a duplicated line); grouping the flags into sub-structs would make resets a single assignment.
+
+==================== PHYSICS ====================
+
+[REFACTOR] cleanupParticles / cleanupMacroBodies — src/Systems/PhysicsSystem.cpp — the comments say remove_if "moves elements marked for deletion to the end"; it actually moves the KEPT elements forward and leaves the tail unspecified (only erase makes it meaningful). cleanupMacroBodies also names its macro-body vector `particles`.
+[BUG] PhysicsSystem::handleMacroMacroCollisions / handleMacroParticleCollisions — src/Systems/PhysicsSystem.cpp — the outer body's isMarkedForDeletion is checked only before the inner loop, so a body that shatters or is absorbed can still collide with later partners in the same tick.
+[BUG] PhysicsSystem::handleDynamicCollision — src/Systems/PhysicsSystem.cpp — for particle–particle "gentle" contact that passes the ratio test, handleAccretion returns early (heavier.isParticle), so nothing happens and the pair just overlaps (no bounce).
+[REFACTOR] PhysicsSystem::handleDynamicCollision — src/Systems/PhysicsSystem.cpp — the `if (!lighter.isShatterable)` inside a branch already guarded by `lighter.isShatterable` is dead code.
+[BUG] PhysicsSystem::handleAccretion — src/Systems/PhysicsSystem.cpp — negative-mass edge case (the mass slider allows negative mass, pickMassPair compares abs): with opposite-sign masses new_mass can be ~0 (velocity → inf), and pow(new_mass/heavier.mass, 1/3) of a negative ratio is NaN; define negative-mass merge rules. (Deferred by Marco.)
+[BUG] PhysicsSystem::handleElasticCollisions — src/Systems/PhysicsSystem.cpp — the dynamic–dynamic impulse is applied without checking the bodies are approaching (relative v·n < 0), so overlapping bodies that are already separating get re-bounced (sticking/jitter); ELASTIC_LOSS_FACTOR also means different things in the static branch (1+e) and the dynamic branch (scaled Δv).
+[REFACTOR] pickMassPair — src/Systems/PhysicsSystem.cpp — uses unqualified `abs()` on doubles; use std::abs so it can't resolve to the int overload.
+[PERFORMANCE UPDATE] UniformParticleGrid::build / queryCandidates — src/Utilities/Physics/UniformParticleGrid.cpp — cellSize comes from the single largest particle, so one big fragment turns the grid into one giant cell (O(n²)); also 10 binary searches per particle (lower_bound + upper_bound ×5) could be one equal_range, or a cell-start table.
+[PERFORMANCE UPDATE] PhysicsSystem::updateGravityForSystem — src/Systems/PhysicsSystem.cpp — particle×macro is O(P·M) with a sqrt per pair; fine now, but it's the next thing to vectorize/SoA or parallelize once particle counts go up.
+[REFACTOR] PhysicsSystem::createParticle / promoteOversizedParticles / calculateTotalEnergy — src/Systems/PhysicsSystem.hpp/.cpp — declared but never defined or never called; prune them or put them back into use.
+[REFACTOR] PhysicsSystem::createParticleCluster — src/Systems/PhysicsSystem.cpp — fragments inherit macroIdentifier -1 because no ID is allocated, so every cluster gets the same shader seed.
+[REFACTOR] GravitationalBody (flag soup) — src/Entities/Physics/GravitationalBody.hpp — about 20 bools (and unused temperature/lifetime/isTransient) bloat every body (~150B) and hurt cache use in the hot loops; use a bitfield/enum for flags and consider hot/cold data splitting.
+[REFACTOR] operator*(T scalar, Vector2& vec) — src/DynamoEngine/Math/Vector2.hpp — the scalar-first friend takes a NON-const reference, so `2.0 * (a - b)` or `2.0 * some_const_vector` won't compile (temporaries/const can't bind to it); take `const Vector2& vec`.
+
+==================== RENDER ====================
+
+[REFACTOR] VertexOutput — src/HLSL/UnifiedGravBody.vert.hlsl / .frag.hlsl — the two copies of the struct disagree on semantics (localPos is TEXCOORD8 in the vertex shader, TEXCOORD0 in the fragment shader; logMass TEXCOORD9 vs TEXCOORD1); it only works because the fields are in the same order. Make them identical (or share one include file) so adding a field can't silently mismatch.
+[REFACTOR] UIGeometryBuilder::addRect — src/DynamoEngine/UI/UIGeometryBuilder.cpp — only text is snapped to whole screen pixels; rect edges (buttons, slider track/knob) at fractional UI scales land between pixels and get soft edges. Snap rect corners with snapToPixel too.
+[PERFORMANCE UPDATE] RenderSystem::rebuildFontAtlas — src/Systems/RenderSystem.cpp — re-bakes all 95 glyphs every frame while a window resize is being dragged (the pixel scale changes each frame); fine for now, but could wait until the size has been stable for a few frames.
+[REFACTOR] FontAtlas::buildAtlas — src/DynamoEngine/Rendering/FontAtlas.cpp — fixed 1024x1024 atlas holds text up to ~100 px tall; beyond that (huge screen + big player UI scale) later glyphs are dropped with an error log. Size the atlas from the glyphs if that ever matters.
+[BUG] RenderSystem::upload* (all SDL_MapGPUTransferBuffer / SDL_UploadToGPUBuffer calls) — src/Systems/RenderSystem.cpp — Risk: per-frame maps use cycle=false, so the CPU can overwrite a transfer/vertex buffer the GPU is still reading from the previous frame; per-frame dynamic data should use cycle=true.
+[PERFORMANCE UPDATE] RenderSystem::uploadTwinklingStarField — src/Systems/RenderSystem.cpp — re-uploads 100k static stars (~2.4MB) every game frame; upload once at init (and when the field is rebuilt).
+[BUG] RenderSystem::uploadUnifiedBodies / renderBodies — src/Systems/RenderSystem.cpp — MAX_UNIFIED_BODIES (12000) is lower than MAX_LIVE_PARTICLES (20000), and going over it hides ALL bodies instead of clamping; renderBodies also recounts instances instead of using unifiedBodyVertices.size().
+[REFACTOR] RenderSystem::uploadUnifiedBodies / appendPreviewBodies — src/Systems/RenderSystem.cpp — the velocity-vector geometry is built in appendPreviewBodies and uploaded from inside uploadUnifiedBodies, a hidden coupling between unrelated passes.
+[BUG] RenderSystem::uploadUIVertices / uploadStarship — src/Systems/RenderSystem.cpp — no MAX_UI_VERTICES check before memcpy, and the starship over-limit branch prints but still memcpys, so both can overflow the transfer buffer.
+[REFACTOR] RenderSystem::renderGameFrame — src/Systems/RenderSystem.cpp — the starship is drawn BEFORE the star field and bodies, so it gets painted over; the draw order is probably unintended.
+[REFACTOR] RenderSystem::create*GPUBufferAndPipeline — src/Systems/RenderSystem.cpp — five near-identical pipeline setups (same blend state and boilerplate); a small PipelineDesc helper would cut ~300 lines.
+[REFACTOR] RenderSystem::getColorForProperty — src/Systems/RenderSystem.cpp — dead code (coloring now happens in the shader); remove it, along with the legacy TwinklingStar SDL_Texture struct in TwinklingStars.hpp.
+[REFACTOR] RenderSystem::CleanUp — src/Systems/RenderSystem.cpp — TTF fonts are never closed (TTF_CloseFont).
+
+==================== UI / SCENES ====================
+
+
+==================== INPUT ====================
+
+[REFACTOR] InputSystem::routeSDL_EventInputInMenu — src/Systems/InputSystem.cpp — ignores SDL_EVENT_MOUSE_MOTION, so menu scenes only learn the cursor position on clicks (no hover, and slider drags in menus won't track).
+
+==================== AUDIO ====================
+
+[REFACTOR] AudioSystem::loadAndPlayTrack — src/Systems/AudioSystem.cpp — every failure branch falls through and keeps going (binding/putting data on a null stream or buffer); return early on failure.
+[PERFORMANCE UPDATE] AudioSystem::playSoundEffect — src/Systems/AudioSystem.cpp — creates and binds a new SDL_AudioStream per SFX (every slider tick); a small pool of reusable streams would avoid the churn.
+[REFACTOR] AudioSystem::ProcessSystemAudioFrame — src/Systems/AudioSystem.cpp — when there's no device, the pending SFX queue is never drained and grows without bound.
+
+==================== PLAYER ====================
+
+[REFACTOR] Starship (members) — src/Player/Starship.hpp — unitPointingVector is unused; use default member initializers (`= 0.0`) for every member so no constructor can forget one.
+[REFACTOR] Starship::applyVelocity — src/Player/Starship.cpp — thrust adds a fixed 10 units/tick with no dt or mass, and the ship isn't part of the gravity system; revisit when the ship becomes a physics citizen.

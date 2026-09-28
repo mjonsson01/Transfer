@@ -10,8 +10,7 @@ LocalShaderCross/
 LocalSpirvCross/
 Transfer/Assets/Shaders/
 
-*.md
 
-CLAUDE/
+
 
 build-tests/
