@@ -358,7 +358,7 @@ void RenderSystem::renderBodies(GameState& game_state, UIState& ui_state, SDL_GP
 }
 
 void RenderSystem::renderStarship(GameState& game_state, SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
-                                  const CameraState& cameraState)
+                                  const CameraState& camera_state)
 {
     SDL_BindGPUGraphicsPipeline(pass, starshipPipeline);
     CameraConstants camera_constants =
@@ -553,7 +553,7 @@ void RenderSystem::renderUIElements(SDL_GPURenderPass* pass, SDL_GPUCommandBuffe
     SDL_DrawGPUPrimitives(pass, (uint32_t)m_ui_vertices.size(), 1, 0, 0);
 }
 void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexData, UIState& ui_state,
-                                       const CameraState& cameraState)
+                                       const CameraState& camera_state)
 {
     DEPRECATED_InputState& input_state = ui_state.getMutableDEPRECATED_InputState();
     velocityVectorVertices.clear();
@@ -565,14 +565,14 @@ void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexDat
         new_preview_grav_body.radius = input_state.selectedRadius;
         if (input_state.isPreviewingWithInitialVelocity)
         {
-            new_preview_grav_body.position = ScreenToWorldCoordinates(input_state.mouseDragStartPosition, cameraState);
+            new_preview_grav_body.position = ScreenToWorldCoordinates(input_state.mouseDragStartPosition, camera_state);
 
-            DynamoEngine::Vector2D arrow_end = ScreenToWorldCoordinates(input_state.mouseCurrPosition, cameraState);
+            DynamoEngine::Vector2D arrow_end = ScreenToWorldCoordinates(input_state.mouseCurrPosition, camera_state);
             buildVelocityVectorGeometry(new_preview_grav_body.position, arrow_end);
         }
         else
         {
-            new_preview_grav_body.position = ScreenToWorldCoordinates(input_state.mouseCurrPosition, cameraState);
+            new_preview_grav_body.position = ScreenToWorldCoordinates(input_state.mouseCurrPosition, camera_state);
         }
         new_preview_grav_body.previousPosition =
             new_preview_grav_body.position; // to prevent alpha interpolation artifacts
@@ -583,16 +583,17 @@ void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexDat
     }
 }
 
-CameraConstants RenderSystem::buildCameraConstants(const CameraState& cameraState, const DynamoEngine::Vector2D& offset)
+CameraConstants RenderSystem::buildCameraConstants(const CameraState& camera_state,
+                                                   const DynamoEngine::Vector2D& offset)
 {
     CameraConstants camera_constants = {};
-    camera_constants.screenWidth = cameraState.window_width;
-    camera_constants.screenHeight = cameraState.window_height;
-    camera_constants.zoom = (float)cameraState.zoom;
+    camera_constants.screenWidth = camera_state.window_width;
+    camera_constants.screenHeight = camera_state.window_height;
+    camera_constants.zoom = (float)camera_state.zoom;
     camera_constants.offsetX = (float)offset.x_val;
     camera_constants.offsetY = (float)offset.y_val;
-    camera_constants.viewMode = 0;
-    camera_constants.rendering_alpha = cameraState.render_alpha;
+    camera_constants.viewMode = static_cast<uint32_t>(camera_state.visor_view);
+    camera_constants.rendering_alpha = camera_state.render_alpha;
     camera_constants._padding1 = 0.0f;
     return camera_constants;
 }
@@ -875,11 +876,11 @@ void RenderSystem::uploadTwinklingStarField(SDL_GPUCommandBuffer* cmdbuf)
 }
 
 void RenderSystem::renderTwinklingStarField(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
-                                            const CameraState& cameraState)
+                                            const CameraState& camera_state)
 {
     SDL_BindGPUGraphicsPipeline(pass, twinklingStarPipeline);
 
-    CameraConstants camera_constants = buildCameraConstants(cameraState, cameraState.twinkling_star_offset);
+    CameraConstants camera_constants = buildCameraConstants(camera_state, camera_state.twinkling_star_offset);
 
     SDL_PushGPUVertexUniformData(cmdbuf, 0, &camera_constants, sizeof(camera_constants));
 
@@ -1096,14 +1097,14 @@ void RenderSystem::uploadVelocityVectorVertices(SDL_GPUCommandBuffer* cmdbuf)
 }
 
 void RenderSystem::renderVelocityVectors(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
-                                         const CameraState& cameraState)
+                                         const CameraState& camera_state)
 {
     if (velocityVectorVertices.empty())
         return;
 
     SDL_BindGPUGraphicsPipeline(pass, velocityVectorPipeline);
 
-    CameraConstants camera_constants = buildCameraConstants(cameraState, cameraState.offset);
+    CameraConstants camera_constants = buildCameraConstants(camera_state, camera_state.offset);
     SDL_PushGPUVertexUniformData(cmdbuf, 0, &camera_constants, sizeof(camera_constants));
 
     SDL_GPUBufferBinding vbo = {.buffer = velocityVectorVertexBuffer, .offset = 0};

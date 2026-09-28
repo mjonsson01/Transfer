@@ -103,7 +103,7 @@ class RenderSystem
     void renderNonGameFrame(const DynamoEngine::UIRoot& ui, SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf);
 
     void appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexData, UIState& ui_state,
-                             const CameraState& cameraState);
+                             const CameraState& camera_state);
 
     void renderBodies(GameState& game_state, UIState& ui_state, SDL_GPURenderPass* pass,
                       SDL_GPUCommandBuffer* cmdbuf); // Renders all the gravitational
@@ -129,14 +129,14 @@ class RenderSystem
     void uploadTwinklingStarField(SDL_GPUCommandBuffer* cmdbuf);
     void uploadStarship(GameState& game_state, UIState& ui_state, SDL_GPUCommandBuffer* cmdbuf);
     void renderTwinklingStarField(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
-                                  const CameraState& cameraState);
+                                  const CameraState& camera_state);
     void renderStarship(GameState& game_state, SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
-                        const CameraState& cameraState);
+                        const CameraState& camera_state);
 
-    CameraConstants buildCameraConstants(const CameraState& cameraState, const DynamoEngine::Vector2D& offset);
+    CameraConstants buildCameraConstants(const CameraState& camera_state, const DynamoEngine::Vector2D& offset);
     // Utility Rendering Helper Functions
     void buildVelocityVectorGeometry(DynamoEngine::Vector2D lineStart, DynamoEngine::Vector2D lineEnd);
     void uploadVelocityVectorVertices(SDL_GPUCommandBuffer* cmdbuf);
-    void renderVelocityVectors(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf, const CameraState& cameraState);
+    void renderVelocityVectors(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf, const CameraState& camera_state);
     SDL_Color getColorForProperty(const GravitationalBody& body);
 };

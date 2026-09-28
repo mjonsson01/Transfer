@@ -8,6 +8,7 @@
 #include "DynamoEngine/UI/UIGeometryBuilder.hpp"
 #include "DynamoEngine/UI/UIRoot.hpp"
 #include "DynamoEngine/UI/Widgets/UIButton.hpp"
+#include "DynamoEngine/UI/Widgets/UIDropdown.hpp"
 #include "DynamoEngine/UI/Widgets/UILabel.hpp"
 #include "DynamoEngine/UI/Widgets/UIRow.hpp"
 #include "DynamoEngine/UI/Widgets/UISlider.hpp"
@@ -160,10 +161,7 @@ class UISliderTest : public ::testing::Test
     std::vector<UISound> sounds_heard;
 };
 
-TEST_F(UISliderTest, StartsAtItsStartingValue)
-{
-    EXPECT_DOUBLE_EQ(slider->value(), 1.0);
-}
+TEST_F(UISliderTest, StartsAtItsStartingValue) { EXPECT_DOUBLE_EQ(slider->value(), 1.0); }
 
 TEST_F(UISliderTest, PressingJumpsTheKnobAndReportsTheValue)
 {
@@ -281,4 +279,108 @@ TEST(UIColumn, StacksChildrenTopToBottom)
     EXPECT_FLOAT_EQ(added_column.rect().h, 45.0f);  // 20 + 5 + 20
     EXPECT_FLOAT_EQ(first.rect().y, 0.0f);
     EXPECT_FLOAT_EQ(second.rect().y, 25.0f);
+}
+
+// --- Dropdown --- //
+
+// A 200 x 40 dropdown at the top-left: the button covers y 0-40, and option row i covers y 40(i+1) to 40(i+2)
+class UIDropdownTest : public ::testing::Test
+{
+  protected:
+    void SetUp() override
+    {
+        root.setSoundHandler([this](UISound sound) { sounds_heard.push_back(sound); });
+        auto new_dropdown = std::make_unique<UIDropdown>(
+            "Visor", std::vector<std::string>{"Realistic", "Mass", "Charge", "Temperature"});
+        new_dropdown->setPlacement({.align = UIAlign::TopLeft, .size = {200.0f, 40.0f}});
+        new_dropdown->setOnOptionChosen([this](int option_index) { options_chosen.push_back(option_index); });
+        dropdown = static_cast<UIDropdown*>(&root.addChild(std::move(new_dropdown)));
+        root.updateElements(0.016f); // lay it out, so m_rect is real
+    }
+
+    // The middle of option row `option_index`
+    static Vector2F onOption(int option_index)
+    {
+        return {100.0f, (40.0f * static_cast<float>(option_index + 1)) + 20.0f};
+    }
+
+    static constexpr Vector2F ON_BUTTON = {100.0f, 20.0f};
+    static constexpr Vector2F FAR_AWAY = {900.0f, 600.0f};
+
+    UIRoot root;
+    UIDropdown* dropdown = nullptr;
+    std::vector<int> options_chosen;   // every index the chosen-action reported
+    std::vector<UISound> sounds_heard; // every UI sound that reached the root
+};
+
+TEST_F(UIDropdownTest, StartsClosedOnTheFirstOption)
+{
+    EXPECT_FALSE(dropdown->isOpen());
+    EXPECT_EQ(dropdown->selectedOption(), 0);
+    EXPECT_FALSE(dropdown->containsPoint(FAR_AWAY)); // closed: only the button is clickable
+}
+
+TEST_F(UIDropdownTest, PressingTheButtonOpensTheListWithAClick)
+{
+    EXPECT_TRUE(dropdown->onMousePressed(ON_BUTTON));
+    EXPECT_TRUE(dropdown->isOpen());
+    EXPECT_EQ(sounds_heard, (std::vector<UISound>{UISound::Click}));
+}
+
+TEST_F(UIDropdownTest, ChoosingADifferentOptionReportsItAndCloses)
+{
+    dropdown->onMousePressed(ON_BUTTON);
+    dropdown->onMousePressed(onOption(1));
+    EXPECT_EQ(dropdown->selectedOption(), 1);
+    EXPECT_EQ(options_chosen, (std::vector<int>{1}));
+    EXPECT_FALSE(dropdown->isOpen());
+}
+
+TEST_F(UIDropdownTest, RechoosingTheCurrentOptionClosesWithoutReporting)
+{
+    dropdown->onMousePressed(ON_BUTTON);
+    EXPECT_TRUE(dropdown->isOpen());
+    dropdown->onMousePressed(onOption(0));
+    EXPECT_EQ(dropdown->selectedOption(), 0);
+    EXPECT_EQ(options_chosen, (std::vector<int>{}));
+    EXPECT_EQ(sounds_heard, (std::vector<UISound>{UISound::Click, UISound::Click})); // open + re-choose both click
+    EXPECT_FALSE(dropdown->isOpen());
+}
+
+TEST_F(UIDropdownTest, PressingOutsideClosesAndStillTakesThePress)
+{
+    dropdown->onMousePressed(ON_BUTTON);
+    EXPECT_TRUE(dropdown->containsPoint(FAR_AWAY));
+    EXPECT_FALSE(dropdown->UIElement::containsPoint(FAR_AWAY));
+    dropdown->onMousePressed(FAR_AWAY);
+    EXPECT_EQ(sounds_heard, (std::vector<UISound>{UISound::Click})); // just a click from the open
+    EXPECT_FALSE(dropdown->isOpen());
+}
+
+TEST_F(UIDropdownTest, SelectionSourceDecidesWhatIsShown)
+{
+    int current_view = 3;
+    dropdown->setSelectionSource([&current_view]() { return current_view; });
+    root.updateElements(0.016f);
+    EXPECT_EQ(dropdown->selectedOption(), 3);
+
+    current_view = 1;
+    root.updateElements(0.016f);
+    EXPECT_EQ(dropdown->selectedOption(), 1);
+}
+
+TEST_F(UIDropdownTest, DrawsAboveEverythingElse)
+{
+    EXPECT_EQ(dropdown->layer(), UILayer::Overlay);
+
+    // A button added AFTER the dropdown, sitting exactly where the open list will be
+    auto later_button = std::make_unique<UIButton>("Behind");
+    later_button->setPlacement({.align = UIAlign::TopLeft, .size = {200.0f, 200.0f}});
+    root.addChild(std::move(later_button));
+    root.updateElements(0.016f);
+
+    dropdown->onMousePressed(ON_BUTTON); // open the list
+
+    EXPECT_EQ(root.elementsInDrawOrder().back(), dropdown);  // drawn last = drawn on top
+    EXPECT_EQ(root.topmostElementAt(onOption(0)), dropdown); // and it gets the press, not the button
 }

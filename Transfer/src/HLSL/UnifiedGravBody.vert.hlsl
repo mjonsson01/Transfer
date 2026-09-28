@@ -22,6 +22,7 @@ struct VertexOutput
 
     uint flags : TEXCOORD12;
     uint seed : TEXCOORD13;
+    uint viewMode : TEXCOORD14;
 };
 
 static float2 offsets[6] =
@@ -73,6 +74,7 @@ VertexOutput main(
     output.seed = seed;
 
     output.color = float4(0.0, 0.0, 0.0, 1.0);
+    output.viewMode = viewMode; // From the camera constants cbuffer
 
     return output;
 }

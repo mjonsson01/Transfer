@@ -10,7 +10,15 @@ struct VertexOutput
 
     uint flags : TEXCOORD12;
     uint seed : TEXCOORD13;
+
+    uint viewMode : TEXCOORD14;
 };
+
+// Must match VisorView in the C++ code
+static const uint VIEW_REALISTIC = 0;
+static const uint VIEW_MASS = 1;
+static const uint VIEW_CHARGE = 2;
+static const uint VIEW_TEMPERATURE = 3;
 
 float4 main(VertexOutput input) : SV_Target
 {
@@ -21,16 +29,16 @@ float4 main(VertexOutput input) : SV_Target
         discard;
     }
 
-    const uint viewMode = 1; // TBI: Mass View
+    uint viewMode = input.viewMode;
 
     float4 color;
 
-    if (viewMode == 0)
+    if (viewMode == VIEW_REALISTIC)
     {
         // "Real" view
-        color = input.color;
+        color = float4(0, 1.0, 0.0, 1.0);
     }
-    else if (viewMode == 1)
+    else if (viewMode == VIEW_MASS)
     {
         //--------------------------------
         // Mass View
@@ -64,9 +72,17 @@ float4 main(VertexOutput input) : SV_Target
 
         color = float4(c, 1.0);
     }
+    else if (viewMode == VIEW_CHARGE)
+    {
+        color = float4(1, 0, 0, 1);
+    }
+    else if (viewMode == VIEW_TEMPERATURE)
+    {
+        color = float4(0, 0, 1, 1);
+    }
     else
     {
-        color = float4(1, 0, 1, 1); // debug magenta
+        color = float4(1, 0, 1, 1); // debug magenta: an unknown view mode is a bug, so make it obvious
     }
 
     //------------------------------------
