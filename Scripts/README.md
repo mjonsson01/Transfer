@@ -7,7 +7,7 @@ Windows scripts are in `Windows/` and macOS scripts are in `Apple/`. Both sets h
 |-----------------------------------------|--------------------------------------|----------------------------------------------------------------------------------------|
 | `Scripts\Windows\SetupDependencies.bat` | `Scripts/Apple/SetupDependencies.sh` | **Run once after cloning.** Installs SDL3, SDL3_ttf and shadercross into `ThirdParty/` |
 | `Scripts\Windows\MakeTransfer.bat`      | `Scripts/Apple/MakeTransfer.sh`      | Lints the engine, compiles the shaders, builds the game into `build/`                  |
-| `Scripts\Windows\RunTests.bat` `        | `Scripts/Apple/RunTests.sh`          | Builds and runs the unit tests in `build-tests/`                                       |
+| `Scripts\Windows\RunTests.bat`          | `Scripts/Apple/RunTests.sh`          | Builds and runs the unit tests in `build-tests/`                                       |
 | `Scripts\Windows\TidyEngine.bat`        | `Scripts/Apple/TidyEngine.sh`        | Runs clang-tidy over the engine (MakeTransfer also runs it)                            |
 
 ## First-time setup
