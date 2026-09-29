@@ -6,8 +6,6 @@ venv/
 .DS_Store
 
 # from windows workspace
-LocalShaderCross/
-LocalSpirvCross/
 ThirdParty/
 Transfer/Assets/Shaders/
 
