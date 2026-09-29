@@ -35,6 +35,16 @@ for tool in git cmake clang python3; do
     fi
 done
 
+# How many compile jobs to run at once. A bare "--parallel" means UNLIMITED with the Makefiles generator (plain
+# "make -j"): DirectXShaderCompiler then starts a clang for nearly every file at once and runs the Mac out of memory.
+# One job per CPU core, but at most one per 2 GB of RAM (a single DXC/LLVM file can take over 1 GB to compile).
+CPU_COUNT="$(sysctl -n hw.ncpu)"
+MEMORY_GB=$(( $(sysctl -n hw.memsize) / 1073741824 ))
+BUILD_JOBS=$(( MEMORY_GB / 2 ))
+if (( BUILD_JOBS > CPU_COUNT )); then BUILD_JOBS=$CPU_COUNT; fi
+if (( BUILD_JOBS < 1 )); then BUILD_JOBS=1; fi
+echo "Building with $BUILD_JOBS parallel jobs ($CPU_COUNT CPU cores, $MEMORY_GB GB RAM)."
+
 mkdir -p "$THIRD_PARTY_DIR"
 SOURCE_ROOT="$THIRD_PARTY_DIR/_src" # temporary: deleted after each install
 
@@ -74,7 +84,7 @@ install_from_git()
 
     echo "Building $name..."
     cmake -S "$source_dir" -B "$source_dir/build" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$install_dir" "$@"
-    cmake --build "$source_dir/build" --parallel
+    cmake --build "$source_dir/build" --parallel "$BUILD_JOBS"
     rm -rf "$install_dir"
     cmake --install "$source_dir/build"
 

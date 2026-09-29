@@ -89,7 +89,15 @@ Updated 2026-09-28 on Windows (at `4737715` + uncommitted SDL/ThirdParty work, s
     `-isysroot $(xcrun --show-sdk-path)` and `-resource-dir $(clang -print-resource-dir)`. The .bat uses VS Code's bundled clang-tidy.
     You can pass a specific binary: `CLANG_TIDY=...`.
   - Verified 2026-09-29 on Windows, run from `C:\`: Tidy clean, 120/120, MakeTransfer compiles all 10 shaders + builds.
-    NOT verified: the Windows shadercross source build (unless a later note says so), and **nothing on the Mac** (only `bash -n`).
+    **Windows shadercross source build VERIFIED 2026-09-29** (Marco ran SetupDependencies.bat; installs ThirdParty\ShaderCross at
+    1ff05bec...). It needed two lessons: (1) MAX_PATH: DXC's MSBuild tlog paths passed 260 chars under the repo path even from
+    `_src\sc`, so the .bat now `subst`s a free letter T:-Z: onto `ThirdParty\_src` for the build (unmapped on every exit path, sources
+    deleted through the short drive). (2) A leftover tree from a failed run broke the next one: `rmdir /s /q` silently left files
+    (~27 idle MSBuild node-reuse processes held them), then `git submodule update` refused non-empty folders and the script still
+    reached configure (errors about CheckAtomic/GetHostTriple). Fix for the user: `taskkill /im MSBuild.exe /f`, delete `_src`.
+    Script hardening NOT yet done: fail if rmdir leaves anything; check external\DirectXShaderCompiler\CMakeLists.txt after submodules.
+    Mac: first run (2026-09-29) froze the Mac: `cmake --build --parallel` with no number = UNLIMITED `make -j` with the Makefiles
+    generator -> ~50 clang processes, memory 100% (MSBuild's /m is CPU-bounded, so Windows never showed it). Fix = explicit job count.
 - Tests: top-level `Tests/` mirrors `src/` (Tests/DynamoEngine/{Input,Rendering,UI,UI/Widgets}); include roots are `Transfer/src` and `Tests`.
   `Tests/TestingUtilities/VectorsNear.hpp` is an AssertionResult helper. `EXPECT_DEBUG_DEATH` is used for assert paths. The CMake define
   `TRANSFER_TEST_FONT_PATH` points FontAtlas tests at `Transfer/Assets/Fonts/SpaceMono-Regular.ttf`. **120/120 pass at handoff.**
@@ -227,8 +235,10 @@ Lambdas capture Game members by reference, which is safe because they outlive th
 
 **Next candidates** (let Marco pick):
 - Build/scripts (2026-09-28/29): scripts moved to Scripts/{Windows,Apple}, SDL + shadercross via SetupDependencies into ThirdParty
-  (uncommitted at time of writing). Marco confirmed the Windows SDL build works; still to do: run SetupDependencies.bat for the
-  shadercross build, run the Mac scripts on the Mac, then delete `C:\SDL3`, `..\..\SDL3_TTF`, `LocalShaderCross/`, `LocalSpirvCross/`.
+  Windows fully working (SDL + shadercross builds verified by Marco 2026-09-29). Still to do: Mac scripts (first run froze, see the
+  scripts section), then delete `C:\SDL3`, `..\..\SDL3_TTF`, `LocalShaderCross/`, `LocalSpirvCross/`.
+  Git gotcha: restaging on Windows dropped the Mac scripts' executable bit (100755 -> 100644); fix with
+  `git update-index --chmod=+x Scripts/Apple/*.sh` before committing.
   Open quiz: why `NO_DEFAULT_PATH` (answer: without it, default search paths such as PATH-derived prefixes could find the old
   3.5.0 `C:\SDL3` before ThirdParty).
 - Visor styling: row gaps, a selected-row look, a real "Realistic" coloring, then the actual Charge/Temperature views.
