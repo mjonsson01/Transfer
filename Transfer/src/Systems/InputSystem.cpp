@@ -1,6 +1,72 @@
 // File: Transfer/src/Systems/InputSystem.cpp
 
+// Custom Includes
 #include "Systems/InputSystem.hpp"
+
+// SDL Includes
+#include <SDL3/SDL_init.h>
+#include <SDL3/SDL_scancode.h>
+
+// Blank namespace helper functions
+namespace
+{
+void requestShutdown(GameState& game_state)
+{
+    game_state.SetPlaying(false);
+    game_state.setIsShuttingDownAudioSystem(true);
+}
+void zoomAroundCursor(CameraState& camera_state, float scroll, DynamoEngine::Vector2D mouse_position)
+{
+    if (!firstWithinEpsilonOfSecond(scroll, 0.0))
+    {
+        DynamoEngine::Vector2D world_under_cursor = ScreenToWorldCoordinates(mouse_position, camera_state);
+        DynamoEngine::Vector2D star_world_under_cursor =
+            mouse_position / camera_state.zoom - camera_state.twinkling_star_offset;
+
+        camera_state.zoom *= std::pow(1.1, scroll);
+        camera_state.zoom = std::clamp(camera_state.zoom, MIN_ZOOM, MAX_ZOOM);
+
+        camera_state.offset = mouse_position / camera_state.zoom - world_under_cursor;
+        camera_state.twinkling_star_offset = mouse_position / camera_state.zoom - star_world_under_cursor;
+    }
+}
+void panCamera(CameraState& camera_state, DynamoEngine::Vector2D screen_delta)
+{
+    camera_state.offset += screen_delta / camera_state.zoom;
+    camera_state.twinkling_star_offset += (screen_delta / camera_state.zoom) * STAR_PARALLAX_FACTOR;
+}
+void clampCameraToStarField(CameraState& camera_state)
+{
+    // Prevent panning (and the star field's own independent pan) past the edge of the generated star field.
+    double star_field_half_width = camera_state.max_display_width / (2.0 * MIN_ZOOM);
+    double star_field_half_height = camera_state.max_display_height / (2.0 * MIN_ZOOM);
+    DynamoEngine::Vector2D star_field_center = {SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0};
+
+    double view_half_width = (camera_state.window_width / 2.0) / camera_state.zoom;
+    double view_half_height = (camera_state.window_height / 2.0) / camera_state.zoom;
+
+    double slack_x = std::max(0.0, star_field_half_width - view_half_width);
+    double slack_y = std::max(0.0, star_field_half_height - view_half_height);
+
+    auto clamp_offset_to_star_field = [&](DynamoEngine::Vector2D& offset_to_clamp)
+    {
+        DynamoEngine::Vector2D view_center_world = {view_half_width - offset_to_clamp.x_val,
+                                                    view_half_height - offset_to_clamp.y_val};
+
+        view_center_world.x_val =
+            std::clamp(view_center_world.x_val, star_field_center.x_val - slack_x, star_field_center.x_val + slack_x);
+        view_center_world.y_val =
+            std::clamp(view_center_world.y_val, star_field_center.y_val - slack_y, star_field_center.y_val + slack_y);
+
+        offset_to_clamp.x_val = view_half_width - view_center_world.x_val;
+        offset_to_clamp.y_val = view_half_height - view_center_world.y_val;
+    };
+
+    clamp_offset_to_star_field(camera_state.offset);
+    clamp_offset_to_star_field(camera_state.twinkling_star_offset);
+}
+
+} // namespace
 
 InputSystem::InputSystem()
 {
@@ -10,414 +76,192 @@ InputSystem::InputSystem()
 
 InputSystem::~InputSystem() {}
 
-// --------- SYSTEM-LEVEL METHOD --------- //
-
-void InputSystem::ProcessSystemInputFrame(GameState& gameState, UIState& uiState)
+// --- SYSTEM-LEVEL METHOD --- //
+void InputSystem::processSystemInputFrame(GameState& game_state, UIState& ui_state, DynamoEngine::SceneManager& scenes,
+                                          float frame_seconds)
 {
+    m_input.beginInputFrame();
+    m_frame_events.clear(); // Clear the last frame's events
+    m_intake.pollEvents(m_frame_events);
 
-    transferInputs.resetJustPressed();
-    uiState.getMutableInputState().resetTransientFlags(); // clean the input state before polling for new events.
-    SDL_Event event;
-    // int eventCount = 0;
-    while (SDL_PollEvent(&event))
+    for (const DynamoEngine::InputEvent& event : m_frame_events)
     {
-        // eventCount++;
-        if (event.type == SDL_EVENT_QUIT)
-        {
-            gameState.SetPlaying(false);
-            gameState.setIsShuttingDownAudioSystem(true);
-        }
-        else if (event.type == SDL_EVENT_WINDOW_RESIZED)
-        {
-            CameraState& camera_state_local = gameState.getCameraStateMutable();
-            camera_state_local.windowWidth = (float)event.window.data1;
-            camera_state_local.windowHeight = (float)event.window.data2;
-        }
-        else
-        {
-            // Will ensure the event is not yet consumed by the UI.
-            uiState.getMutableInputState().UIInputConsumed = false;
-            // First check if in start menu. If so, route input to start menu behaviors
-            SceneIdentifier current_scene = uiState.getCurrentSceneID();
+        trackDragAnchor(event);
+        m_input.applyInputEvent(event);
 
-            if (current_scene == SceneIdentifier::GAME_SCENE || current_scene == SceneIdentifier::TEST_VISUAL_SCENE)
-            {
-                routeSDL_EventInputInGame(&event); // writes to internal member transferInputs;
-            }
-            else
-            {
-                routeSDL_EventInputInMenu(&event);
-            }
+        if (event.type == DynamoEngine::InputEventType::WindowResize)
+        {
+            CameraState& camera_state = game_state.getCameraStateMutable();
+            camera_state.window_width = static_cast<float>(event.window_width);
+            camera_state.window_height = static_cast<float>(event.window_height);
         }
     }
-
-    SceneIdentifier current_scene = uiState.getCurrentSceneID();
-    if (current_scene == SceneIdentifier::GAME_SCENE || current_scene == SceneIdentifier::TEST_VISUAL_SCENE)
+    if (m_input.quitRequested())
     {
-        CameraState& camera_state = gameState.getCameraStateMutable();
+        requestShutdown(game_state);
+        return;
+    }
+    // The current scene's UI gets the mouse first; the game only acts on what the UI didn't take
+    DynamoEngine::Scene& scene = scenes.currentScene();
+    const DynamoEngine::UIInputResult ui_result = updateSceneUI(scene.ui(), game_state.getCameraState(), frame_seconds);
 
-        if (!firstWithinEpsilonOfSecond(transferInputs.pendingScrollData, 0.0f))
-        {
-            Vector2D worldUnderCursor = ScreenToWorldCoordinates(transferInputs.mouseCurrPosition, camera_state);
-            Vector2D starWorldUnderCursor =
-                transferInputs.mouseCurrPosition / camera_state.zoom - camera_state.twinklingStarOffset;
+    // Pass Engine State off into Transfer's meaning for current scene
+    DEPRECATED_InputState& legacy_state = ui_state.getMutableDEPRECATED_InputState();
+    legacy_state.resetTransientFlags();
+    legacy_state.UIInputConsumed = ui_result.pointer_captured;
 
-            camera_state.zoom *= std::pow(1.1, transferInputs.pendingScrollData);
-            camera_state.zoom = std::clamp(camera_state.zoom, MIN_ZOOM, MAX_ZOOM);
-
-            camera_state.offset = transferInputs.mouseCurrPosition / camera_state.zoom - worldUnderCursor;
-            camera_state.twinklingStarOffset =
-                transferInputs.mouseCurrPosition / camera_state.zoom - starWorldUnderCursor;
-            transferInputs.pendingScrollData = 0.0f;
-        }
-
-        if (transferInputs.middleMouseJustPressed)
-        {
-            transferInputs.previousMiddleDragPosition = transferInputs.mouseCurrPosition;
-        }
-        else if (transferInputs.middleMousePressed)
-        {
-            Vector2D dragDelta = transferInputs.mouseCurrPosition - transferInputs.previousMiddleDragPosition;
-            camera_state.offset += dragDelta / camera_state.zoom;
-            camera_state.twinklingStarOffset += (dragDelta / camera_state.zoom) * STAR_PARALLAX_FACTOR;
-            transferInputs.previousMiddleDragPosition = transferInputs.mouseCurrPosition;
-        }
-        // Prevent panning (and the star field's own independent pan) past the edge of
-        // the generated star field.
-        double starFieldHalfWidth = camera_state.maxDisplayWidth / (2.0 * MIN_ZOOM);
-        double starFieldHalfHeight = camera_state.maxDisplayHeight / (2.0 * MIN_ZOOM);
-        Vector2D starFieldCenter = {SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0};
-
-        double viewHalfWidth = (camera_state.windowWidth / 2.0) / camera_state.zoom;
-        double viewHalfHeight = (camera_state.windowHeight / 2.0) / camera_state.zoom;
-
-        double slackX = std::max(0.0, starFieldHalfWidth - viewHalfWidth);
-        double slackY = std::max(0.0, starFieldHalfHeight - viewHalfHeight);
-
-        auto clampOffsetToStarField = [&](Vector2D& offsetToClamp)
-        {
-            Vector2D viewCenterWorld = {viewHalfWidth - offsetToClamp.xVal, viewHalfHeight - offsetToClamp.yVal};
-
-            viewCenterWorld.xVal =
-                std::clamp(viewCenterWorld.xVal, starFieldCenter.xVal - slackX, starFieldCenter.xVal + slackX);
-            viewCenterWorld.yVal =
-                std::clamp(viewCenterWorld.yVal, starFieldCenter.yVal - slackY, starFieldCenter.yVal + slackY);
-
-            offsetToClamp.xVal = viewHalfWidth - viewCenterWorld.xVal;
-            offsetToClamp.yVal = viewHalfHeight - viewCenterWorld.yVal;
-        };
-
-        clampOffsetToStarField(camera_state.offset);
-        clampOffsetToStarField(camera_state.twinklingStarOffset);
-        translateAndPassTransferInputsOff(uiState);
+    const bool runs_simulation = scene.settings().runs_simulation;
+    if (runs_simulation)
+    {
+        updateCamera(game_state);
+        translateGameInputs(game_state, ui_state, scenes);
     }
     else
     {
-        translateAndPassMenuInputsOff(uiState);
+        translateMenuInputs(ui_state, scenes);
     }
-    return;
+
+    // The ghost body follows the cursor while the left button is held down on the world (not on the UI)
+    legacy_state.isPreviewingMacro =
+        runs_simulation && m_input.isMouseButtonDown(DynamoEngine::MouseButton::Left) && !ui_result.pointer_captured;
+    legacy_state.isPreviewingWithInitialVelocity = legacy_state.isPreviewingMacro && m_input.isShiftDown();
 }
 
-// Only need to worry about clicking
-void InputSystem::routeSDL_EventInputInMenu(SDL_Event* e)
+DynamoEngine::UIInputResult InputSystem::updateSceneUI(DynamoEngine::UIRoot& ui, const CameraState& camera_state,
+                                                       float frame_seconds)
 {
-    switch (e->type)
+    ui.setWindowSize({camera_state.window_width, camera_state.window_height});
+    ui.updateElements(frame_seconds); // lays everything out for this window size, then e.g. refreshes the FPS text
+    return ui.processInput(m_input);
+}
+
+void InputSystem::trackDragAnchor(const DynamoEngine::InputEvent& event)
+{
+    using DynamoEngine::InputEventType;
+    using DynamoEngine::MouseButton;
+    bool is_first_button_of_drag = event.type == InputEventType::MouseButtonDown && !m_input.isAnyMouseButtonDown();
+    bool is_shift_press = event.type == InputEventType::KeyDown && !event.is_repeat &&
+                          (event.key == SDL_SCANCODE_LSHIFT || event.key == SDL_SCANCODE_RSHIFT);
+    bool is_creation_drag_active =
+        m_input.isMouseButtonDown(MouseButton::Left) || m_input.isMouseButtonDown(MouseButton::Right);
+
+    if (is_first_button_of_drag)
     {
-    case SDL_EVENT_MOUSE_BUTTON_DOWN:
-        transferInputs.mouseCurrPosition = {e->button.x, e->button.y};
-
-        switch (e->button.button)
-        {
-        case SDL_BUTTON_LEFT:
-            transferInputs.leftMouseJustPressed = true;
-            transferInputs.leftMousePressed = true;
-            break;
-        default:
-            break;
-        }
-        break;
-    case SDL_EVENT_MOUSE_BUTTON_UP:
-        transferInputs.mouseCurrPosition = {e->button.x, e->button.y};
-
-        switch (e->button.button)
-        {
-        case SDL_BUTTON_LEFT:
-            transferInputs.leftMousePressed = false;
-            transferInputs.leftMouseJustReleased = true;
-            break;
-        default:
-            break;
-        }
-        break;
-    case SDL_EVENT_KEY_DOWN:
-        switch (e->key.scancode)
-        {
-        case SDL_SCANCODE_ESCAPE:
-            if (e->key.repeat == 0)
-            {
-                transferInputs.escJustPressed = true;
-            }
-            transferInputs.escPressed = true;
-            break;
-        default:
-            break;
-        }
-        break;
-    case SDL_EVENT_KEY_UP:
-        switch (e->key.scancode)
-        {
-        case SDL_SCANCODE_ESCAPE:
-            transferInputs.escPressed = false;
-            break;
-        default:
-            break;
-        }
-        break;
-    default:
-        break;
+        m_mouse_drag_anchor = event.mouse_position;
+    }
+    else if (is_shift_press && is_creation_drag_active)
+    {
+        m_mouse_drag_anchor = m_input.mousePosition(); // pressing shift mid-drag re-anchors the velocity arrow
     }
 }
-void InputSystem::routeSDL_EventInputInGame(SDL_Event* e)
+// --- CAMERA UPDATE --- //
+void InputSystem::updateCamera(GameState& game_state)
 {
-    switch (e->type)
+    using DynamoEngine::MouseButton;
+    CameraState& camera_state = game_state.getCameraStateMutable();
+    const DynamoEngine::Vector2D mouse_position = m_input.mousePosition(); // Camera math uses doubles
+    float scroll = m_input.mouseScrollDeltaThisFrame();
+
+    zoomAroundCursor(camera_state, scroll, mouse_position);
+
+    // Middle-mouse pan: the engine already sums this frame's motion, so no "previous position" bookkeeping
+    if (m_input.isMouseButtonDown(MouseButton::Middle))
     {
-    case SDL_EVENT_MOUSE_BUTTON_DOWN:
-        transferInputs.mouseCurrPosition = {e->button.x, e->button.y};
-
-        // if no mouse buttons are currently being dragged, set the start of the drag location. otherwise just
-        // continue tracking buttons (the start position will remain fixed)
-        if (!transferInputs.leftMousePressed && !transferInputs.rightMousePressed && !transferInputs.middleMousePressed)
-        {
-            // This is a dragging event
-            transferInputs.mouseDragStartPosition = transferInputs.mouseCurrPosition;
-            transferInputs.isDragging = true;
-        }
-        switch (e->button.button)
-        {
-        case SDL_BUTTON_LEFT:
-            transferInputs.leftMousePressed = true;
-            transferInputs.leftMouseJustPressed = true;
-            break;
-        case SDL_BUTTON_RIGHT:
-            transferInputs.rightMousePressed = true;
-            transferInputs.rightMouseJustPressed = true;
-            break;
-        case SDL_BUTTON_MIDDLE:
-            transferInputs.middleMousePressed = true;
-            transferInputs.middleMouseJustPressed = true;
-            break;
-        }
-        break;
-    case SDL_EVENT_MOUSE_BUTTON_UP:
-        transferInputs.mouseCurrPosition = {e->button.x, e->button.y};
-        transferInputs.isDragging = false;
-        switch (e->button.button)
-        {
-        case SDL_BUTTON_LEFT:
-            transferInputs.leftMousePressed = false;
-            transferInputs.leftMouseJustReleased = true;
-            break;
-        case SDL_BUTTON_RIGHT:
-            transferInputs.rightMousePressed = false;
-            transferInputs.rightMouseJustReleased = true;
-            break;
-        case SDL_BUTTON_MIDDLE:
-            transferInputs.middleMousePressed = false;
-            break;
-        }
-        break;
-
-    case SDL_EVENT_MOUSE_MOTION:
-        transferInputs.mouseCurrPosition = {e->motion.x, e->motion.y};
-        break;
-
-    case SDL_EVENT_KEY_DOWN:
-        switch (e->key.scancode)
-        {
-        case SDL_SCANCODE_W:
-            transferInputs.wPressed = true;
-            break;
-        case SDL_SCANCODE_A:
-            transferInputs.aPressed = true;
-            break;
-        case SDL_SCANCODE_S:
-            transferInputs.sPressed = true;
-            break;
-        case SDL_SCANCODE_D:
-            transferInputs.dPressed = true;
-            break;
-        //  Left Alt Preferred
-        case SDL_SCANCODE_LALT:
-            transferInputs.altPressed = true;
-            break;
-        // Left Shift Preferred
-        case SDL_SCANCODE_LSHIFT:
-            // update drag start position if repressing shift
-            if (e->key.repeat == 1)
-                break;
-            if (transferInputs.leftMousePressed || transferInputs.rightMousePressed)
-            {
-                if (transferInputs.isDragging)
-                {
-                    transferInputs.mouseDragStartPosition = transferInputs.mouseCurrPosition;
-                }
-            }
-            transferInputs.shiftPressed = true;
-            break;
-        case SDL_SCANCODE_SPACE:
-            transferInputs.spacePressed = true;
-            break;
-        case SDL_SCANCODE_ESCAPE:
-            if (e->key.repeat == 0)
-            {
-                transferInputs.escJustPressed = true;
-            }
-            transferInputs.escPressed = true;
-            // pause menu flag set?
-            break;
-        case SDL_SCANCODE_BACKSPACE:
-        case SDL_SCANCODE_DELETE:
-            transferInputs.clearParticlesPressed = true;
-            break;
-        default:
-            break;
-        }
-        break;
-    case SDL_EVENT_KEY_UP:
-        switch (e->key.scancode)
-        {
-        case SDL_SCANCODE_W:
-            transferInputs.wPressed = false;
-            break;
-        case SDL_SCANCODE_A:
-            transferInputs.aPressed = false;
-            break;
-        case SDL_SCANCODE_S:
-            transferInputs.sPressed = false;
-            break;
-        case SDL_SCANCODE_D:
-            transferInputs.dPressed = false;
-            break;
-        // Left Alt Preferred
-        case SDL_SCANCODE_LALT:
-            transferInputs.altPressed = false;
-            break;
-        // Left Shift Preferred
-        case SDL_SCANCODE_LSHIFT:
-            transferInputs.shiftPressed = false;
-            break;
-        case SDL_SCANCODE_SPACE:
-            transferInputs.spacePressed = false;
-            break;
-        case SDL_SCANCODE_ESCAPE:
-            transferInputs.escPressed = false;
-            break;
-        case SDL_SCANCODE_BACKSPACE:
-        case SDL_SCANCODE_DELETE:
-            transferInputs.clearParticlesPressed = false;
-            break;
-        default:
-            break;
-        }
-        break;
-    case SDL_EVENT_MOUSE_WHEEL:
-    {
-        float scroll_y = e->wheel.y;
-        if (e->wheel.direction == SDL_MOUSEWHEEL_FLIPPED)
-        {
-            scroll_y *= -1.0f;
-        }
-        transferInputs.pendingScrollData += scroll_y;
-        break;
+        panCamera(camera_state, m_input.mousePositionDeltaThisFrame());
     }
-    default:
-        // no fall through behavior necessary
-        break;
+
+    clampCameraToStarField(camera_state);
+}
+
+void InputSystem::copySharedPointerState(DEPRECATED_InputState& legacy_state)
+{
+    using DynamoEngine::MouseButton;
+
+    legacy_state.mouseCurrPosition = m_input.mousePosition();
+    legacy_state.isDragging = m_input.isAnyMouseButtonDown();
+    legacy_state.mouseDragStartPosition = m_mouse_drag_anchor;
+    legacy_state.isClickingLeftMouseButton = m_input.isMouseButtonDown(MouseButton::Left);
+    legacy_state.isClickingRightMouseButton = m_input.isMouseButtonDown(MouseButton::Right);
+    legacy_state.isClickingMiddleMouseButton = m_input.isMouseButtonDown(MouseButton::Middle);
+    legacy_state.isPressingShift = m_input.isShiftDown(); // either Shift now works, not just left
+    legacy_state.leftMouseButtonJustPressed = m_input.wasMouseButtonPressed(MouseButton::Left);
+    legacy_state.leftMouseButtonJustReleased = m_input.wasMouseButtonReleased(MouseButton::Left);
+}
+
+void InputSystem::translateMenuInputs(UIState& ui_state, DynamoEngine::SceneManager& scenes)
+{
+    DEPRECATED_InputState& legacy_state = ui_state.getMutableDEPRECATED_InputState();
+    copySharedPointerState(legacy_state);
+
+    if (m_input.wasKeyPressed(SDL_SCANCODE_ESCAPE))
+    {
+        scenes.requestSwitch(TransferScene::Game);
+        legacy_state.resetFlagsForSceneChange();
     }
 }
 
-void InputSystem::translateAndPassMenuInputsOff(UIState& uiState)
+void InputSystem::translateGameInputs(GameState& game_state, UIState& ui_state, DynamoEngine::SceneManager& scenes)
 {
-    InputState& updated_input_state = uiState.getMutableInputState();
-    updated_input_state.mouseCurrPosition = transferInputs.mouseCurrPosition;
-    updated_input_state.isDragging = transferInputs.isDragging;
-    updated_input_state.mouseDragStartPosition = transferInputs.mouseDragStartPosition;
-    updated_input_state.isClickingLeftMouseButton = transferInputs.leftMousePressed;
-    updated_input_state.isClickingRightMouseButton = transferInputs.rightMousePressed;
-    updated_input_state.isClickingMiddleMouseButton = transferInputs.middleMousePressed;
-    updated_input_state.isPressingShift = transferInputs.shiftPressed;
+    using DynamoEngine::MouseButton;
 
-    updated_input_state.leftMouseButtonJustPressed = transferInputs.leftMouseJustPressed;
-    updated_input_state.leftMouseButtonJustReleased = transferInputs.leftMouseJustReleased;
-    if (transferInputs.escJustPressed)
+    DEPRECATED_InputState& legacy_state = ui_state.getMutableDEPRECATED_InputState();
+
+    // Clear the screen once per tap (was: every frame while the key was held)
+    if (m_input.wasKeyPressed(SDL_SCANCODE_BACKSPACE) || m_input.wasKeyPressed(SDL_SCANCODE_DELETE))
     {
-        uiState.setCurrentScene(SceneIdentifier::GAME_SCENE);
-        transferInputs.resetAllInputsForSceneChange();
-        updated_input_state.resetFlagsForSceneChange();
+        legacy_state.clearAllBodies();
+        legacy_state.resetTransientFlags();
         return;
     }
+    if (m_input.wasKeyPressed(SDL_SCANCODE_ESCAPE))
+    {
+        scenes.requestSwitch(TransferScene::Pause);
+        legacy_state.resetFlagsForSceneChange();
+        return;
+    }
+
+    copySharedPointerState(legacy_state);
+
+    // Starship controls
+    bool w_down = m_input.isKeyDown(SDL_SCANCODE_W);
+    bool s_down = m_input.isKeyDown(SDL_SCANCODE_S);
+    bool a_down = m_input.isKeyDown(SDL_SCANCODE_A);
+    bool d_down = m_input.isKeyDown(SDL_SCANCODE_D);
+    legacy_state.isRequestingThrust = w_down != s_down; // exactly one of the pair (same as the old xor)
+    legacy_state.positiveThrust = w_down;
+    legacy_state.negativeThrust = s_down;
+    legacy_state.isRequestingRotation = d_down != a_down;
+    legacy_state.positiveRotation = a_down;
+    legacy_state.negativeRotation = d_down;
+
+    // Spawning happens on release: left = macro body, right = particle cluster. Shift adds initial velocity.
+    if (m_input.wasMouseButtonReleased(MouseButton::Left))
+    {
+        legacy_state.isCreatingCollidable = true;
+        legacy_state.isCreatingWithInitialVelocity = m_input.isShiftDown();
+        legacy_state.isCreatingMacro = true;
+    }
+    if (m_input.wasMouseButtonReleased(MouseButton::Right))
+    {
+        legacy_state.isCreatingCollidable = true;
+        legacy_state.isCreatingWithInitialVelocity = m_input.isShiftDown();
+        legacy_state.isCreatingParticleCluster = true;
+    }
+
+    // Update the visor if necessary
+    updateVisor(game_state.getCameraStateMutable());
 }
-void InputSystem::translateAndPassTransferInputsOff(UIState& uiState)
+
+void InputSystem::updateVisor(CameraState& camera_state)
 {
-    // Check for clear all particle orders
-    InputState& updated_input_state = uiState.getMutableInputState();
-    if (transferInputs.clearParticlesPressed)
+    if (m_input.wasKeyPressed(SDL_SCANCODE_TAB))
     {
-        updated_input_state.clearAllBodies();
-        transferInputs.resetAllKeyPressedVars();
-        transferInputs.resetAllMousePressedVars();
-        transferInputs.resetJustPressed();
-        updated_input_state.resetTransientFlags();
-        return;
-    }
-    if (transferInputs.escJustPressed)
-    {
-        uiState.setCurrentScene(SceneIdentifier::PAUSE_SCENE);
-        transferInputs.resetAllInputsForSceneChange();
-        updated_input_state.resetFlagsForSceneChange();
-        return;
-    }
-    // Always pass off these
-
-    updated_input_state.mouseCurrPosition = transferInputs.mouseCurrPosition;
-    updated_input_state.isDragging = transferInputs.isDragging;
-    updated_input_state.mouseDragStartPosition = transferInputs.mouseDragStartPosition;
-    updated_input_state.isClickingLeftMouseButton = transferInputs.leftMousePressed;
-    updated_input_state.isClickingRightMouseButton = transferInputs.rightMousePressed;
-    updated_input_state.isClickingMiddleMouseButton = transferInputs.middleMousePressed;
-    updated_input_state.isPressingShift = transferInputs.shiftPressed;
-
-    updated_input_state.leftMouseButtonJustPressed = transferInputs.leftMouseJustPressed;
-    updated_input_state.leftMouseButtonJustReleased = transferInputs.leftMouseJustReleased;
-    updated_input_state.isRequestingThrust = transferInputs.wPressed xor transferInputs.sPressed;
-    updated_input_state.positiveThrust = transferInputs.wPressed;
-    updated_input_state.negativeThrust = transferInputs.sPressed;
-    updated_input_state.isRequestingRotation = transferInputs.dPressed xor transferInputs.aPressed;
-    updated_input_state.positiveRotation = transferInputs.aPressed;
-    updated_input_state.negativeRotation = transferInputs.dPressed;
-    if (transferInputs.leftMouseJustReleased)
-    {
-        updated_input_state.isCreatingCollidable = true;
-        if (transferInputs.shiftPressed)
-        {
-            updated_input_state.isCreatingWithInitialVelocity = true;
-        }
-        updated_input_state.isCreatingMacro = true;
-    }
-    if (transferInputs.rightMouseJustReleased)
-    {
-        updated_input_state.isCreatingCollidable = true;
-        if (transferInputs.shiftPressed)
-        {
-            updated_input_state.isCreatingWithInitialVelocity = true;
-        }
-        updated_input_state.isCreatingParticleCluster = true;
+        camera_state.visor_view = nextVisorView(camera_state.visor_view);
     }
 }
-
 // --------- CLEANUP HELPER METHOD --------- //
 
-void InputSystem::CleanUp()
+void InputSystem::cleanUp()
 {
     // Any necessary cleanup code for the input system
 }

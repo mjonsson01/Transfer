@@ -1,45 +1,14 @@
 # Codebase Structure Report
 
-## Header: `Scenes/Scene.hpp`
-### Class: `Scene`
-- `populateMe()`
-- `CleanUpSceneElements()`
-- `getSceneElements()`
-
----
-## Header: `Scenes/StartMenuScene/StartMenuScene.hpp`
-### Class: `StartMenuScene`
-- `populateMe()`
-
----
-## Header: `Scenes/TestVisualScene/TestVisualScene.hpp`
-### Class: `TestVisualScene`
-- `populateMe()`
-
----
-## Header: `Scenes/GameScene/GameScene.hpp`
-### Class: `GameScene`
-- `populateMe()`
-
----
-## Header: `Scenes/PauseScene/PauseScene.hpp`
-### Class: `PauseScene`
-- `populateMe()`
-
----
 ## Header: `Core/UIState.hpp`
 ### Class: `UIState`
-- `getMutableInputState()`
-- `getInputState()`
+- `getMutableDEPRECATED_InputState()`
+- `getDEPRECATED_InputState()`
 - `getFPS()`
 - `setFPS()`
-- `getAllUIVisibility()`
-- `invertUIElementsVisibility()`
 - `getRenderDebug()`
 - `setRenderDebug()`
 - `getTimeScaleFactor()`
-- `getCurrentSceneID()`
-- `setCurrentScene()`
 - `QueueSoundEffect()`
 - `HasPendingSoundEffects()`
 - `PopNextSoundEffect()`
@@ -90,53 +59,11 @@
 - `limitFrameRate()`
 
 ---
-## Header: `Core/InputState.hpp`
-### Class: `InputState`
+## Header: `Core/DEPRECATED_InputState.hpp`
+### Class: `DEPRECATED_InputState`
 - `resetTransientFlags()`
 - `resetFlagsForSceneChange()`
 - `clearAllBodies()`
-
----
-## Header: `Utilities/UserInput/TransferInputs.hpp`
-### Class: `TransferInputs`
-- `operator=()`
-- `resetAllInputsForSceneChange()`
-- `resetAllMousePressedVars()`
-- `resetJustPressed()`
-- `resetAllKeyPressedVars()`
-
----
-## Header: `Utilities/Math/Vector2D.hpp`
-### Class: `Vector2D`
-- `operator+()`
-- `operator-()`
-- `operator*()`
-- `operator/()`
-- `operator+=()`
-- `operator-=()`
-- `operator*=()`
-- `operator/=()`
-- `magnitude()`
-- `square_magnitude()`
-- `dot()`
-- `normalizeInPlace()`
-- `normalize()`
-
----
-## Header: `Utilities/Rendering/Colors.hpp`
-### Class: `ColorLibrary`
-- *No methods found*
-
----
-## Header: `Utilities/Rendering/FontAtlasUtility.hpp`
-### Class: `GlyphMetrics`
-- *No methods found*
-
-### Class: `FontAtlasUtility`
-- `BuildAtlas()`
-- `GetGlyph()`
-- `CalculateTextWidth()`
-- `GetFontHeight()`
 
 ---
 ## Header: `Utilities/Rendering/CameraData.hpp`
@@ -149,9 +76,6 @@
 - *No methods found*
 
 ### Class: `TwinklingStarVertex`
-- *No methods found*
-
-### Class: `UIElementVertex`
 - *No methods found*
 
 ### Class: `VelocityVectorVertex`
@@ -185,6 +109,7 @@
 - `promoteOversizedParticles()`
 - `substituteWithParticles()`
 - `substituteWithParticlesFromImpact()`
+- `liveParticleCount()`
 - `updateAllForces()`
 - `updateGravityForSystem()`
 - `calculateGravity()`
@@ -199,33 +124,20 @@
 - `updatePlayerPhysics()`
 - `cleanupParticles()`
 - `cleanupMacroBodies()`
-
----
-## Header: `Systems/UISystem.hpp`
-### Class: `UISystem`
-- `CleanUp()`
-- `UpdateUIElements()`
-- `getScene()`
-- `updateUISystemCurrentSceneID()`
-- `updateGameUIElements()`
-- `updateMenuUIElements()`
-- `findElementWeAreIn()`
-- `routeSliderInput()`
-- `routeButtonClick()`
-- `populateScenes()`
-- `updateAllUILayouts()`
-- `isSlider()`
-- `isButton()`
+- `survivableFragmentCount()`
 
 ---
 ## Header: `Systems/InputSystem.hpp`
 ### Class: `InputSystem`
-- `ProcessSystemInputFrame()`
-- `CleanUp()`
-- `routeSDL_EventInputInGame()`
-- `routeSDL_EventInputInMenu()`
-- `translateAndPassTransferInputsOff()`
-- `translateAndPassMenuInputsOff()`
+- `processSystemInputFrame()`
+- `cleanUp()`
+- `trackDragAnchor()`
+- `updateSceneUI()`
+- `updateCamera()`
+- `translateGameInputs()`
+- `translateMenuInputs()`
+- `copySharedPointerState()`
+- `updateVisor()`
 
 ---
 ## Header: `Systems/AudioSystem.hpp`
@@ -250,10 +162,8 @@
 - `RenderFullFrame()`
 - `CleanUp()`
 - `getUIFontRegular()`
-- `getUIFontTitle()`
 - `renderGameFrame()`
 - `renderNonGameFrame()`
-- `renderTestFrame()`
 - `appendPreviewBodies()`
 - `renderBodies()`
 - `uploadUnifiedBodies()`
@@ -263,7 +173,8 @@
 - `createVelocityVectorGPUBufferAndPipeline()`
 - `createTwinklingStarGPUBufferAndPipeline()`
 - `createStarshipGPUBufferAndPipeline()`
-- `createFontAtlasTextureAndSampler()`
+- `createFontAtlasSampler()`
+- `rebuildFontAtlas()`
 - `uploadUIVertices()`
 - `renderUIElements()`
 - `createTwinklingStarField()`
@@ -296,95 +207,6 @@
 ## Header: `Entities/Sound/SoundEffect.hpp`
 ### Class: `SoundEffect`
 - *No methods found*
-
----
-## Header: `Entities/UIElements/UIElement.hpp`
-### Class: `UIElement`
-- `slideMe()`
-- `clickMe()`
-- `setPosition()`
-- `getX()`
-- `getY()`
-- `setVisibility()`
-- `isVisible()`
-- `checkAndReturnIfHit()`
-- `getUIElementID()`
-- `buildGeometry()`
-- `updateMe()`
-- `updateLayout()`
-
----
-## Header: `Entities/UIElements/Buttons/Button.hpp`
-### Class: `Button`
-- `buildGeometry()`
-- `getDisplayText()`
-- `clickMe()`
-- `getButtonState()`
-
----
-## Header: `Entities/UIElements/Buttons/VisorButton/VisorButton.hpp`
-### Class: `VisorButton`
-- *No methods found*
-
----
-## Header: `Entities/UIElements/Buttons/PlayGameButton/PlayGameButton.hpp`
-### Class: `PlayGameButton`
-- `clickMe()`
-- `updateLayout()`
-
----
-## Header: `Entities/UIElements/Buttons/ResumeButton/ResumeButton.hpp`
-### Class: `ResumeButton`
-- `clickMe()`
-- `updateLayout()`
-
----
-## Header: `Entities/UIElements/DropDownMenu/DropDownMenu.hpp`
-### Class: `DropDownMenu`
-- `buildGeometry()`
-
----
-## Header: `Entities/UIElements/Checkboxes/Checkbox.hpp`
-### Class: `Checkbox`
-- *No methods found*
-
----
-## Header: `Entities/UIElements/Overlay/FPSCounter.hpp`
-### Class: `FPSCounter`
-- `buildGeometry()`
-- `updateMe()`
-- `updateLayout()`
-- `getDisplayText()`
-
----
-## Header: `Entities/UIElements/Sliders/Slider.hpp`
-### Class: `Slider`
-- `buildGeometry()`
-- `getDisplayText()`
-- `slideMe()`
-- `getSliderValue()`
-- `getKnobPosition()`
-- `playTickSoundIfMoved()`
-
----
-## Header: `Entities/UIElements/Sliders/RadiusSlider.hpp`
-### Class: `RadiusSlider`
-- `getDisplayText()`
-- `updateLayout()`
-
----
-## Header: `Entities/UIElements/Sliders/MassSlider.hpp`
-### Class: `MassSlider`
-- `getDisplayText()`
-- `slideMe()`
-- `updateLayout()`
-- `playTickSoundIfMoved()`
-
----
-## Header: `Entities/UIElements/Sliders/SimulationSpeedSlider.hpp`
-### Class: `SimulationSpeedSlider`
-- `getDisplayText()`
-- `updateLayout()`
 
 ---
 ## Header: `Player/Starship.hpp`

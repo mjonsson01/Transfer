@@ -1,15 +1,12 @@
 .vscode/
 
 build/
+build-tests/
+
 venv/
 # for macOS
 .DS_Store
 
 # from windows workspace
-LocalShaderCross/
-LocalSpirvCross/
+ThirdParty/
 Transfer/Assets/Shaders/
-
-*.md
-
-CLAUDE/

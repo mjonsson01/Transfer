@@ -2,8 +2,15 @@
 
 #include "Systems/RenderSystem.hpp"
 
+#include "DynamoEngine/Constants/GlobalConstants.hpp"
+
+namespace
+{
+constexpr float UI_FONT_SIZE = 18.0f; // UI points
+} // namespace
+
 // Constructor: Initializes SDL Window and GPU
-RenderSystem::RenderSystem(GameState& gameState)
+RenderSystem::RenderSystem(GameState& game_state)
 {
     SDL_InitSubSystem(SDL_INIT_VIDEO);
     TTF_Init();
@@ -12,12 +19,12 @@ RenderSystem::RenderSystem(GameState& gameState)
     int window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
     window = SDL_CreateWindow("Transfer", SCREEN_WIDTH, SCREEN_HEIGHT, window_flags);
 
-    SDL_DisplayID displayID = SDL_GetDisplayForWindow(window);
-    const SDL_DisplayMode* desktopMode = SDL_GetDesktopDisplayMode(displayID);
-    if (desktopMode)
+    SDL_DisplayID display_id = SDL_GetDisplayForWindow(window);
+    const SDL_DisplayMode* desktop_mode = SDL_GetDesktopDisplayMode(display_id);
+    if (desktop_mode)
     {
-        gameState.getCameraStateMutable().maxDisplayWidth = (float)desktopMode->w;
-        gameState.getCameraStateMutable().maxDisplayHeight = (float)desktopMode->h;
+        game_state.getCameraStateMutable().max_display_width = (float)desktop_mode->w;
+        game_state.getCameraStateMutable().max_display_height = (float)desktop_mode->h;
     }
 
 #ifdef __APPLE__
@@ -29,16 +36,16 @@ RenderSystem::RenderSystem(GameState& gameState)
     if (gpu)
         SDL_ClaimWindowForGPUDevice(gpu, window);
     // 2. Resource/Font Setup
-    UIFontRegular = TTF_OpenFont(Utilities::GetResourcePath("Fonts/SpaceMono-Regular.ttf").c_str(), 18);
-    UIFontTitle = TTF_OpenFont(Utilities::GetResourcePath("Fonts/SpaceMono-Bold.ttf").c_str(), 32);
+    UIFontRegular = TTF_OpenFont(Utilities::GetResourcePath("Fonts/SpaceMono-Regular.ttf").c_str(), UI_FONT_SIZE);
 
     createUnifiedBodyGPUBufferAndPipeline();
     createTwinklingStarGPUBufferAndPipeline();
     createVelocityVectorGPUBufferAndPipeline();
     createUIGPUBufferAndPipeline();
-    createFontAtlasTextureAndSampler();
+    createFontAtlasSampler(); // the atlas itself is baked on the first frame, once the UI scale is known
     createStarshipGPUBufferAndPipeline();
-    createTwinklingStarField(gameState.getCameraState().maxDisplayWidth, gameState.getCameraState().maxDisplayHeight);
+    createTwinklingStarField(game_state.getCameraState().max_display_width,
+                             game_state.getCameraState().max_display_height);
     if (gpu)
     {
         SDL_GPUCommandBuffer* initCmdBuf = SDL_AcquireGPUCommandBuffer(gpu);
@@ -118,17 +125,17 @@ void RenderSystem::CleanUp()
     }
 }
 
-SDL_GPUShader* RenderSystem::LoadShader(SDL_GPUDevice* device, const char* baseFileName, uint32_t numSamplers,
+SDL_GPUShader* RenderSystem::LoadShader(SDL_GPUDevice* device, const char* base_file_name, uint32_t numSamplers,
                                         uint32_t numUniformBuffers)
 {
     size_t size;
 
 #ifdef __APPLE__
-    std::string fileName = std::string(baseFileName) + ".msl";
+    std::string fileName = std::string(base_file_name) + ".msl";
     const char* entrypoint = "main0"; // spirv-cross renames the MSL entry point away from "main"
     SDL_GPUShaderFormat format = SDL_GPU_SHADERFORMAT_MSL;
 #else
-    std::string fileName = std::string(baseFileName) + ".spv";
+    std::string fileName = std::string(base_file_name) + ".spv";
     const char* entrypoint = "main";
     SDL_GPUShaderFormat format = SDL_GPU_SHADERFORMAT_SPIRV;
 #endif
@@ -159,25 +166,28 @@ SDL_GPUShader* RenderSystem::LoadShader(SDL_GPUDevice* device, const char* baseF
 }
 // --------- RENDER FULL FRAME METHOD --------- //
 
-void RenderSystem::RenderFullFrame(GameState& gameState, UIState& uiState,
-                                   const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope)
+void RenderSystem::RenderFullFrame(GameState& game_state, UIState& ui_state, const DynamoEngine::Scene& scene)
 {
+
+    // Re-bake the text whenever the UI scale or the display's pixel density changes (window resized, or moved to a
+    // screen with a different density), so text is always drawn at exactly one atlas pixel per screen pixel
+    const float pixel_scale = scene.ui().uiScale() * SDL_GetWindowPixelDensity(window);
+    if (fontAtlasTexture == nullptr || pixel_scale != fontAtlas.pixelScale())
+    {
+        rebuildFontAtlas(pixel_scale);
+    }
 
     SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(gpu);
 
-    SceneIdentifier current_scene = uiState.getCurrentSceneID();
+    const bool draws_world = scene.settings().draws_world;
 
-    if (current_scene == SceneIdentifier::GAME_SCENE)
+    if (draws_world)
     {
         uploadTwinklingStarField(cmdbuf);
-        uploadUnifiedBodies(gameState, uiState, cmdbuf);
-        uploadStarship(gameState, uiState, cmdbuf);
+        uploadUnifiedBodies(game_state, ui_state, cmdbuf);
+        uploadStarship(game_state, ui_state, cmdbuf);
     }
-    // if (current_scene == SceneIdentifier::TEST_VISUAL_SCENE)
-    // {
-        
-    // }
-    uploadUIVertices(allUIElementsInScope, cmdbuf);
+    uploadUIVertices(scene.ui(), cmdbuf);
     // Acquire the display target
     SDL_GPUTexture* swapchainTexture = nullptr;
     Uint32 w = 0, h = 0;
@@ -197,18 +207,13 @@ void RenderSystem::RenderFullFrame(GameState& gameState, UIState& uiState,
 
         SDL_GPURenderPass* pass = SDL_BeginGPURenderPass(cmdbuf, &color_info, 1, nullptr);
 
-        if (current_scene == SceneIdentifier::GAME_SCENE)
+        if (draws_world)
         {
-            // Update your renderGameFrame signature to match
-            renderGameFrame(gameState, uiState, allUIElementsInScope, pass, cmdbuf);
-        }
-        else if (current_scene != SceneIdentifier::TEST_VISUAL_SCENE)
-        {
-            renderNonGameFrame(gameState, uiState, allUIElementsInScope, pass, cmdbuf);
+            renderGameFrame(game_state, ui_state, scene.ui(), pass, cmdbuf);
         }
         else
         {
-            renderTestFrame(gameState, uiState, allUIElementsInScope, pass, cmdbuf);
+            renderNonGameFrame(scene.ui(), pass, cmdbuf);
         }
 
         SDL_EndGPURenderPass(pass);
@@ -217,38 +222,28 @@ void RenderSystem::RenderFullFrame(GameState& gameState, UIState& uiState,
     SDL_SubmitGPUCommandBuffer(cmdbuf);
 }
 
-void RenderSystem::renderGameFrame(GameState& gameState, UIState& uiState,
-                                   const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
+void RenderSystem::renderGameFrame(GameState& game_state, UIState& ui_state, const DynamoEngine::UIRoot& ui,
                                    SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf)
 {
-    gameState.getCameraStateMutable().renderAlpha = gameState.getAlpha();
-    renderStarship(gameState, pass, cmdbuf, gameState.getCameraState());
-    renderTwinklingStarField(pass, cmdbuf, gameState.getCameraState());
-    renderBodies(gameState, uiState, pass, cmdbuf);
-    renderVelocityVectors(pass, cmdbuf, gameState.getCameraState());
-    renderUIElements(pass, cmdbuf, gameState.getCameraState());
+    game_state.getCameraStateMutable().render_alpha = game_state.getAlpha();
+    renderStarship(game_state, pass, cmdbuf, game_state.getCameraState());
+    renderTwinklingStarField(pass, cmdbuf, game_state.getCameraState());
+    renderBodies(game_state, ui_state, pass, cmdbuf);
+    renderVelocityVectors(pass, cmdbuf, game_state.getCameraState());
+    renderUIElements(pass, cmdbuf, ui);
 }
 
-void RenderSystem::renderNonGameFrame(GameState& gameState, UIState& uiState,
-                                      const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
-                                      SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf)
+void RenderSystem::renderNonGameFrame(const DynamoEngine::UIRoot& ui, SDL_GPURenderPass* pass,
+                                      SDL_GPUCommandBuffer* cmdbuf)
 {
-    renderUIElements(pass, cmdbuf, gameState.getCameraState());
+    renderUIElements(pass, cmdbuf, ui);
 }
-
-void RenderSystem::renderTestFrame(GameState& gameState, UIState& uiState,
-                                   const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
-                                   SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf)
-{
-    gameState.getCameraStateMutable().renderAlpha = gameState.getAlpha();
-    // renderStarship(gameState, pass, cmdbuf, gameState.getCameraState());
-}
-void RenderSystem::uploadUnifiedBodies(GameState& gameState, UIState& uiState, SDL_GPUCommandBuffer* cmdbuf)
+void RenderSystem::uploadUnifiedBodies(GameState& game_state, UIState& ui_state, SDL_GPUCommandBuffer* cmdbuf)
 {
     unifiedBodyVertices.clear();
 
-    auto& particles = gameState.getParticles();
-    auto& bodies = gameState.getMacroBodies();
+    auto& particles = game_state.getParticles();
+    auto& bodies = game_state.getMacroBodies();
 
     unifiedBodyVertices.reserve(particles.size() + bodies.size());
 
@@ -268,7 +263,7 @@ void RenderSystem::uploadUnifiedBodies(GameState& gameState, UIState& uiState, S
         }
     }
 
-    appendPreviewBodies(unifiedBodyVertices, uiState, gameState.getCameraState());
+    appendPreviewBodies(unifiedBodyVertices, ui_state, game_state.getCameraState());
     uploadVelocityVectorVertices(cmdbuf);
 
     if (unifiedBodyVertices.size() > MAX_UNIFIED_BODIES)
@@ -295,13 +290,13 @@ void RenderSystem::uploadUnifiedBodies(GameState& gameState, UIState& uiState, S
     }
 }
 
-void RenderSystem::uploadStarship(GameState& gameState, UIState& uiState, SDL_GPUCommandBuffer* cmdbuf)
+void RenderSystem::uploadStarship(GameState& game_state, UIState& ui_state, SDL_GPUCommandBuffer* cmdbuf)
 {
     starshipVertices.clear();
     starshipVertices.reserve(MAX_STARSHIP_VERTICES);
 
     // Rework into getPlayer const since this method doesn't actually do anything to the starship
-    gameState.getPlayerMutable().starship.buildGeometry(starshipVertices);
+    game_state.getPlayerMutable().starship.buildGeometry(starshipVertices);
 
     if (starshipVertices.size() > MAX_STARSHIP_VERTICES)
     {
@@ -327,19 +322,19 @@ void RenderSystem::uploadStarship(GameState& gameState, UIState& uiState, SDL_GP
     }
 }
 
-void RenderSystem::renderBodies(GameState& gameState, UIState& uiState, SDL_GPURenderPass* pass,
+void RenderSystem::renderBodies(GameState& game_state, UIState& ui_state, SDL_GPURenderPass* pass,
                                 SDL_GPUCommandBuffer* cmdbuf)
 {
     // Quickly count how many total instances are active for drawing
     uint32_t instance_count = 0;
-    for (auto& p : gameState.getParticles())
+    for (auto& p : game_state.getParticles())
         if (p.visible)
             instance_count++;
-    for (auto& b : gameState.getMacroBodies())
+    for (auto& b : game_state.getMacroBodies())
         if (b.visible)
             instance_count++;
 
-    if (uiState.getMutableInputState().isPreviewingMacro)
+    if (ui_state.getMutableDEPRECATED_InputState().isPreviewingMacro)
     {
         instance_count++;
     }
@@ -349,7 +344,7 @@ void RenderSystem::renderBodies(GameState& gameState, UIState& uiState, SDL_GPUR
     {
         SDL_BindGPUGraphicsPipeline(pass, unifiedBodyPipeline);
         CameraConstants camera_constants =
-            buildCameraConstants(gameState.getCameraState(), gameState.getCameraState().offset);
+            buildCameraConstants(game_state.getCameraState(), game_state.getCameraState().offset);
         SDL_PushGPUVertexUniformData(cmdbuf, 0, &camera_constants, sizeof(camera_constants));
 
         SDL_GPUBufferBinding vbo = {.buffer = unifiedBodyVertexBuffer, .offset = 0};
@@ -362,12 +357,12 @@ void RenderSystem::renderBodies(GameState& gameState, UIState& uiState, SDL_GPUR
     }
 }
 
-void RenderSystem::renderStarship(GameState& gameState, SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
-                                  const CameraState& cameraState)
+void RenderSystem::renderStarship(GameState& game_state, SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
+                                  const CameraState& camera_state)
 {
     SDL_BindGPUGraphicsPipeline(pass, starshipPipeline);
     CameraConstants camera_constants =
-        buildCameraConstants(gameState.getCameraState(), gameState.getCameraState().offset);
+        buildCameraConstants(game_state.getCameraState(), game_state.getCameraState().offset);
     SDL_PushGPUVertexUniformData(cmdbuf, 0, &camera_constants, sizeof(camera_constants));
 
     SDL_GPUBufferBinding vbo = {.buffer = starshipVertexBuffer, .offset = 0};
@@ -382,11 +377,11 @@ void RenderSystem::renderStarship(GameState& gameState, SDL_GPURenderPass* pass,
 void RenderSystem::createUIGPUBufferAndPipeline()
 {
     SDL_GPUBufferCreateInfo vb_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX,
-                                       .size = MAX_UI_VERTICES * sizeof(UIElementVertex)};
+                                       .size = MAX_UI_VERTICES * sizeof(DynamoEngine::UIVertex)};
 
     uiVertexBuffer = SDL_CreateGPUBuffer(gpu, &vb_info);
     SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-                                               .size = MAX_UI_VERTICES * sizeof(UIElementVertex)};
+                                               .size = MAX_UI_VERTICES * sizeof(DynamoEngine::UIVertex)};
     uiTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
 
     SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/UIElement.vert", 0, 1);
@@ -396,23 +391,23 @@ void RenderSystem::createUIGPUBufferAndPipeline()
     attrs[0] = {.location = 0,
                 .buffer_slot = 0,
                 .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
-                .offset = offsetof(UIElementVertex, x)};
+                .offset = offsetof(DynamoEngine::UIVertex, x)};
     attrs[1] = {.location = 1,
                 .buffer_slot = 0,
                 .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
-                .offset = offsetof(UIElementVertex, u)};
+                .offset = offsetof(DynamoEngine::UIVertex, u)};
     attrs[2] = {.location = 2,
                 .buffer_slot = 0,
                 .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4,
-                .offset = offsetof(UIElementVertex, r)};
+                .offset = offsetof(DynamoEngine::UIVertex, r)};
     attrs[3] = {.location = 3,
                 .buffer_slot = 0,
                 .format = SDL_GPU_VERTEXELEMENTFORMAT_UINT,
-                .offset = offsetof(UIElementVertex, zIndex)};
+                .offset = offsetof(DynamoEngine::UIVertex, z_index)};
     attrs[4] = {.location = 4,
                 .buffer_slot = 0,
                 .format = SDL_GPU_VERTEXELEMENTFORMAT_UINT,
-                .offset = offsetof(UIElementVertex, mode)};
+                .offset = offsetof(DynamoEngine::UIVertex, mode)};
     SDL_GPUGraphicsPipelineCreateInfo pipeline_info = {};
     pipeline_info.target_info.num_color_targets = 1;
 
@@ -434,7 +429,7 @@ void RenderSystem::createUIGPUBufferAndPipeline()
     pipeline_info.vertex_input_state.num_vertex_attributes = 5;
 
     SDL_GPUVertexBufferDescription vbo_desc = {
-        .slot = 0, .pitch = sizeof(UIElementVertex), .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX};
+        .slot = 0, .pitch = sizeof(DynamoEngine::UIVertex), .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX};
     pipeline_info.vertex_input_state.vertex_buffer_descriptions = &vbo_desc;
     pipeline_info.vertex_input_state.num_vertex_buffers = 1;
 
@@ -443,41 +438,50 @@ void RenderSystem::createUIGPUBufferAndPipeline()
     SDL_ReleaseGPUShader(gpu, frag_shader);
 }
 
-void RenderSystem::createFontAtlasTextureAndSampler()
+void RenderSystem::createFontAtlasSampler()
 {
-    SDL_Surface* atlasSurface = fontAtlas.BuildAtlas(UIFontRegular);
-    if (!atlasSurface)
-    {
-        std::cerr << "Failed to bake font atlas" << std::endl;
-        return;
-    }
-
-    SDL_GPUTextureCreateInfo tex_info = {.type = SDL_GPU_TEXTURETYPE_2D,
-                                         .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
-                                         .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER,
-                                         .width = (Uint32)atlasSurface->w,
-                                         .height = (Uint32)atlasSurface->h,
-                                         .layer_count_or_depth = 1,
-                                         .num_levels = 1};
-    fontAtlasTexture = SDL_CreateGPUTexture(gpu, &tex_info);
-
     SDL_GPUSamplerCreateInfo sampler_info = {.min_filter = SDL_GPU_FILTER_LINEAR,
                                              .mag_filter = SDL_GPU_FILTER_LINEAR,
                                              .address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
                                              .address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE};
     fontAtlasSampler = SDL_CreateGPUSampler(gpu, &sampler_info);
+}
 
-    Uint32 pixelDataSize = (Uint32)(atlasSurface->w * atlasSurface->h * 4);
+void RenderSystem::rebuildFontAtlas(float pixel_scale)
+{
+    SDL_Surface* atlas_surface = fontAtlas.buildAtlas(UIFontRegular, UI_FONT_SIZE, pixel_scale);
+    if (!atlas_surface)
+    {
+        std::cerr << "Failed to bake font atlas" << std::endl;
+        return;
+    }
+
+    // A frame still on the GPU may be using the old texture; SDL_GPU only frees it once that frame is done
+    if (fontAtlasTexture != nullptr)
+    {
+        SDL_ReleaseGPUTexture(gpu, fontAtlasTexture);
+    }
+
+    SDL_GPUTextureCreateInfo tex_info = {.type = SDL_GPU_TEXTURETYPE_2D,
+                                         .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+                                         .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER,
+                                         .width = (Uint32)atlas_surface->w,
+                                         .height = (Uint32)atlas_surface->h,
+                                         .layer_count_or_depth = 1,
+                                         .num_levels = 1};
+    fontAtlasTexture = SDL_CreateGPUTexture(gpu, &tex_info);
+
+    Uint32 pixelDataSize = (Uint32)(atlas_surface->w * atlas_surface->h * 4);
     SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD, .size = pixelDataSize};
     SDL_GPUTransferBuffer* atlasTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
 
     // Copy row by row in case the surface pitch isn't tightly packed.
     Uint8* dst = (Uint8*)SDL_MapGPUTransferBuffer(gpu, atlasTransferBuffer, false);
-    Uint8* src = (Uint8*)atlasSurface->pixels;
-    Uint32 rowBytes = (Uint32)atlasSurface->w * 4;
-    for (int row = 0; row < atlasSurface->h; row++)
+    Uint8* src = (Uint8*)atlas_surface->pixels;
+    Uint32 rowBytes = (Uint32)atlas_surface->w * 4;
+    for (int row = 0; row < atlas_surface->h; row++)
     {
-        SDL_memcpy(dst + row * rowBytes, src + row * atlasSurface->pitch, rowBytes);
+        SDL_memcpy(dst + row * rowBytes, src + row * atlas_surface->pitch, rowBytes);
     }
     SDL_UnmapGPUTransferBuffer(gpu, atlasTransferBuffer);
 
@@ -486,16 +490,16 @@ void RenderSystem::createFontAtlasTextureAndSampler()
 
     SDL_GPUTextureTransferInfo src_info = {.transfer_buffer = atlasTransferBuffer,
                                            .offset = 0,
-                                           .pixels_per_row = (Uint32)atlasSurface->w,
-                                           .rows_per_layer = (Uint32)atlasSurface->h};
+                                           .pixels_per_row = (Uint32)atlas_surface->w,
+                                           .rows_per_layer = (Uint32)atlas_surface->h};
     SDL_GPUTextureRegion dst_region = {.texture = fontAtlasTexture,
                                        .mip_level = 0,
                                        .layer = 0,
                                        .x = 0,
                                        .y = 0,
                                        .z = 0,
-                                       .w = (Uint32)atlasSurface->w,
-                                       .h = (Uint32)atlasSurface->h,
+                                       .w = (Uint32)atlas_surface->w,
+                                       .h = (Uint32)atlas_surface->h,
                                        .d = 1};
     SDL_UploadToGPUTexture(copyPass, &src_info, &dst_region, false);
 
@@ -503,54 +507,55 @@ void RenderSystem::createFontAtlasTextureAndSampler()
     SDL_SubmitGPUCommandBuffer(cmdbuf);
 
     SDL_ReleaseGPUTransferBuffer(gpu, atlasTransferBuffer);
-    SDL_DestroySurface(atlasSurface);
+    SDL_DestroySurface(atlas_surface);
 }
 
-void RenderSystem::uploadUIVertices(const std::unordered_map<UIElementIdentifier, UIElement*>& allUIElementsInScope,
-                                    SDL_GPUCommandBuffer* cmdbuf)
+void RenderSystem::uploadUIVertices(const DynamoEngine::UIRoot& ui, SDL_GPUCommandBuffer* cmdbuf)
 {
-    uiVertices.clear();
-    for (auto& [id, element] : allUIElementsInScope)
-        if (element->isVisible())
-        {
-            element->buildGeometry(uiVertices, 1, fontAtlas);
-        }
+    m_ui_vertices.clear();
+    DynamoEngine::UIGeometryBuilder builder(m_ui_vertices, fontAtlas); // one builder for this frame
 
-    if (uiVertices.empty())
+    // Every visible element of the scene's UI, back to front
+    ui.drawElements(builder);
+
+    if (m_ui_vertices.empty())
         return;
 
     void* map = SDL_MapGPUTransferBuffer(gpu, uiTransferBuffer, false);
-    SDL_memcpy(map, uiVertices.data(), uiVertices.size() * sizeof(UIElementVertex));
+    SDL_memcpy(map, m_ui_vertices.data(), m_ui_vertices.size() * sizeof(DynamoEngine::UIVertex));
     SDL_UnmapGPUTransferBuffer(gpu, uiTransferBuffer);
 
     SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdbuf);
     SDL_GPUTransferBufferLocation src = {.transfer_buffer = uiTransferBuffer, .offset = 0};
-    SDL_GPUBufferRegion dst = {
-        .buffer = uiVertexBuffer, .offset = 0, .size = (uint32_t)(uiVertices.size() * sizeof(UIElementVertex))};
+    SDL_GPUBufferRegion dst = {.buffer = uiVertexBuffer,
+                               .offset = 0,
+                               .size = (uint32_t)(m_ui_vertices.size() * sizeof(DynamoEngine::UIVertex))};
     SDL_UploadToGPUBuffer(copyPass, &src, &dst, false);
     SDL_EndGPUCopyPass(copyPass);
 }
 
 void RenderSystem::renderUIElements(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
-                                    const CameraState& cameraState)
+                                    const DynamoEngine::UIRoot& ui)
 {
-    if (uiVertices.empty())
+    if (m_ui_vertices.empty())
         return;
     SDL_BindGPUGraphicsPipeline(pass, uiPipeline);
 
-    float screen_size[2] = {cameraState.windowWidth, cameraState.windowHeight};
-    SDL_PushGPUVertexUniformData(cmdbuf, 0, screen_size, sizeof(screen_size));
+    // The UI is built in UI space (window size / UI scale); the shader stretches that space over the whole window
+    const DynamoEngine::Vector2F ui_space_size = ui.uiSpaceSize();
+    float ui_space[2] = {ui_space_size.x_val, ui_space_size.y_val};
+    SDL_PushGPUVertexUniformData(cmdbuf, 0, ui_space, sizeof(ui_space));
 
     SDL_GPUBufferBinding vbo = {.buffer = uiVertexBuffer, .offset = 0};
     SDL_BindGPUVertexBuffers(pass, 0, &vbo, 1);
     SDL_GPUTextureSamplerBinding texBinding = {.texture = fontAtlasTexture, .sampler = fontAtlasSampler};
     SDL_BindGPUFragmentSamplers(pass, 0, &texBinding, 1);
-    SDL_DrawGPUPrimitives(pass, (uint32_t)uiVertices.size(), 1, 0, 0);
+    SDL_DrawGPUPrimitives(pass, (uint32_t)m_ui_vertices.size(), 1, 0, 0);
 }
-void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexData, UIState& uiState,
-                                       const CameraState& cameraState)
+void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexData, UIState& ui_state,
+                                       const CameraState& camera_state)
 {
-    InputState& input_state = uiState.getMutableInputState();
+    DEPRECATED_InputState& input_state = ui_state.getMutableDEPRECATED_InputState();
     velocityVectorVertices.clear();
     if (input_state.isPreviewingMacro)
     {
@@ -560,14 +565,14 @@ void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexDat
         new_preview_grav_body.radius = input_state.selectedRadius;
         if (input_state.isPreviewingWithInitialVelocity)
         {
-            new_preview_grav_body.position = ScreenToWorldCoordinates(input_state.mouseDragStartPosition, cameraState);
+            new_preview_grav_body.position = ScreenToWorldCoordinates(input_state.mouseDragStartPosition, camera_state);
 
-            Vector2D arrow_end = ScreenToWorldCoordinates(input_state.mouseCurrPosition, cameraState);
+            DynamoEngine::Vector2D arrow_end = ScreenToWorldCoordinates(input_state.mouseCurrPosition, camera_state);
             buildVelocityVectorGeometry(new_preview_grav_body.position, arrow_end);
         }
         else
         {
-            new_preview_grav_body.position = ScreenToWorldCoordinates(input_state.mouseCurrPosition, cameraState);
+            new_preview_grav_body.position = ScreenToWorldCoordinates(input_state.mouseCurrPosition, camera_state);
         }
         new_preview_grav_body.previousPosition =
             new_preview_grav_body.position; // to prevent alpha interpolation artifacts
@@ -578,16 +583,17 @@ void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexDat
     }
 }
 
-CameraConstants RenderSystem::buildCameraConstants(const CameraState& cameraState, const Vector2D& offset)
+CameraConstants RenderSystem::buildCameraConstants(const CameraState& camera_state,
+                                                   const DynamoEngine::Vector2D& offset)
 {
     CameraConstants camera_constants = {};
-    camera_constants.screenWidth = cameraState.windowWidth;
-    camera_constants.screenHeight = cameraState.windowHeight;
-    camera_constants.zoom = (float)cameraState.zoom;
-    camera_constants.offsetX = (float)offset.xVal;
-    camera_constants.offsetY = (float)offset.yVal;
-    camera_constants.viewMode = 0;
-    camera_constants.rendering_alpha = cameraState.renderAlpha;
+    camera_constants.screenWidth = camera_state.window_width;
+    camera_constants.screenHeight = camera_state.window_height;
+    camera_constants.zoom = (float)camera_state.zoom;
+    camera_constants.offsetX = (float)offset.x_val;
+    camera_constants.offsetY = (float)offset.y_val;
+    camera_constants.viewMode = static_cast<uint32_t>(camera_state.visor_view);
+    camera_constants.rendering_alpha = camera_state.render_alpha;
     camera_constants._padding1 = 0.0f;
     return camera_constants;
 }
@@ -870,11 +876,11 @@ void RenderSystem::uploadTwinklingStarField(SDL_GPUCommandBuffer* cmdbuf)
 }
 
 void RenderSystem::renderTwinklingStarField(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
-                                            const CameraState& cameraState)
+                                            const CameraState& camera_state)
 {
     SDL_BindGPUGraphicsPipeline(pass, twinklingStarPipeline);
 
-    CameraConstants camera_constants = buildCameraConstants(cameraState, cameraState.twinklingStarOffset);
+    CameraConstants camera_constants = buildCameraConstants(camera_state, camera_state.twinkling_star_offset);
 
     SDL_PushGPUVertexUniformData(cmdbuf, 0, &camera_constants, sizeof(camera_constants));
 
@@ -1025,14 +1031,14 @@ void RenderSystem::createStarshipGPUBufferAndPipeline()
     SDL_ReleaseGPUShader(gpu, frag_shader);
 }
 
-void RenderSystem::buildVelocityVectorGeometry(Vector2D lineStart, Vector2D lineEnd)
+void RenderSystem::buildVelocityVectorGeometry(DynamoEngine::Vector2D lineStart, DynamoEngine::Vector2D lineEnd)
 {
     velocityVectorVertices.clear();
 
-    float dx = static_cast<float>(lineEnd.xVal - lineStart.xVal);
-    float dy = static_cast<float>(lineEnd.yVal - lineStart.yVal);
+    float dx = static_cast<float>(lineEnd.x_val - lineStart.x_val);
+    float dy = static_cast<float>(lineEnd.y_val - lineStart.y_val);
     float length = static_cast<float>((lineEnd - lineStart).magnitude());
-    if (length <= EPSILON)
+    if (length <= DynamoEngine::EPSILON)
     {
         return;
     }
@@ -1047,15 +1053,15 @@ void RenderSystem::buildVelocityVectorGeometry(Vector2D lineStart, Vector2D line
     float half_T = thickness / 2.0f;
 
     // Shorten the shaft so the arrowhead has room at the tip
-    Vector2D line_end = {lineEnd.xVal - dx * arrow_length, lineEnd.yVal - dy * arrow_length};
+    DynamoEngine::Vector2D line_end = {lineEnd.x_val - dx * arrow_length, lineEnd.y_val - dy * arrow_length};
 
     float r = 1.0f, g = 1.0f, b = 1.0f, a = 1.0f; // white, matching the original
 
     // Shaft quad, expanded into 2 raw triangles
-    float v0x = float(lineStart.xVal) + px * half_T, v0y = float(lineStart.yVal) + py * half_T;
-    float v1x = float(lineStart.xVal) - px * half_T, v1y = float(lineStart.yVal) - py * half_T;
-    float v2x = float(line_end.xVal) - px * half_T, v2y = float(line_end.yVal) - py * half_T;
-    float v3x = float(line_end.xVal) + px * half_T, v3y = float(line_end.yVal) + py * half_T;
+    float v0x = float(lineStart.x_val) + px * half_T, v0y = float(lineStart.y_val) + py * half_T;
+    float v1x = float(lineStart.x_val) - px * half_T, v1y = float(lineStart.y_val) - py * half_T;
+    float v2x = float(line_end.x_val) - px * half_T, v2y = float(line_end.y_val) - py * half_T;
+    float v3x = float(line_end.x_val) + px * half_T, v3y = float(line_end.y_val) + py * half_T;
 
     velocityVectorVertices.push_back({v0x, v0y, r, g, b, a});
     velocityVectorVertices.push_back({v1x, v1y, r, g, b, a});
@@ -1065,11 +1071,11 @@ void RenderSystem::buildVelocityVectorGeometry(Vector2D lineStart, Vector2D line
     velocityVectorVertices.push_back({v3x, v3y, r, g, b, a});
 
     // Arrowhead triangle
-    velocityVectorVertices.push_back({float(lineEnd.xVal), float(lineEnd.yVal), r, g, b, a});
-    velocityVectorVertices.push_back({float(line_end.xVal) + px * (arrow_width / 2.0f),
-                                      float(line_end.yVal) + py * (arrow_width / 2.0f), r, g, b, a});
-    velocityVectorVertices.push_back({float(line_end.xVal) - px * (arrow_width / 2.0f),
-                                      float(line_end.yVal) - py * (arrow_width / 2.0f), r, g, b, a});
+    velocityVectorVertices.push_back({float(lineEnd.x_val), float(lineEnd.y_val), r, g, b, a});
+    velocityVectorVertices.push_back({float(line_end.x_val) + px * (arrow_width / 2.0f),
+                                      float(line_end.y_val) + py * (arrow_width / 2.0f), r, g, b, a});
+    velocityVectorVertices.push_back({float(line_end.x_val) - px * (arrow_width / 2.0f),
+                                      float(line_end.y_val) - py * (arrow_width / 2.0f), r, g, b, a});
 }
 
 void RenderSystem::uploadVelocityVectorVertices(SDL_GPUCommandBuffer* cmdbuf)
@@ -1091,14 +1097,14 @@ void RenderSystem::uploadVelocityVectorVertices(SDL_GPUCommandBuffer* cmdbuf)
 }
 
 void RenderSystem::renderVelocityVectors(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
-                                         const CameraState& cameraState)
+                                         const CameraState& camera_state)
 {
     if (velocityVectorVertices.empty())
         return;
 
     SDL_BindGPUGraphicsPipeline(pass, velocityVectorPipeline);
 
-    CameraConstants camera_constants = buildCameraConstants(cameraState, cameraState.offset);
+    CameraConstants camera_constants = buildCameraConstants(camera_state, camera_state.offset);
     SDL_PushGPUVertexUniformData(cmdbuf, 0, &camera_constants, sizeof(camera_constants));
 
     SDL_GPUBufferBinding vbo = {.buffer = velocityVectorVertexBuffer, .offset = 0};

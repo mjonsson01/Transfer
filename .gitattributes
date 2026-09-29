@@ -1,0 +1,4 @@
+# Script line endings, the same on every machine no matter its core.autocrlf setting:
+# bash fails on Windows (CRLF) line endings, and cmd's "call :label" lookup is unreliable with Unix (LF) ones.
+*.sh  text eol=lf
+*.bat text eol=crlf

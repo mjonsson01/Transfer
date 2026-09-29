@@ -44,7 +44,7 @@ void PhysicsSystem::CleanUp()
 
 void PhysicsSystem::UpdateGravBodyInstantiations(GameState& gameState, UIState& uiState)
 {
-    InputState& input_state = uiState.getMutableInputState();
+    DEPRECATED_InputState& input_state = uiState.getMutableDEPRECATED_InputState();
     if (!input_state.UIInputConsumed)
     {
         if (input_state.isCreatingMacro)
@@ -77,11 +77,12 @@ void PhysicsSystem::UpdateGravBodyInstantiations(GameState& gameState, UIState& 
 
 static inline CollisionInfo getCollisionInfo(const GravitationalBody& a, const GravitationalBody& b)
 {
-    Vector2D r_vector = b.position - a.position;
+    DynamoEngine::Vector2D r_vector = b.position - a.position;
     double distance = r_vector.magnitude();
-    Vector2D unit_normal_vector = (distance > 1e-8) ? (r_vector / distance) : Vector2D(1.0, 0.0);
+    DynamoEngine::Vector2D unit_normal_vector =
+        (distance > 1e-8) ? (r_vector / distance) : DynamoEngine::Vector2D(1.0, 0.0);
 
-    Vector2D relative_velocity_vector = b.velocity - a.velocity;
+    DynamoEngine::Vector2D relative_velocity_vector = b.velocity - a.velocity;
     double normal_speed = relative_velocity_vector.dot(unit_normal_vector);
     double abs_normal_speed = std::abs(normal_speed);
     bool should_collide = (distance < b.radius + a.radius);
@@ -101,13 +102,20 @@ static inline GravitationalBodyPair pickMassPair(GravitationalBody& a, Gravitati
 
 void PhysicsSystem::handleCollisions(GameState& gameState)
 {
-    auto& particles = gameState.getParticlesMutable();
-    particles.reserve(particles.size() +
-                      static_cast<size_t>(MAX_SIMULTANEOUS_SHATTERS_PER_TICK) * DEFAULT_FRAGMENT_COUNT * 2);
-
+    // Shatters during these passes put their fragments in m_pending_fragments, not in particles
     handleMacroMacroCollisions(gameState);
     handleMacroParticleCollisions(gameState);
     handleParticleParticleCollisions(gameState);
+
+    // All loops over particles are finished: now it's safe to grow the vector
+    std::vector<GravitationalBody>& particles = gameState.getParticlesMutable();
+    particles.insert(particles.end(), m_pending_fragments.begin(), m_pending_fragments.end());
+    m_pending_fragments.clear(); // clear() keeps the memory, so next tick's shatters don't allocate again
+}
+
+size_t PhysicsSystem::liveParticleCount(const GameState& gameState) const
+{
+    return gameState.getParticles().size() + m_pending_fragments.size();
 }
 
 void PhysicsSystem::handleMacroMacroCollisions(GameState& gameState)
@@ -233,20 +241,20 @@ void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& gravBodyPair, 
 
         // Hard safety net: never let a shatter push live particle count past a cap, regardless
         // of any tuning elsewhere that might otherwise cascade (see point 2).
-        if (gameState.getParticlesMutable().size() >= MAX_LIVE_PARTICLES)
+        if (liveParticleCount(gameState) >= MAX_LIVE_PARTICLES)
         {
             handleElasticCollisions(lighter, heavier);
             return;
         }
 
-        Vector2D toward_lighter = (lighter.position - heavier.position).normalize();
-        Vector2D impact_point = heavier.position + toward_lighter * heavier.radius;
+        DynamoEngine::Vector2D toward_lighter = (lighter.position - heavier.position).normalize();
+        DynamoEngine::Vector2D impact_point = heavier.position + toward_lighter * heavier.radius;
 
         if (heavier.isShatterable && gravBodyPair.ratio <= MUTUAL_SHATTER_MASS_RATIO_THRESHOLD)
         {
-            substituteWithParticlesFromImpact(heavier, gameState, DEFAULT_FRAGMENT_COUNT, impact_point);
+            substituteWithParticlesFromImpact(heavier, m_pending_fragments, DEFAULT_FRAGMENT_COUNT, impact_point);
         }
-        substituteWithParticlesFromImpact(lighter, gameState, DEFAULT_FRAGMENT_COUNT, impact_point);
+        substituteWithParticlesFromImpact(lighter, m_pending_fragments, DEFAULT_FRAGMENT_COUNT, impact_point);
         return;
     }
 
@@ -278,12 +286,12 @@ void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& gravBodyPair, 
         // This is a very gentle collision compared to our normal explosion collision and requires that major mass
         // disparity so we decrease fragment density
         bool can_crumble =
-            lighter.isMacro && lighter.isShatterable && gameState.getParticlesMutable().size() < MAX_LIVE_PARTICLES;
+            lighter.isMacro && lighter.isShatterable && liveParticleCount(gameState) < MAX_LIVE_PARTICLES;
         if (can_crumble)
         {
-            Vector2D toward_lighter = (lighter.position - heavier.position).normalize();
-            Vector2D contact_point = heavier.position + toward_lighter * heavier.radius;
-            substituteWithParticlesFromImpact(lighter, gameState, DEFAULT_FRAGMENT_COUNT / 3, contact_point);
+            DynamoEngine::Vector2D toward_lighter = (lighter.position - heavier.position).normalize();
+            DynamoEngine::Vector2D contact_point = heavier.position + toward_lighter * heavier.radius;
+            substituteWithParticlesFromImpact(lighter, m_pending_fragments, DEFAULT_FRAGMENT_COUNT / 3, contact_point);
         }
         else
         {
@@ -307,7 +315,7 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, Grav
         GravitationalBody& dyn = smallerBody.isForceStatic ? largerBody : smallerBody;
         GravitationalBody& stat = smallerBody.isForceStatic ? smallerBody : largerBody;
 
-        Vector2D n = (dyn.position - stat.position).normalize();
+        DynamoEngine::Vector2D n = (dyn.position - stat.position).normalize();
         double v_n = dyn.velocity.dot(n);
 
         if (v_n < 0.0)
@@ -322,7 +330,7 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, Grav
         return;
     }
 
-    Vector2D r_vector = largerBody.position - smallerBody.position;
+    DynamoEngine::Vector2D r_vector = largerBody.position - smallerBody.position;
     double distance = r_vector.magnitude();
 
     if (firstWithinEpsilonOfSecond(distance, 0.0))
@@ -330,19 +338,26 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, Grav
         return;
     }
 
-    Vector2D normal_vector = r_vector / distance;
+    DynamoEngine::Vector2D normal_vector = r_vector / distance; // points from the smaller body to the larger one
     double v_smaller_n = smallerBody.velocity.dot(normal_vector);
     double v_larger_n = largerBody.velocity.dot(normal_vector);
     double m_smaller = smallerBody.mass;
     double m_larger = largerBody.mass;
 
-    double v_smaller_n_new =
-        (v_smaller_n * (m_smaller - m_larger) + 2 * m_larger * v_larger_n) / (m_smaller + m_larger);
-    double v_larger_n_new =
-        (v_larger_n * (m_larger - m_smaller) + 2 * m_smaller * v_smaller_n) / (m_smaller + m_larger);
+    // Only bounce bodies that are moving TOWARD each other. Overlapping bodies that are already separating (e.g.
+    // fragments born overlapping) must keep separating -- bouncing them would flip them back together every tick, so
+    // they'd stick.
+    double closing_speed = v_smaller_n - v_larger_n; // > 0: the gap along the normal is shrinking
+    if (closing_speed > 0.0)
+    {
+        double v_smaller_n_new =
+            (v_smaller_n * (m_smaller - m_larger) + 2 * m_larger * v_larger_n) / (m_smaller + m_larger);
+        double v_larger_n_new =
+            (v_larger_n * (m_larger - m_smaller) + 2 * m_smaller * v_smaller_n) / (m_smaller + m_larger);
 
-    smallerBody.velocity += normal_vector * (v_smaller_n_new - v_smaller_n) * ELASTIC_LOSS_FACTOR;
-    largerBody.velocity += normal_vector * (v_larger_n_new - v_larger_n) * ELASTIC_LOSS_FACTOR;
+        smallerBody.velocity += normal_vector * (v_smaller_n_new - v_smaller_n) * ELASTIC_LOSS_FACTOR;
+        largerBody.velocity += normal_vector * (v_larger_n_new - v_larger_n) * ELASTIC_LOSS_FACTOR;
+    }
 
     double penetration = (smallerBody.radius + largerBody.radius) - distance;
     if (penetration > 0.0)
@@ -350,7 +365,7 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, Grav
         constexpr double percent = 0.8;
         constexpr double slop = 0.01;
         double correction_magnitude = std::max(penetration - slop, 0.0) * percent;
-        Vector2D correction = normal_vector * correction_magnitude;
+        DynamoEngine::Vector2D correction = normal_vector * correction_magnitude;
 
         if (smallerBody.isForceStatic && !largerBody.isForceStatic)
         {
@@ -365,7 +380,7 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, Grav
         else
         {
             double totalInvMass = smallerBody.invMass + largerBody.invMass;
-            if (totalInvMass > EPSILON)
+            if (totalInvMass > DynamoEngine::EPSILON)
             {
                 double smaller_share = smallerBody.invMass / totalInvMass;
                 double larger_share = largerBody.invMass / totalInvMass;
@@ -443,27 +458,26 @@ void PhysicsSystem::promoteOversizedParticles(GameState& gameState)
     }
 }
 
-void PhysicsSystem::substituteWithParticles(GravitationalBody& originalBody, GameState& gameState,
-                                            uint32_t targetFragmentCount)
+void PhysicsSystem::substituteWithParticles(GravitationalBody& originalBody,
+                                            std::vector<GravitationalBody>& fragments_out, uint32_t targetFragmentCount)
 {
     // uint32_t num_particles = std::max<uint32_t>(1, targetFragmentCount);
     uint32_t num_particles = survivableFragmentCount(originalBody, targetFragmentCount);
 
     const double R = originalBody.radius;
-    const Vector2D center = originalBody.position;
+    const DynamoEngine::Vector2D center = originalBody.position;
     const double original_mass = originalBody.mass;
-    const Vector2D original_velocity = originalBody.velocity;
+    const DynamoEngine::Vector2D original_velocity = originalBody.velocity;
 
-    double density_factor = (PI * R * R) / num_particles;
-    const double fragment_radius = OVERLAP_MARGIN * sqrt(density_factor / PI);
+    double density_factor = (DynamoEngine::PI * R * R) / num_particles;
+    const double fragment_radius = OVERLAP_MARGIN * sqrt(density_factor / DynamoEngine::PI);
     const double particle_mass = original_mass / num_particles;
 
-    auto& particles = gameState.getParticlesMutable();
     for (uint32_t k = 0; k < num_particles; ++k)
     {
         double r_k = R * sqrt((k + 0.5) / num_particles);
         double theta_k = k * GOLDEN_ANGLE;
-        Vector2D pos_k = center + Vector2D{r_k * cos(theta_k), r_k * sin(theta_k)};
+        DynamoEngine::Vector2D pos_k = center + DynamoEngine::Vector2D{r_k * cos(theta_k), r_k * sin(theta_k)};
 
         GravitationalBody p;
         p.mass = particle_mass;
@@ -478,30 +492,31 @@ void PhysicsSystem::substituteWithParticles(GravitationalBody& originalBody, Gam
         p.isParticle = true;
         p.velocity = original_velocity * randomDouble(0.8, 1.1);
 
-        particles.push_back(p);
+        fragments_out.push_back(p);
     }
 
     originalBody.isMarkedForDeletion = true;
 }
 
-void PhysicsSystem::substituteWithParticlesFromImpact(GravitationalBody& originalBody, GameState& gameState,
-                                                      uint32_t targetFragmentCount, const Vector2D& impactPoint)
+void PhysicsSystem::substituteWithParticlesFromImpact(GravitationalBody& originalBody,
+                                                      std::vector<GravitationalBody>& fragments_out,
+                                                      uint32_t targetFragmentCount,
+                                                      const DynamoEngine::Vector2D& impactPoint)
 {
     const double R = originalBody.radius;
     const double original_mass = originalBody.mass;
 
-    auto& particles = gameState.getParticlesMutable();
-    size_t start_index = particles.size();
+    size_t start_index = fragments_out.size(); // this body's fragments are the ones added after this point
 
-    substituteWithParticles(originalBody, gameState, targetFragmentCount);
+    substituteWithParticles(originalBody, fragments_out, targetFragmentCount);
 
     // Grow radius with distance from the impact point: near-impact fragments stay small and
     // pulverized, far-side fragments stay large and coherent -- keyed off the actual contact
     // point (not the body's own center), so a graze reads differently from a direct hit.
     double total_weighted_volume = 0.0;
-    for (size_t i = start_index; i < particles.size(); ++i)
+    for (size_t i = start_index; i < fragments_out.size(); ++i)
     {
-        GravitationalBody& p = particles[i];
+        GravitationalBody& p = fragments_out[i];
         double distance = (p.position - impactPoint).magnitude();
         double t = std::clamp(distance / (2.0 * R), 0.0, 1.0);
         double size_multiplier = 1.0 + t * (IMPACT_SKEW_GROWTH_FACTOR - 1.0) * randomDouble(0.5, 0.9);
@@ -511,9 +526,9 @@ void PhysicsSystem::substituteWithParticlesFromImpact(GravitationalBody& origina
 
     // Re-normalize mass so the biased fragments still sum to originalMass, weighted by volume
     // (radius^3) to stay consistent with handleAccretion's mass<->radius law.
-    for (size_t i = start_index; i < particles.size(); ++i)
+    for (size_t i = start_index; i < fragments_out.size(); ++i)
     {
-        GravitationalBody& p = particles[i];
+        GravitationalBody& p = fragments_out[i];
         p.mass = original_mass * (p.radius * p.radius * p.radius) / total_weighted_volume;
         p.invMass = 1.0 / p.mass;
     }
@@ -553,7 +568,7 @@ void PhysicsSystem::updateGravityForSystem(GameState& gameState)
         }
     }
 
-    // TODO: Review?
+    // TODO: Review? -- Works now with elastic collision fix, need to majorly optimize
     // for (size_t i = 0; i < num_particles; ++i)
     // {
     //     for (size_t j = i + 1; j < num_particles; ++j)
@@ -580,10 +595,10 @@ void PhysicsSystem::calculateGravity(GravitationalBody& firstBody, Gravitational
     double epsilon_squared = softening_constant * softening_constant;
 
     // 1. Calculate direction Vector
-    Vector2D direction_vector = secondBody.position - firstBody.position;
+    DynamoEngine::Vector2D direction_vector = secondBody.position - firstBody.position;
 
     // 2. Calculate Distance Squared
-    double r_squared = direction_vector.square_magnitude();
+    double r_squared = direction_vector.squareMagnitude();
 
     // 3. Calculate the Denominator Term (r^2 + epsilon^2)^(3/2)
     double denominator_1 = sqrt(r_squared + epsilon_squared);
@@ -594,7 +609,7 @@ void PhysicsSystem::calculateGravity(GravitationalBody& firstBody, Gravitational
     double coefficient = (G * firstBody.mass * secondBody.mass) / denominator_3;
 
     // Force vector is C * direction_vector (r)
-    Vector2D force = direction_vector * coefficient;
+    DynamoEngine::Vector2D force = direction_vector * coefficient;
 
     // 6. Apply Forces (Newton's Third Law)
     if (!firstBody.isForceStatic)
@@ -634,13 +649,13 @@ void PhysicsSystem::applyVelocityVerletPhase1(GravitationalBody& gravBody)
     if (has_mass && !gravBody.isForceStatic)
     {
         // Calculate the acceleration from the previous frame's final force
-        Vector2D acceleration = gravBody.netForce * gravBody.invMass;
+        DynamoEngine::Vector2D acceleration = gravBody.netForce * gravBody.invMass;
         gravBody.velocity += acceleration * (PHYSICS_TIME_STEP / 2); // Half of a full integrated step
     }
     // Step the position
     gravBody.position += gravBody.velocity * PHYSICS_TIME_STEP;
     // Reset to force 0 for next frame
-    gravBody.netForce = Vector2D(0.0, 0.0);
+    gravBody.netForce = DynamoEngine::Vector2D(0.0, 0.0);
 }
 
 void PhysicsSystem::integrateForwardsVelocityVerletPhase2(GameState& gameState)
@@ -668,15 +683,16 @@ void PhysicsSystem::applyVelocityVerletPhase2(GravitationalBody& gravBody)
     }
     else
     {
-        Vector2D acceleration = gravBody.netForce * gravBody.invMass;
+        DynamoEngine::Vector2D acceleration = gravBody.netForce * gravBody.invMass;
         gravBody.velocity += acceleration * (PHYSICS_TIME_STEP / 2.0); // Other half of full integrated step
     }
 }
 
 // --------- GRAVITATIONAL BODY CREATION --------- //
 
-static inline void populateGravBodyPropertiesFromInputState(GravitationalBody& gravBody, GameState& gameState,
-                                                            InputState& inputState)
+static inline void populateGravBodyPropertiesFromDEPRECATED_InputState(GravitationalBody& gravBody,
+                                                                       GameState& gameState,
+                                                                       DEPRECATED_InputState& inputState)
 {
     // Default sets, position may be overwrriten if isCreatingWithInitialVelocity set to true
     gravBody.mass = inputState.selectedMass;
@@ -716,7 +732,7 @@ static inline void populateGravBodyPropertiesFromInputState(GravitationalBody& g
     }
 }
 
-void PhysicsSystem::createMacroBody(GameState& gameState, InputState& inputState)
+void PhysicsSystem::createMacroBody(GameState& gameState, DEPRECATED_InputState& inputState)
 {
     std::vector<GravitationalBody>& macro_bodies = gameState.getMacroBodiesMutable();
     if (inputState.selectedRadius <= 1.0)
@@ -734,13 +750,13 @@ void PhysicsSystem::createMacroBody(GameState& gameState, InputState& inputState
     macro_body.macroIdentifier = new_macro_body_id;
 
     // Pass flags from inputState as possible.
-    populateGravBodyPropertiesFromInputState(macro_body, gameState, inputState);
+    populateGravBodyPropertiesFromDEPRECATED_InputState(macro_body, gameState, inputState);
 
     // Now with populated flags, nudge particles out?
     macro_bodies.push_back(macro_body);
 }
 
-void PhysicsSystem::createParticleCluster(GameState& gameState, InputState& inputState)
+void PhysicsSystem::createParticleCluster(GameState& gameState, DEPRECATED_InputState& inputState)
 {
     std::vector<GravitationalBody>& particles = gameState.getParticlesMutable();
     if (inputState.selectedRadius <= 1.0)
@@ -755,9 +771,9 @@ void PhysicsSystem::createParticleCluster(GameState& gameState, InputState& inpu
     GravitationalBody macro_body;
 
     // Pass flags from inputState as possible.
-    populateGravBodyPropertiesFromInputState(macro_body, gameState, inputState);
+    populateGravBodyPropertiesFromDEPRECATED_InputState(macro_body, gameState, inputState);
 
-    substituteWithParticles(macro_body, gameState, DEFAULT_FRAGMENT_COUNT);
+    substituteWithParticles(macro_body, particles, DEFAULT_FRAGMENT_COUNT); // no loop is running: add them directly
 }
 
 // --------- UTILITY --------- //
@@ -771,7 +787,7 @@ void PhysicsSystem::calculateTotalEnergy(GameState& gameState)
     double total_energy = 0.0;
     for (int i = 0; i < num_macro_bodies; ++i)
     {
-        total_energy += macro_bodies[i].mass * macro_bodies[i].velocity.square_magnitude() / 2.0;
+        total_energy += macro_bodies[i].mass * macro_bodies[i].velocity.squareMagnitude() / 2.0;
     }
 
     for (size_t i = 0; i < num_macro_bodies; i++)
@@ -782,10 +798,10 @@ void PhysicsSystem::calculateTotalEnergy(GameState& gameState)
             double epsilon_sq = epsilon * epsilon;
 
             // 1. Calculate Distance Vector
-            Vector2D distance = macro_bodies[i].position - macro_bodies[j].position;
+            DynamoEngine::Vector2D distance = macro_bodies[i].position - macro_bodies[j].position;
 
             // 2. Calculate Distance Squared (r^2)
-            double r_sq = distance.square_magnitude();
+            double r_sq = distance.squareMagnitude();
 
             // 3. Calculate the Denominator Term (r^2 + epsilon^2)^(3/2)
             // The term inside the parenthesis: rSq + epsilonSq

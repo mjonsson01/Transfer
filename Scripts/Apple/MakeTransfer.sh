@@ -1,0 +1,149 @@
+#!/bin/bash
+# Builds the game into build/: lints the engine, compiles the HLSL shaders to MSL, then configures and
+# builds with CMake. Needs Scripts/Apple/SetupDependencies.sh to have been run once.
+#   Scripts/Apple/MakeTransfer.sh           Release, incremental (fast iteration)
+#   Scripts/Apple/MakeTransfer.sh release   Release, full clean rebuild
+#   Scripts/Apple/MakeTransfer.sh debug     Debug, incremental
+#   Scripts/Apple/MakeTransfer.sh clean     delete build/ and stop
+#   SKIP_TIDY=1 Scripts/Apple/MakeTransfer.sh   skip the clang-tidy pass
+set -eEuo pipefail
+
+# Run from the repo root (two folders up from this script) no matter where the script was launched from
+cd "$(dirname "$0")/../.."
+
+BUILD_DIR="build"
+trap 'echo "Build failed at line $LINENO: $BASH_COMMAND" >&2' ERR
+
+# --- Normalize input to lowercase ---
+ARG="${1:-}"
+ARG_LOWER=$(echo "$ARG" | tr '[:upper:]' '[:lower:]')
+
+# --- Determine build type and whether to force a scratch rebuild ---
+# Bare invocation: Release, incremental (fast iteration).
+# 'release' explicitly: Release, full clean rebuild.
+# 'debug': Debug, incremental.
+# 'clean': wipe build dir and exit.
+BUILD_TYPE="Release"
+DO_CLEAN=false
+
+case "$ARG_LOWER" in
+    "")
+        BUILD_TYPE="Release"
+        DO_CLEAN=false
+        ;;
+    debug)
+        BUILD_TYPE="Debug"
+        DO_CLEAN=false
+        ;;
+    release)
+        BUILD_TYPE="Release"
+        DO_CLEAN=true
+        ;;
+    clean)
+        rm -rf "$BUILD_DIR"
+        echo "Clean complete."
+        exit 0
+        ;;
+    *)
+        echo "Unknown argument: $ARG" >&2
+        echo "Usage: $0 [debug|release|clean]" >&2
+        exit 1
+        ;;
+esac
+
+# =====================================================
+# Lint engine code (non-fatal; SKIP_TIDY=1 to skip)
+# =====================================================
+if [[ "${SKIP_TIDY:-0}" != "1" ]]; then
+    echo "Running clang-tidy on DynamoEngine..."
+    if ! Scripts/Apple/TidyEngine.sh; then
+        echo "WARNING: clang-tidy reported findings (see above). Continuing build." >&2
+    fi
+fi
+
+# =====================================================
+# Compile HLSL -> MSL
+# =====================================================
+
+echo "Compiling shaders..."
+
+SHADERCROSS="ThirdParty/ShaderCross/bin/shadercross"
+SHADER_SRC="Transfer/src/HLSL"
+SHADER_OUT="Transfer/Assets/Shaders"
+if [[ ! -x "$SHADERCROSS" ]]; then
+    echo "shadercross not found in ThirdParty/ShaderCross/. Run Scripts/Apple/SetupDependencies.sh first." >&2
+    exit 1
+fi
+mkdir -p "$SHADER_OUT"
+
+SHADERS=(UnifiedGravBody TwinklingStar UIElement VelocityVector Starship)
+
+for name in "${SHADERS[@]}"; do
+    "$SHADERCROSS" "$SHADER_SRC/$name.vert.hlsl" -o "$SHADER_OUT/$name.vert.msl"
+    "$SHADERCROSS" "$SHADER_SRC/$name.frag.hlsl" -o "$SHADER_OUT/$name.frag.msl"
+done
+
+echo "Shaders compiled successfully."
+
+
+if [[ "$DO_CLEAN" == true ]]; then
+    echo "Full scratch rebuild: configuring $BUILD_TYPE build..."
+    rm -rf "$BUILD_DIR"
+else
+    echo "Incremental build: configuring $BUILD_TYPE build..."
+fi
+
+mkdir -p "$BUILD_DIR"
+cd "$BUILD_DIR"
+
+# --- Run CMake and build ---
+cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+cmake --build .
+
+cd ..
+
+# --- Finish message ---
+if [[ "$(uname)" == "Darwin" && "$BUILD_TYPE" == "Release" ]]; then
+    BUILD_PATH="$BUILD_DIR/TransferGame.app"
+    echo "Build complete. App bundle is in $BUILD_PATH"
+elif [[ "$BUILD_TYPE" == "Debug" ]]; then
+    if [[ "$(uname)" == "Darwin" ]]; then
+        BUILD_PATH="$BUILD_DIR/TransferGame"
+    else
+        BUILD_PATH="$BUILD_DIR/TransferGame.exe"
+    fi
+    echo "Build complete. Executable is in $BUILD_PATH ($BUILD_TYPE)"
+else
+    # Windows/Linux Release
+    BUILD_PATH="$BUILD_DIR/TransferGame.exe"
+    echo "Build complete. Executable is in $BUILD_PATH ($BUILD_TYPE)"
+fi
+
+# --- Resolve the actual runnable binary (differs from BUILD_PATH when it's a macOS .app bundle) ---
+if [[ "$(uname)" == "Darwin" && "$BUILD_TYPE" == "Release" ]]; then
+    EXEC_PATH="$BUILD_PATH/Contents/MacOS/TransferGame"
+else
+    EXEC_PATH="$BUILD_PATH"
+fi
+
+# --- Prompt to run build ---
+echo
+read -p "Press Enter to run the build, 'd' + Enter to run it directly (see printouts), or any other key + Enter to skip: " input
+
+case "$input" in
+    "")
+        echo "Launching..."
+        if [[ "$(uname)" == "Darwin" && "$BUILD_TYPE" == "Release" ]]; then
+            open "$BUILD_PATH"
+        else
+            "$EXEC_PATH"
+        fi
+        ;;
+    d|D)
+        echo "Running directly: $EXEC_PATH"
+        "$EXEC_PATH"
+        ;;
+    *)
+        echo "Skipping launch."
+        ;;
+esac

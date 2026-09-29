@@ -7,10 +7,11 @@
 #include <vector>
 
 // Custom includes
-#include "Core/InputState.hpp"
+#include "Core/DEPRECATED_InputState.hpp"
 #include "Core/UIState.hpp"
+#include "DynamoEngine/Math/Vector2.hpp"
+#include "DynamoEngine/Rendering/UIVertex.hpp"
 #include "Utilities/Constants/PhysicsConstants.hpp"
-#include "Utilities/Math/Vector2D.hpp"
 #include "Utilities/Rendering/GPUTypes.hpp"
 
 class Starship
@@ -30,12 +31,12 @@ class Starship
     void applyVelocity(UIState& uiState);
     void applyRotation(UIState& uiState);
     void buildGeometry(std::vector<StarshipVertex>& starshipVertexBuffer);
-    Vector2D getPointingVector();
+    DynamoEngine::Vector2D getPointingVector();
 
   private:
-    Vector2D velocity = {};
+    DynamoEngine::Vector2D velocity = {};
     double rotation = {};
-    Vector2D position = {};
-    Vector2D prevPosition = {};
+    DynamoEngine::Vector2D position = {};
+    DynamoEngine::Vector2D prevPosition = {};
     float shipSize = {};
 };
