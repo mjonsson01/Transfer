@@ -76,6 +76,11 @@ if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release")
     set_target_properties(${PROJECT_NAME} PROPERTIES
         MACOSX_BUNDLE TRUE
         MACOSX_BUNDLE_ICON_FILE Transfer.icns
+        # Find the SDL dylibs INSIDE the bundle (Contents/Frameworks, copied there below) instead of in this machine's
+        # ThirdParty/, so the .app also runs on Macs that don't have this repo. BUILD_WITH_INSTALL_RPATH: use that
+        # search path in build/ too (by default CMake would write the absolute ThirdParty path into the build).
+        INSTALL_RPATH "@executable_path/../Frameworks"
+        BUILD_WITH_INSTALL_RPATH TRUE
     )
 else()
     add_executable(${PROJECT_NAME} ${SRC_FILES})
@@ -142,6 +147,37 @@ elseif(APPLE)
                 "${CMAKE_SOURCE_DIR}/Transfer/Assets"
                 "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/Resources/Assets/"
             COMMENT "Copying game resources into app bundle"
+        )
+
+        # Bundle SDL: copy its dylibs to Contents/Frameworks, where the rpath set on the target above points.
+        # Each one must be stored under the exact name the game asks for at launch -- its "install name", e.g.
+        # @rpath/libSDL3_ttf.0.dylib. That can differ from the real file's name (e.g. libSDL3_ttf.0.2.2.dylib, with
+        # the short name only a symlink), so both names are read from the SDL package's config and the real file
+        # is copied TO the install name. (Keeping the real file's name made dyld fail: "Library not loaded".)
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/Frameworks"
+        )
+        foreach(sdl_target IN ITEMS SDL3::SDL3-shared SDL3_ttf::SDL3_ttf-shared)
+            get_target_property(library_file ${sdl_target} IMPORTED_LOCATION_RELEASE) # the real file on disk
+            get_target_property(install_name ${sdl_target} IMPORTED_SONAME_RELEASE)   # what the game asks for
+            if(NOT library_file OR NOT install_name)
+                message(FATAL_ERROR "${sdl_target}: its package config doesn't give a Release library file and install name. "
+                                    "Re-run Scripts/Apple/SetupDependencies.sh (SDL must be built in Release).")
+            endif()
+            get_filename_component(install_file_name "${install_name}" NAME) # "@rpath/libSDL3_ttf.0.dylib" -> "libSDL3_ttf.0.dylib"
+            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${library_file}" "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/Frameworks/${install_file_name}"
+                COMMENT "Copying ${install_file_name} into the app bundle"
+            )
+        endforeach()
+
+        # Sign the finished bundle LAST: a signature records the bundle's exact contents, so anything copied in
+        # afterwards would break it. "-" = ad-hoc (no Apple Developer ID): enough to run on other Macs after the
+        # user allows it once, not enough to skip Gatekeeper's warning (that needs a Developer ID + notarization).
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND codesign --force --deep --sign - "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>"
+            COMMENT "Ad-hoc signing the app bundle"
         )
     else()
         # Debug: simplified asset copy
