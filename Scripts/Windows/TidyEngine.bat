@@ -1,16 +1,16 @@
 @echo off
 REM Runs clang-tidy over every DynamoEngine file -- headers included, which VS Code's automatic
 REM analysis skips (it only analyzes .cpp files). Rules come from Transfer\src\DynamoEngine\.clang-tidy.
-REM   TidyEngine.bat                       lint every engine file
-REM   TidyEngine.bat --fix                 extra args go straight to clang-tidy (--fix applies suggested
+REM   Scripts\Windows\TidyEngine.bat          lint every engine file
+REM   Scripts\Windows\TidyEngine.bat --fix    extra args go straight to clang-tidy (--fix applies suggested
 REM                                        renames, but only inside engine files -- review the diff, and
 REM                                        prefer the editor's Rename Symbol for anything used by the game)
 REM   set CLANG_TIDY=C:\path\clang-tidy.exe   use a specific clang-tidy
 REM Exit code: 0 = clean, 1 = findings (or clang-tidy couldn't run).
 setlocal enabledelayedexpansion
 
-REM Run from the repo root no matter where the script was launched from
-cd /d "%~dp0"
+REM Run from the repo root (two folders up from this script) no matter where the script was launched from
+cd /d "%~dp0..\.."
 
 set "ENGINE_DIR=Transfer\src\DynamoEngine"
 set "OUTPUT_FILE=%TEMP%\TidyEngine_output.txt"
@@ -31,8 +31,14 @@ if not defined CLANG_TIDY_BIN (
 )
 echo Using %CLANG_TIDY_BIN%
 
+REM --- SDL headers come from ThirdParty\ (Scripts\Windows\SetupDependencies.bat installs them) ---
+if not exist "ThirdParty\SDL3\include" (
+    echo SDL3 not found in ThirdParty\. Run Scripts\Windows\SetupDependencies.bat first.
+    exit /b 1
+)
+
 REM --- Compiler flags (mirror CMakeLists.txt): -xc++ so headers are parsed as C++, SDL as a system include ---
-set "COMPILE_FLAGS=-xc++ -std=c++20 -I"%~dp0Transfer\src" -isystem "C:\SDL3\include" -isystem "%~dp0..\..\SDL3_TTF\include""
+set "COMPILE_FLAGS=-xc++ -std=c++20 -I"%CD%\Transfer\src" -isystem "%CD%\ThirdParty\SDL3\include" -isystem "%CD%\ThirdParty\SDL3_ttf\include""
 
 REM VS Code's bundled clang-tidy ships without clang's own builtin headers (<stdarg.h> etc.), which normally
 REM live in <llvm>\lib\clang. If they're missing and a full clang is on PATH, borrow its copy.

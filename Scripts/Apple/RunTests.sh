@@ -1,11 +1,11 @@
 #!/bin/bash
 # Builds and runs the unit tests in their own build folder (build-tests/), so the game's
 # build/ folder and MakeTransfer.sh are never touched.
-#   ./RunTests.sh                    run every test
-#   ./RunTests.sh -R InputDevices    extra args go straight to ctest (-R filters by test name)
+#   Scripts/Apple/RunTests.sh                    run every test
+#   Scripts/Apple/RunTests.sh -R InputDevices    extra args go straight to ctest (-R filters by test name)
 set -eEuo pipefail
 trap 'echo "RunTests failed at line $LINENO: $BASH_COMMAND" >&2' ERR
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/../.." # the repo root, two folders up from this script
 
 BUILD_DIR="build-tests"
 

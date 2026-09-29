@@ -3,6 +3,7 @@
 **Fresh Claude session, on any device: read this whole file, then `CLAUDE/REWORK.txt`, before doing anything.**
 This folder is the only memory that travels between machines (Claude's own memory is per-device).
 Last full rewrite: 2026-09-27, on macOS, branch `EngineSep` at `959b486` ("Finished initial full implementation of visor_view").
+Updated 2026-09-28 on Windows (at `4737715` + uncommitted SDL/ThirdParty work, see section 2).
 
 ---
 
@@ -18,6 +19,13 @@ Last full rewrite: 2026-09-27, on macOS, branch `EngineSep` at `959b486` ("Finis
 - Before presenting code, verify it in a scratch copy of the repo: rsync it (excluding build dirs, CLAUDE and .git), configure with
   `-DFETCHCONTENT_SOURCE_DIR_GOOGLETEST=<repo>/build-tests/_deps/googletest-src`, build the game and tests, and run TidyEngine.
   Offer drafts; only write to the repo when told.
+  - **Re-copy `Transfer/Assets/Shaders/*.spv` right before any visual test.** They're gitignored build output that only MakeTransfer
+    rebuilds; a stale copy drew every text quad as a solid white box (2026-09-28, wrongly blamed on an SDL change at first).
+  - Windows: the scratchpad path is too long for MSBuild (MAX_PATH 260) -> `subst Q: <scratchpad>` and build in `Q:\...`, then `subst Q: /D`.
+    A scratch copy also needs its own `ThirdParty\` (copy the real one; don't rebuild shadercross for a scratch test).
+  - Claude can check visuals on Windows: launch the exe, PowerShell `CopyFromScreen` on its window rect, Read the PNG
+    (script pattern: `$p.MainWindowHandle` + `GetWindowRect`; it sometimes grabs the wrong window, so check the title bar).
+  - The FontAtlas tests check metrics only, not pixels: passing tests do NOT prove text renders.
 - Ask when a design choice is genuinely his (widget behavior, look, placement). Don't guess at it.
 
 **Who he is and how he learns**
@@ -59,24 +67,44 @@ Last full rewrite: 2026-09-27, on macOS, branch `EngineSep` at `959b486` ("Finis
   the test target builds the engine alone, which enforces this.
 - Engine warnings: `-Wall -Wextra -Wimplicit-fallthrough -Wno-unused-parameter` (MSVC `/W4 /wd4100`), PRIVATE to the engine.
   Why unused-parameter is off: overrides must match base signatures (e.g. `onMouseReleased(pos, released_inside)`).
-- **Scripts (repo root, each with a .sh (mac) and a .bat (Windows) version):**
-  - `MakeTransfer.sh|.bat` builds the game (build/) AND **compiles HLSL shaders** with LocalShaderCross/shadercross
-    (mac → .msl, Windows → .spv, into Transfer/Assets/Shaders). **Only this recompiles shaders.** RunTests/cmake do not.
-  - `RunTests.sh|.bat [ctest args]`: googletest v1.17.0 via FetchContent, option `TRANSFER_BUILD_TESTS`, own dir `build-tests/`.
+- **Scripts live in `Scripts/Windows/*.bat` and `Scripts/Apple/*.sh`** (moved 2026-09-29; `Scripts/README.md` is the user guide).
+  Same four on both platforms, same arguments; each `cd`s to the repo root itself (`%~dp0..\..` / `$(dirname "$0")/../..`).
+  `.gitattributes` forces `*.sh` LF and `*.bat` CRLF. Mac scripts keep their executable bit only because they were `git mv`'d.
+  - `SetupDependencies` (once after cloning; safe to re-run, skips what `VERSION.txt` says is installed) fills gitignored `ThirdParty/`:
+    - Windows: SDL3 3.4.16 + SDL3_ttf 3.2.2 prebuilt VC zips, SHA-256 pinned (curl, tar, PowerShell Get-FileHash).
+    - Mac: SDL3 + SDL3_ttf built from source at pinned git COMMITS (tags release-3.4.16 = fa2c02bb..., release-3.2.2 = a1ce3670...),
+      SDL_ttf with `SDLTTF_VENDORED=ON` (FreeType/HarfBuzz are git submodules: the 1.5 MB source tarball does NOT contain them).
+    - Both: `ThirdParty/ShaderCross` = SDL_shadercross built from source at commit 1ff05bec... (no releases/tags exist), vendored
+      (builds DXC + SPIRV-Cross: slow, git + Python needed), `cmake --install` -> `bin/`, plus SDL3.dll / libSDL3*.dylib copied in.
+      Mac passes `CMAKE_INSTALL_RPATH=@executable_path/../lib` (upstream sets none). Windows builds in `ThirdParty\_src\sc`
+      (short on purpose: MAX_PATH) with `git -c core.longpaths=true`.
+    - Stable SDL only: an ODD SDL3 minor (3.5.x) is a prerelease. Marco's old `C:\SDL3` was a 3.5.0 dev snapshot.
+  - `MakeTransfer [debug|release|clean]` lints (SKIP_TIDY=1 skips), **compiles HLSL** with `ThirdParty/ShaderCross/bin/shadercross`
+    (mac → .msl, Windows → .spv, into Transfer/Assets/Shaders), then builds `build/`. **Only this recompiles shaders.**
+    The .bat compiles in a for loop and `goto :shaderFailed` on the first error: `exit /b 1` INSIDE a for loop lost its exit code
+    (returned 0 under `cmd /c`; verified 2026-09-29). Plain `if` blocks are fine. Same pattern for SetupDependencies' tool check.
+  - `RunTests [ctest args]`: googletest v1.17.0 via FetchContent, option `TRANSFER_BUILD_TESTS`, own dir `build-tests/`.
     The .bat passes `--config`/`-C Debug` for multi-config (Visual Studio) generators.
-  - `TidyEngine.sh|.bat`: clang-tidy over every engine .cpp/.hpp (34 files, all clean at handoff). The mac version needs
-    `-isysroot $(xcrun --show-sdk-path)` and `-resource-dir $(clang -print-resource-dir)`. **The .bat has never been run on Windows**,
-    so expect to debug it. You can pass a specific binary: `set CLANG_TIDY=C:\path\clang-tidy.exe`.
+  - `TidyEngine`: clang-tidy over every engine .cpp/.hpp (34 files, all clean). SDL headers from `ThirdParty/`. The mac version needs
+    `-isysroot $(xcrun --show-sdk-path)` and `-resource-dir $(clang -print-resource-dir)`. The .bat uses VS Code's bundled clang-tidy.
+    You can pass a specific binary: `CLANG_TIDY=...`.
+  - Verified 2026-09-29 on Windows, run from `C:\`: Tidy clean, 120/120, MakeTransfer compiles all 10 shaders + builds.
+    NOT verified: the Windows shadercross source build (unless a later note says so), and **nothing on the Mac** (only `bash -n`).
 - Tests: top-level `Tests/` mirrors `src/` (Tests/DynamoEngine/{Input,Rendering,UI,UI/Widgets}); include roots are `Transfer/src` and `Tests`.
   `Tests/TestingUtilities/VectorsNear.hpp` is an AssertionResult helper. `EXPECT_DEBUG_DEATH` is used for assert paths. The CMake define
   `TRANSFER_TEST_FONT_PATH` points FontAtlas tests at `Transfer/Assets/Fonts/SpaceMono-Regular.ttf`. **120/120 pass at handoff.**
   Known nit: Test_SceneManager.cpp lives in Tests/DynamoEngine/UI/ but its header comment says .../Scenes/.
 - `.vscode/c_cpp_properties.json` is GENERATED by CMake on configure (option TRANSFER_GENERATE_VSCODE_CONFIG); hand edits are lost.
 - Docs: `PythonScripts/create_docs.py` regenerates `Documentation/class_map.md` + `structure.txt` (stale since the UI rework; rerun it).
-- `.gitignore` has `*.md`, so **markdown files (including this one) are ignored unless there's an exception such as `!CLAUDE/**`**.
-  Marco was making CLAUDE/ syncable on 2026-09-27.
-- Windows specifics: SPIR-V shaders, `LocalShaderCross/` + `LocalSpirvCross/` (gitignored, per machine). Marco was about to do
-  "cleanup actions on the Windows side to see where I am going wrong". Windows build health hadn't been checked since the engine split.
+- `.gitignore` no longer ignores `*.md` (checked 2026-09-29), so CLAUDE/ and Scripts/README.md are tracked normally.
+- SDL in CMake (both platforms since 2026-09-29): `find_package(SDL3/SDL3_ttf CONFIG PATHS ${TRANSFER_THIRD_PARTY_DIR}/... NO_DEFAULT_PATH)`
+  (cache var, default `<repo>/ThirdParty`) -> imported targets `SDL3::SDL3` / `SDL3_ttf::SDL3_ttf`. No Homebrew anywhere any more.
+  The old `LocalShaderCross/` + `LocalSpirvCross/` folders are obsolete (delete, then drop their .gitignore lines).
+  - Windows details:
+    DLLs are copied next to the game AND TransferTests with `$<TARGET_RUNTIME_DLLS:...>` + `COMMAND_EXPAND_LISTS` (needs CMake 3.21).
+    The test copy must be added BEFORE `gtest_discover_tests`: discovery runs the exe post-build, and a missing DLL = exit 0xc0000135.
+    `SDL3_INCLUDE_DIRS` / `SDL3_DLLS` no longer exist.
+  - The `CLAUDE/drafts/` folder (stress harness, sub-pixel fade diff) exists only on the Mac: it was never committed.
 
 ---
 
@@ -179,7 +207,7 @@ Lambdas capture Game members by reference, which is safe because they outlive th
 - Crisp scaled text.
 - Knob-only slider hover.
 - **D: visor dropdown + Tab cycling + shader view modes.**
-- Physics fix (2026-09-27, applied by Claude at Marco's request, uncommitted at time of writing): shatter fragments go into
+- Physics fix (2026-09-27, applied by Claude at Marco's request; committed in `26a094a`): shatter fragments go into
   `PhysicsSystem::m_pending_fragments` (via a `fragments_out` parameter on substituteWithParticles / ...FromImpact) and are appended
   to `particles` after all three collision passes (`handleCollisions`); `createParticleCluster` passes `particles` directly (no loop
   running, must appear with time stopped). `liveParticleCount()` = particles + pending for both MAX_LIVE_PARTICLES checks.
@@ -198,7 +226,11 @@ Lambdas capture Game members by reference, which is safe because they outlive th
   becoming one particle. Visual result NOT verified by Claude (can't see screen): Marco must zoom out on a shatter (Retina + Windows 1x).
 
 **Next candidates** (let Marco pick):
-- Windows build health: he's doing cleanup there now. Check MakeTransfer.bat, RunTests.bat and TidyEngine.bat on Windows.
+- Build/scripts (2026-09-28/29): scripts moved to Scripts/{Windows,Apple}, SDL + shadercross via SetupDependencies into ThirdParty
+  (uncommitted at time of writing). Marco confirmed the Windows SDL build works; still to do: run SetupDependencies.bat for the
+  shadercross build, run the Mac scripts on the Mac, then delete `C:\SDL3`, `..\..\SDL3_TTF`, `LocalShaderCross/`, `LocalSpirvCross/`.
+  Open quiz: why `NO_DEFAULT_PATH` (answer: without it, default search paths such as PATH-derived prefixes could find the old
+  3.5.0 `C:\SDL3` before ThirdParty).
 - Visor styling: row gaps, a selected-row look, a real "Realistic" coloring, then the actual Charge/Temperature views.
 - E: action map, i.e. rebindable keys that replace hard-coded scancodes. It will also retire DEPRECATED_InputState. All key bindings
   live in `translateGameInputs` on purpose, to make E easy.
@@ -210,7 +242,7 @@ Lambdas capture Game members by reference, which is safe because they outlive th
   - R3 engine UIRenderer.
   - R4 RenderContext.
   - SDLContext lifetime fix (SDL_Quit runs before members die; see REWORK).
-- REWORK.txt: 37 items (physics bugs, render risks, audio).
+- REWORK.txt: ~33 items (physics bugs, render risks, audio, build/tooling).
 
 ---
 
@@ -241,9 +273,8 @@ Lambdas capture Game members by reference, which is safe because they outlive th
   so born-overlapping fragments get their separating normal velocity swapped back toward each other every tick -> they stick/jiggle = looks
   like attraction; ratio >= 8 pairs ghost through. Fix next session = one approaching check (REWORK handleElasticCollisions [BUG]); also the
   prime suspect for the open "runaway spinning clumps" question.
-- 2026-09-28 FIXED (applied by Claude at Marco's request, uncommitted): handleElasticCollisions dynamic branch now only exchanges normal
+- 2026-09-28 FIXED (applied by Claude at Marco's request; committed in `4737715`): handleElasticCollisions dynamic branch now only exchanges normal
   velocities when closing_speed = v_smaller_n - v_larger_n > 0 (normal points smaller -> larger); positional correction still always runs.
   Verified: overlapping separating pair keeps -50/+50 (before: flipped every tick); head-on pair bounces once; 120/120; ASan stress clean
-  with MIN=1. NOTE: Marco's working tree still has MIN_PARTICLE_RADIUS = 40 -- at 40, cleanupParticles also deletes ANY particle under
-  radius 40 (the stress harness's radius-30 heavy particle vanished). New REWORK [BUG]: getCollisionInfo's should_blow_up uses |normal speed|.
+  with MIN=1. (MIN_PARTICLE_RADIUS is back to 1.0 as of `4737715`; at 40, cleanupParticles also deleted any particle under radius 40.) New REWORK [BUG]: getCollisionInfo's should_blow_up uses |normal speed|.
 

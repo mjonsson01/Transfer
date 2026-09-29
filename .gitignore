@@ -8,6 +8,7 @@ venv/
 # from windows workspace
 LocalShaderCross/
 LocalSpirvCross/
+ThirdParty/
 Transfer/Assets/Shaders/
 
 

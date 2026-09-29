@@ -1,12 +1,12 @@
 @echo off
 REM Builds and runs the unit tests in their own build folder (build-tests\), so the game's
 REM build\ folder and MakeTransfer.bat are never touched.
-REM   RunTests.bat                    run every test
-REM   RunTests.bat -R InputDevices    extra args go straight to ctest (-R filters by test name)
+REM   Scripts\Windows\RunTests.bat                    run every test
+REM   Scripts\Windows\RunTests.bat -R InputDevices    extra args go straight to ctest (-R filters by test name)
 setlocal
 
-REM Run from the repo root no matter where the script was launched from
-cd /d "%~dp0"
+REM Run from the repo root (two folders up from this script) no matter where the script was launched from
+cd /d "%~dp0..\.."
 
 set BUILD_DIR=build-tests
 set CONFIG=Debug
@@ -29,7 +29,7 @@ REM --- Build the test executable ---
 REM --config is required by multi-config generators (Visual Studio); single-config generators ignore it.
 cmake --build %BUILD_DIR% --target TransferTests --config %CONFIG%
 if %ERRORLEVEL% NEQ 0 (
-    echo RunTest failed: build step.
+    echo RunTests failed: build step.
     exit /b 1
 )
 

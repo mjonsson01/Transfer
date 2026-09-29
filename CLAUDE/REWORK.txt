@@ -60,3 +60,7 @@ Read-through done 2026-09-24 on branch VisorViews. The old UI (UISystem, old sce
 
 [REFACTOR] Starship (members) — src/Player/Starship.hpp — unitPointingVector is unused; use default member initializers (`= 0.0`) for every member so no constructor can forget one.
 [REFACTOR] Starship::applyVelocity — src/Player/Starship.cpp — thrust adds a fixed 10 units/tick with no dt or mass, and the ship isn't part of the gravity system; revisit when the ship becomes a physics citizen.
+
+==================== BUILD / TOOLING ====================
+
+[BUG] macOS Release .app bundle — CMakeLists.txt — the bundle doesn't contain libSDL3 / libSDL3_ttf; it only runs on the build machine because the build-tree RPATH points into ThirdParty/. Before shipping, copy the dylibs into Contents/Frameworks and set INSTALL_RPATH to @executable_path/../Frameworks (the Windows build already puts its DLLs next to the .exe).

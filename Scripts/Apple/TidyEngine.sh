@@ -1,14 +1,14 @@
 #!/bin/bash
 # Runs clang-tidy over every DynamoEngine file -- headers included, which VS Code's automatic
 # analysis skips (it only analyzes .cpp files). Rules come from Transfer/src/DynamoEngine/.clang-tidy.
-#   ./TidyEngine.sh                      lint every engine file
-#   ./TidyEngine.sh --fix                extra args go straight to clang-tidy (--fix applies suggested
+#   Scripts/Apple/TidyEngine.sh          lint every engine file
+#   Scripts/Apple/TidyEngine.sh --fix    extra args go straight to clang-tidy (--fix applies suggested
 #                                        renames, but only inside engine files -- review the diff, and
 #                                        prefer the editor's Rename Symbol for anything used by the game)
-#   CLANG_TIDY=/path/to/clang-tidy ./TidyEngine.sh   use a specific clang-tidy
+#   CLANG_TIDY=/path/to/clang-tidy Scripts/Apple/TidyEngine.sh   use a specific clang-tidy
 # Exit code: 0 = clean, 1 = findings (or clang-tidy couldn't run).
 set -uo pipefail # no -e: keep linting the remaining files after one reports findings
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/../.." # the repo root, two folders up from this script
 
 ENGINE_DIR="Transfer/src/DynamoEngine"
 
@@ -47,9 +47,12 @@ CLANG_TIDY_ROOT="$(cd "$(dirname "$CLANG_TIDY_BIN")/.." && pwd)"
 if [[ ! -d "$CLANG_TIDY_ROOT/lib/clang" ]] && command -v clang >/dev/null 2>&1; then
     COMPILE_FLAGS+=(-resource-dir "$(clang -print-resource-dir)")
 fi
-if [[ -d /opt/homebrew/include ]]; then
-    COMPILE_FLAGS+=(-isystem /opt/homebrew/include)
+# SDL headers come from ThirdParty/ (Scripts/Apple/SetupDependencies.sh installs them)
+if [[ ! -d ThirdParty/SDL3/include ]]; then
+    echo "SDL3 not found in ThirdParty/. Run Scripts/Apple/SetupDependencies.sh first." >&2
+    exit 1
 fi
+COMPILE_FLAGS+=(-isystem "$PWD/ThirdParty/SDL3/include" -isystem "$PWD/ThirdParty/SDL3_ttf/include")
 
 # --- Lint each file on its own ---
 # --header-filter='^$' reports only the file being linted: every header gets its own pass, so this keeps

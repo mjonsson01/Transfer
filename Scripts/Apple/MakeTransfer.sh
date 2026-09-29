@@ -1,5 +1,15 @@
 #!/bin/bash
+# Builds the game into build/: lints the engine, compiles the HLSL shaders to MSL, then configures and
+# builds with CMake. Needs Scripts/Apple/SetupDependencies.sh to have been run once.
+#   Scripts/Apple/MakeTransfer.sh           Release, incremental (fast iteration)
+#   Scripts/Apple/MakeTransfer.sh release   Release, full clean rebuild
+#   Scripts/Apple/MakeTransfer.sh debug     Debug, incremental
+#   Scripts/Apple/MakeTransfer.sh clean     delete build/ and stop
+#   SKIP_TIDY=1 Scripts/Apple/MakeTransfer.sh   skip the clang-tidy pass
 set -eEuo pipefail
+
+# Run from the repo root (two folders up from this script) no matter where the script was launched from
+cd "$(dirname "$0")/../.."
 
 BUILD_DIR="build"
 trap 'echo "Build failed at line $LINENO: $BASH_COMMAND" >&2' ERR
@@ -46,7 +56,7 @@ esac
 # =====================================================
 if [[ "${SKIP_TIDY:-0}" != "1" ]]; then
     echo "Running clang-tidy on DynamoEngine..."
-    if ! ./TidyEngine.sh; then
+    if ! Scripts/Apple/TidyEngine.sh; then
         echo "WARNING: clang-tidy reported findings (see above). Continuing build." >&2
     fi
 fi
@@ -57,15 +67,20 @@ fi
 
 echo "Compiling shaders..."
 
+SHADERCROSS="ThirdParty/ShaderCross/bin/shadercross"
 SHADER_SRC="Transfer/src/HLSL"
 SHADER_OUT="Transfer/Assets/Shaders"
+if [[ ! -x "$SHADERCROSS" ]]; then
+    echo "shadercross not found in ThirdParty/ShaderCross/. Run Scripts/Apple/SetupDependencies.sh first." >&2
+    exit 1
+fi
 mkdir -p "$SHADER_OUT"
 
 SHADERS=(UnifiedGravBody TwinklingStar UIElement VelocityVector Starship)
 
 for name in "${SHADERS[@]}"; do
-    ./LocalShaderCross/shadercross "$SHADER_SRC/$name.vert.hlsl" -o "$SHADER_OUT/$name.vert.msl"
-    ./LocalShaderCross/shadercross "$SHADER_SRC/$name.frag.hlsl" -o "$SHADER_OUT/$name.frag.msl"
+    "$SHADERCROSS" "$SHADER_SRC/$name.vert.hlsl" -o "$SHADER_OUT/$name.vert.msl"
+    "$SHADERCROSS" "$SHADER_SRC/$name.frag.hlsl" -o "$SHADER_OUT/$name.frag.msl"
 done
 
 echo "Shaders compiled successfully."
