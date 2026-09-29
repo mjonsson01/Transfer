@@ -1,6 +1,8 @@
 .vscode/
 
 build/
+build-tests/
+
 venv/
 # for macOS
 .DS_Store
@@ -8,8 +10,3 @@ venv/
 # from windows workspace
 ThirdParty/
 Transfer/Assets/Shaders/
-
-
-
-
-build-tests/
