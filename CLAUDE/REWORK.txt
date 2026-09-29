@@ -63,4 +63,7 @@ Read-through done 2026-09-24 on branch VisorViews. The old UI (UISystem, old sce
 
 ==================== BUILD / TOOLING ====================
 
+[BUG] installShaderCross / buildShaderCross — Scripts/Windows/SetupDependencies.bat — `rmdir /s /q` of a leftover source tree can silently leave files behind (e.g. held open by idle MSBuild nodes) and the script carries on; check `if exist` after deleting and stop with a clear message.
+[BUG] buildShaderCross — Scripts/Windows/SetupDependencies.bat — a failed `git submodule update` (non-empty target folders) did not stop the script, so CMake failed later with a misleading CheckAtomic/GetHostTriple error; check that external\DirectXShaderCompiler\CMakeLists.txt exists after the submodule step.
+[REFACTOR] buildShaderCross — Scripts/Windows/SetupDependencies.bat — `cmake --build --parallel` has no job count and relies on MSBuild's CPU-bounded default; pass an explicit count (as the Mac script now does) so neither platform depends on a build tool's default.
 [BUG] macOS Release .app bundle — CMakeLists.txt — the bundle doesn't contain libSDL3 / libSDL3_ttf; it only runs on the build machine because the build-tree RPATH points into ThirdParty/. Before shipping, copy the dylibs into Contents/Frameworks and set INSTALL_RPATH to @executable_path/../Frameworks (the Windows build already puts its DLLs next to the .exe).

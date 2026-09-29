@@ -3,7 +3,7 @@
 **Fresh Claude session, on any device: read this whole file, then `CLAUDE/REWORK.txt`, before doing anything.**
 This folder is the only memory that travels between machines (Claude's own memory is per-device).
 Last full rewrite: 2026-09-27, on macOS, branch `EngineSep` at `959b486` ("Finished initial full implementation of visor_view").
-Updated 2026-09-28 on Windows (at `4737715` + uncommitted SDL/ThirdParty work, see section 2).
+Updated 2026-09-29 on Windows, at `7f852af` (everything committed and pushed; build/scripts rework done on both platforms).
 
 ---
 
@@ -98,7 +98,11 @@ Updated 2026-09-28 on Windows (at `4737715` + uncommitted SDL/ThirdParty work, s
     Script hardening NOT yet done: fail if rmdir leaves anything; check external\DirectXShaderCompiler\CMakeLists.txt after submodules.
     Mac: first run (2026-09-29) froze the Mac: `cmake --build --parallel` with no number = UNLIMITED `make -j` with the Makefiles
     generator -> ~50 clang processes, memory 100% (MSBuild's /m is CPU-bounded, so Windows never showed it). FIXED 2026-09-29:
-    `--parallel "$BUILD_JOBS"` = min(CPU cores, RAM GB / 2), at least 1 (sysctl hw.ncpu / hw.memsize). Rerun on the Mac still pending.
+    `--parallel "$BUILD_JOBS"` = min(CPU cores, RAM GB / 2), at least 1 (sysctl hw.ncpu / hw.memsize).
+  - **Mac VALIDATED 2026-09-29 (reported by Marco; Claude saw no Mac output):** SetupDependencies.sh (with the job limit; it printed
+    12 jobs), RunTests.sh and MakeTransfer.sh all work. Activity Monitor showed MORE than 12 `clang` processes during the build: likely
+    driver + `clang -cc1` pairs or link steps (make's -j12 limits jobs, not processes); never confirmed with `ps`. The number that
+    matters is Memory Pressure staying out of red.
 - Tests: top-level `Tests/` mirrors `src/` (Tests/DynamoEngine/{Input,Rendering,UI,UI/Widgets}); include roots are `Transfer/src` and `Tests`.
   `Tests/TestingUtilities/VectorsNear.hpp` is an AssertionResult helper. `EXPECT_DEBUG_DEATH` is used for assert paths. The CMake define
   `TRANSFER_TEST_FONT_PATH` points FontAtlas tests at `Transfer/Assets/Fonts/SpaceMono-Regular.ttf`. **120/120 pass at handoff.**
@@ -108,7 +112,8 @@ Updated 2026-09-28 on Windows (at `4737715` + uncommitted SDL/ThirdParty work, s
 - `.gitignore` no longer ignores `*.md` (checked 2026-09-29), so CLAUDE/ and Scripts/README.md are tracked normally.
 - SDL in CMake (both platforms since 2026-09-29): `find_package(SDL3/SDL3_ttf CONFIG PATHS ${TRANSFER_THIRD_PARTY_DIR}/... NO_DEFAULT_PATH)`
   (cache var, default `<repo>/ThirdParty`) -> imported targets `SDL3::SDL3` / `SDL3_ttf::SDL3_ttf`. No Homebrew anywhere any more.
-  The old `LocalShaderCross/` + `LocalSpirvCross/` folders are obsolete (delete, then drop their .gitignore lines).
+  Old dependency locations are gone on Windows (checked 2026-09-29): `C:\SDL3`, `..\..\SDL3_TTF`, `LocalShaderCross/`, `LocalSpirvCross/`
+  (their .gitignore lines too). On the Mac, Homebrew's sdl3/sdl3_ttf are no longer used (uninstalling is optional).
   - Windows details:
     DLLs are copied next to the game AND TransferTests with `$<TARGET_RUNTIME_DLLS:...>` + `COMMAND_EXPAND_LISTS` (needs CMake 3.21).
     The test copy must be added BEFORE `gtest_discover_tests`: discovery runs the exe post-build, and a missing DLL = exit 0xc0000135.
@@ -216,6 +221,9 @@ Lambdas capture Game members by reference, which is safe because they outlive th
 - Crisp scaled text.
 - Knob-only slider hover.
 - **D: visor dropdown + Tab cycling + shader view modes.**
+- **Build rework (2026-09-28/29, verified on Windows AND Mac):** all scripts in `Scripts/{Windows,Apple}` (+ `Scripts/README.md`);
+  `SetupDependencies` pins and installs SDL3 3.4.16, SDL3_ttf 3.2.2 and shadercross into gitignored `ThirdParty/`; CMake finds SDL
+  only there on both platforms; DLLs copied next to the game and tests; `.gitattributes` for script line endings.
 - Physics fix (2026-09-27, applied by Claude at Marco's request; committed in `26a094a`): shatter fragments go into
   `PhysicsSystem::m_pending_fragments` (via a `fragments_out` parameter on substituteWithParticles / ...FromImpact) and are appended
   to `particles` after all three collision passes (`handleCollisions`); `createParticleCluster` passes `particles` directly (no loop
@@ -235,13 +243,11 @@ Lambdas capture Game members by reference, which is safe because they outlive th
   becoming one particle. Visual result NOT verified by Claude (can't see screen): Marco must zoom out on a shatter (Retina + Windows 1x).
 
 **Next candidates** (let Marco pick):
-- Build/scripts (2026-09-28/29): scripts moved to Scripts/{Windows,Apple}, SDL + shadercross via SetupDependencies into ThirdParty
-  Windows fully working (SDL + shadercross builds verified by Marco 2026-09-29). Still to do: Mac scripts (first run froze, see the
-  scripts section), then delete `C:\SDL3`, `..\..\SDL3_TTF`, `LocalShaderCross/`, `LocalSpirvCross/`.
-  Git gotcha: restaging on Windows dropped the Mac scripts' executable bit (100755 -> 100644); fix with
+- Build/scripts follow-ups (the rework itself is DONE, see the done list): the [BUG]/[REFACTOR] items in REWORK's BUILD / TOOLING
+  section (Windows setup: silent rmdir failure, unchecked submodules, implicit job count; macOS .app doesn't bundle the SDL dylibs,
+  which blocks shipping).
+  Git gotcha: restaging on Windows drops the Mac scripts' executable bit (100755 -> 100644); fix with
   `git update-index --chmod=+x Scripts/Apple/*.sh` before committing.
-  Open quiz: why `NO_DEFAULT_PATH` (answer: without it, default search paths such as PATH-derived prefixes could find the old
-  3.5.0 `C:\SDL3` before ThirdParty).
 - Visor styling: row gaps, a selected-row look, a real "Realistic" coloring, then the actual Charge/Temperature views.
 - E: action map, i.e. rebindable keys that replace hard-coded scancodes. It will also retire DEPRECATED_InputState. All key bindings
   live in `translateGameInputs` on purpose, to make E easy.
@@ -274,6 +280,12 @@ Lambdas capture Game members by reference, which is safe because they outlive th
   - override signatures must match the base (unused params)
   - `containsPoint` decides whether a press reaches an element; `onMousePressed`'s return decides whether it stops there
   - ordering bugs (`optionAt` before `m_is_open = false`)
+- 2026-09-28/29 build work: understood why the test exe died with 0xc0000135 (DLL not found) and why Windows vs Mac `--parallel`
+  differed (MSBuild caps at CPU count, bare `make -j` is unlimited). Quiz "why cap jobs at RAM/2 too": mostly right (10 jobs x ~1 GB
+  > 8 GB); missed that the OS needs RAM too, and that CPU count bounds speed while RAM bounds safety (take the min). Still open, never
+  answered: why `NO_DEFAULT_PATH` (a leftover SDL elsewhere, e.g. found via PATH-derived prefixes, could win over ThirdParty); what
+  happens if the DLL copy goes AFTER gtest_discover_tests; why `if errorlevel 1` rather than `if %ERRORLEVEL% NEQ 0` inside a ()
+  block (%...% is expanded once, when the whole block is parsed).
 - Test-writing habits taught: use fixture helpers instead of hand-computed coordinates; `EXPECT_EQ(a, b)` rather than `EXPECT_TRUE(a == b)`
   (the failure prints both values); one assertion per promise in the test name; break the code on purpose and watch the test go red.
 - Open physics question he raised: runaway spinning of particle clumps. Hypotheses: sequential impulse order bias, elastic re-bounce
