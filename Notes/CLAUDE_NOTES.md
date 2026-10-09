@@ -243,6 +243,15 @@ Lambdas capture Game members by reference, which is safe because they outlive th
   becoming one particle. Visual result NOT verified by Claude (can't see screen): Marco must zoom out on a shatter (Retina + Windows 1x).
 
 **Next candidates** (let Marco pick):
+- Mac packaging (branch `UpdateMacPackaging`, 2026-09-29, uncommitted when written; Marco confirmed the .app launches): Release .app
+  gets `INSTALL_RPATH @executable_path/../Frameworks` + `BUILD_WITH_INSTALL_RPATH`, SDL dylibs copied into Contents/Frameworks, then
+  `codesign --force --deep --sign -` as the LAST post-build step. Lesson: copy each dylib TO its install name
+  (`IMPORTED_SONAME_RELEASE`, e.g. libSDL3_ttf.0.dylib), not the real file's name (`IMPORTED_LOCATION_RELEASE`): the first
+  version kept the real name and dyld failed "Library not loaded: @rpath/...SDL3_ttf...". NOT yet run: the hide-ThirdParty
+  test (rename ThirdParty, launch the .app) that proves the bundle is self-contained. Open decisions in REWORK: Intel support,
+  minimum macOS version, Windows VC++ runtime.
+  Sharing: Mac zip (`ditto -c -k --keepParent`) runs after the user allows it once (ad-hoc signed = Gatekeeper warning);
+  Windows zip = build\Release minus DynamoEngine.lib (exe, SDL3.dll, SDL3_ttf.dll, Resources\), SmartScreen warns once.
 - Build/scripts follow-ups (the rework itself is DONE, see the done list): the [BUG]/[REFACTOR] items in REWORK's BUILD / TOOLING
   section (Windows setup: silent rmdir failure, unchecked submodules, implicit job count; macOS .app doesn't bundle the SDL dylibs,
   which blocks shipping).
