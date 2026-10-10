@@ -3,7 +3,7 @@
 
 #include "DynamoEngine/Constants/GlobalConstants.hpp"
 
-Starship::Starship() { shipSize = 50.0; }
+Starship::Starship() { shipSize = 150.0; }
 
 Starship::~Starship() {}
 
@@ -15,64 +15,43 @@ DynamoEngine::Vector2D Starship::getPointingVector()
 
 void Starship::buildGeometry(std::vector<StarshipVertex>& starshipVertexBuffer)
 {
-    float x1 = float(position.x_val);
-    float y1 = float(position.y_val);
-    float x2 = x1 + shipSize;
-    float y2 = y1 + shipSize;
-
-    float prev_x1 = float(prevPosition.x_val);
-    float prev_y1 = float(prevPosition.y_val);
-    float prev_x2 = prev_x1 + shipSize;
-    float prev_y2 = prev_y1 + shipSize;
-
-    float noseHeight = shipSize * 0.5f;
-    float x_nose = (x1 + x2) * 0.5f;
-    float y_nose = y1 - noseHeight;
-    float prev_x_nose = (prev_x1 + prev_x2) * 0.5f;
-    float prev_y_nose = prev_y1 - noseHeight;
-
-    // Rotate each point around its own center (current center for current points,
-    // previous center for previous points, so interpolation stays sane)
-    float cx = (x1 + x2) * 0.5f, cy = (y1 + y2) * 0.5f;
-    float prev_cx = (prev_x1 + prev_x2) * 0.5f, prev_cy = (prev_y1 + prev_y2) * 0.5f;
+    // The sprite is one square of side shipSize (two triangles), centred where the old placeholder box was and
+    // rotated around that centre. Every corner is sent at its current AND its previous-tick position, so the vertex
+    // shader can interpolate between them (render alpha) like everything else in the world.
+    float half = shipSize * 0.5f;
+    float center_x = float(position.x_val) + half;
+    float center_y = float(position.y_val) + half;
+    float prev_center_x = float(prevPosition.x_val) + half;
+    float prev_center_y = float(prevPosition.y_val) + half;
 
     float cosR = float(std::cos(rotation));
     float sinR = float(std::sin(rotation));
 
-    auto rotate = [](float px, float py, float ox, float oy, float c, float s) -> std::pair<float, float>
+    // Each corner: its offset from the centre before rotating, and which point of the image it shows.
+    // u runs left -> right and v top -> bottom (0..1), so v = 0 is the PNG's top row: the nose.
+    struct Corner
     {
-        float dx = px - ox;
-        float dy = py - oy;
-        return {ox + dx * c - dy * s, oy + dx * s + dy * c};
+        float dx, dy, u, v;
+    };
+    const Corner corners[4] = {
+        {-half, -half, 0.0f, 0.0f}, // top-left
+        {half, -half, 1.0f, 0.0f},  // top-right
+        {half, half, 1.0f, 1.0f},   // bottom-right
+        {-half, half, 0.0f, 1.0f},  // bottom-left
     };
 
-    auto [rx1, ry1] = rotate(x1, y1, cx, cy, cosR, sinR);
-    auto [rx2y1_x, rx2y1_y] = rotate(x2, y1, cx, cy, cosR, sinR);
-    auto [rx1y2_x, rx1y2_y] = rotate(x1, y2, cx, cy, cosR, sinR);
-    auto [rx2, ry2] = rotate(x2, y2, cx, cy, cosR, sinR);
-    auto [rnose_x, rnose_y] = rotate(x_nose, y_nose, cx, cy, cosR, sinR);
-
-    auto [prx1, pry1] = rotate(prev_x1, prev_y1, prev_cx, prev_cy, cosR, sinR);
-    auto [prx2y1_x, prx2y1_y] = rotate(prev_x2, prev_y1, prev_cx, prev_cy, cosR, sinR);
-    auto [prx1y2_x, prx1y2_y] = rotate(prev_x1, prev_y2, prev_cx, prev_cy, cosR, sinR);
-    auto [prx2, pry2] = rotate(prev_x2, prev_y2, prev_cx, prev_cy, cosR, sinR);
-    auto [prnose_x, prnose_y] = rotate(prev_x_nose, prev_y_nose, prev_cx, prev_cy, cosR, sinR);
-
-    float u = 0.0f, v = 0.0f, r = 1.0f, g = 1.0f, b = 1.0f, a = 1.0f;
-
-    starshipVertexBuffer.push_back({rx1, ry1, prx1, pry1, shipSize, u, v, r, g, b, a});
-    starshipVertexBuffer.push_back({rx2y1_x, rx2y1_y, prx2y1_x, prx2y1_y, shipSize, u, v, r, g, b, a});
-    starshipVertexBuffer.push_back({rx1y2_x, rx1y2_y, prx1y2_x, prx1y2_y, shipSize, u, v, r, g, b, a});
-
-    starshipVertexBuffer.push_back({rx2y1_x, rx2y1_y, prx2y1_x, prx2y1_y, shipSize, u, v, r, g, b, a});
-    starshipVertexBuffer.push_back({rx2, ry2, prx2, pry2, shipSize, u, v, r, g, b, a});
-    starshipVertexBuffer.push_back({rx1y2_x, rx1y2_y, prx1y2_x, prx1y2_y, shipSize, u, v, r, g, b, a});
-
-    starshipVertexBuffer.push_back({rx1, ry1, prx1, pry1, shipSize, u, v, r, g, b, a});
-    starshipVertexBuffer.push_back({rx2y1_x, rx2y1_y, prx2y1_x, prx2y1_y, shipSize, u, v, r, g, b, a});
-    starshipVertexBuffer.push_back({rnose_x, rnose_y, prnose_x, prnose_y, shipSize, u, v, r, g, b, a});
+    // The square as two triangles: top-left, top-right, bottom-right, then top-left, bottom-right, bottom-left
+    const int triangle_corners[6] = {0, 1, 2, 0, 2, 3};
+    for (int corner_index : triangle_corners)
+    {
+        const Corner& corner = corners[corner_index];
+        float rotated_dx = corner.dx * cosR - corner.dy * sinR;
+        float rotated_dy = corner.dx * sinR + corner.dy * cosR;
+        starshipVertexBuffer.push_back({center_x + rotated_dx, center_y + rotated_dy, prev_center_x + rotated_dx,
+                                        prev_center_y + rotated_dy, shipSize, corner.u, corner.v, 1.0f, 1.0f, 1.0f,
+                                        1.0f});
+    }
 }
-
 void Starship::applyVelocity(UIState& uiState)
 {
     DEPRECATED_InputState& input_state = uiState.getMutableDEPRECATED_InputState();

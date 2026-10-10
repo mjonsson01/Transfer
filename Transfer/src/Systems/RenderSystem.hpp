@@ -88,6 +88,8 @@ class RenderSystem
     SDL_GPUBuffer* starshipVertexBuffer = nullptr;
     SDL_GPUTransferBuffer* starshipTransferBuffer = nullptr;
     SDL_GPUGraphicsPipeline* starshipPipeline = nullptr;
+    SDL_GPUTexture* m_starship_texture = nullptr; // the ship sprite, alpha premultiplied, with a full mipmap chain
+    SDL_GPUSampler* m_sprite_sampler = nullptr;   // smooth filtering, between pixels AND between mipmap levels
 
     // Text Rendering Components
     SDL_GPUTexture* fontAtlasTexture = nullptr;
@@ -124,6 +126,10 @@ class RenderSystem
     void createTwinklingStarGPUBufferAndPipeline();
     void createStarshipGPUBufferAndPipeline();
     void createFontAtlasSampler();
+    // Loads a PNG (path relative to Assets/) into a GPU texture: alpha premultiplied, full mipmap chain.
+    // Returns nullptr and logs why if it fails. The caller owns the texture and must SDL_ReleaseGPUTexture it.
+    SDL_GPUTexture* loadSpriteTexture(const std::string& asset_path);
+    void createSpriteSampler();
     // Bakes fontAtlas from UIFontRegular for `pixel_scale` (screen pixels per UI point) and uploads it to the GPU,
     // replacing the previous atlas texture
     void rebuildFontAtlas(float pixel_scale);

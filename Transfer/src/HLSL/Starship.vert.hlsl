@@ -33,6 +33,7 @@ VertexOutput main(
     normalizedPos.y *= -1.0;
     output.clipPos = float4(normalizedPos, 0.0, 1.0);
     output.color = float4(1.0, 1.0, 1.0, 1.0);
+    output.uv = uv;
 
     return output;
 }

@@ -288,6 +288,18 @@ Lambdas capture Game members by reference, which is safe because they outlive th
     candidates only 0-3/particle (so the giant-cell suspect was NOT the cause in tested scenes).
   - Key aliasing beyond +-1e6 cells (>= 2M px from origin, ~10-15 fully zoomed-out screens) only adds candidates the distance check
     rejects; never misses a real neighbour. Not a bug. Idea for Marco: despawn far-away particles to return budget.
+- **Ship sprite (2026-10-09, `Bugfixes` after commit 58742d5, typed by Marco in walkthrough mode, seen working in-game):**
+  Marco's Procreate drawing exported as `Transfer/Assets/Visual/Ships/FutureShip.png` (2048x2048 RGBA, transparent, nose up,
+  centred; the .procreate source stays OUT of Assets/ because everything there is bundled). RenderSystem::loadSpriteTexture(path
+  under Assets/): SDL_LoadPNG (built into SDL 3.4, no SDL_image) -> SDL_ConvertSurface RGBA32 -> SDL_PremultiplySurfaceAlpha ->
+  texture R8G8B8A8, usage SAMPLER|COLOR_TARGET (COLOR_TARGET is REQUIRED by SDL_GenerateMipmapsForGPUTexture: verified by SDL's
+  debug assert), num_levels = halvings + 1 (2048 -> 12) -> upload level 0 -> generate mipmaps outside any pass. Returns nullptr +
+  logs if missing; renderStarship then skips (Marco's choice). m_sprite_sampler: linear + mipmap LINEAR + clamp, max_lod = 1000
+  (default 0 = never leaves level 0). Starship::buildGeometry = one textured square (6 verts, u right / v down, v=0 = nose) of side
+  shipSize (Marco set 150; the 50 placeholder looked tiny), centred where the old box was. Shaders: vert passes uv; frag samples
+  t0/s0 space2. Pipeline: frag 1 sampler, blend src = ONE (premultiplied). Draw order now stars -> bodies -> ship -> arrow -> UI
+  (Marco: ship above bodies; he plans physics so they never overlap). Old buildGeometry kept commented out by Marco (to delete).
+  Open quiz: what the ship would look like zoomed in vs out without the mipmap generation call.
 - Physics fix (2026-09-27, applied by Claude at Marco's request; committed in `26a094a`): shatter fragments go into
   `PhysicsSystem::m_pending_fragments` (via a `fragments_out` parameter on substituteWithParticles / ...FromImpact) and are appended
   to `particles` after all three collision passes (`handleCollisions`); `createParticleCluster` passes `particles` directly (no loop

@@ -43,6 +43,8 @@ RenderSystem::RenderSystem(GameState& game_state)
     createVelocityVectorGPUBufferAndPipeline();
     createUIGPUBufferAndPipeline();
     createFontAtlasSampler(); // the atlas itself is baked on the first frame, once the UI scale is known
+    createSpriteSampler();
+    m_starship_texture = loadSpriteTexture("Visual/Ships/FutureShip.png");
     createStarshipGPUBufferAndPipeline();
     createTwinklingStarField(game_state.getCameraState().max_display_width,
                              game_state.getCameraState().max_display_height);
@@ -104,6 +106,10 @@ void RenderSystem::CleanUp()
         SDL_ReleaseGPUGraphicsPipeline(gpu, starshipPipeline);
     if (starshipTransferBuffer != nullptr)
         SDL_ReleaseGPUTransferBuffer(gpu, starshipTransferBuffer);
+    if (m_starship_texture != nullptr)
+        SDL_ReleaseGPUTexture(gpu, m_starship_texture);
+    if (m_sprite_sampler != nullptr)
+        SDL_ReleaseGPUSampler(gpu, m_sprite_sampler);
 
     // Release Font Resources
     if (fontAtlasTexture != nullptr)
@@ -227,9 +233,9 @@ void RenderSystem::renderGameFrame(GameState& game_state, UIState& ui_state, con
                                    SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf)
 {
     game_state.getCameraStateMutable().render_alpha = game_state.getAlpha();
-    renderStarship(game_state, pass, cmdbuf, game_state.getCameraState());
     renderTwinklingStarField(pass, cmdbuf, game_state.getCameraState());
     renderBodies(game_state, ui_state, pass, cmdbuf);
+    renderStarship(game_state, pass, cmdbuf, game_state.getCameraState());
     renderVelocityVectors(pass, cmdbuf, game_state.getCameraState());
     renderUIElements(pass, cmdbuf, ui);
 }
@@ -363,6 +369,11 @@ void RenderSystem::renderBodies(GameState& game_state, UIState& ui_state, SDL_GP
 void RenderSystem::renderStarship(GameState& game_state, SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
                                   const CameraState& camera_state)
 {
+    // No sprite (loadSpriteTexture already logged why at startup) or nothing to draw: skip the ship
+    if (m_starship_texture == nullptr || starshipVertices.empty())
+    {
+        return;
+    }
     SDL_BindGPUGraphicsPipeline(pass, starshipPipeline);
     CameraConstants camera_constants =
         buildCameraConstants(game_state.getCameraState(), game_state.getCameraState().offset);
@@ -370,6 +381,9 @@ void RenderSystem::renderStarship(GameState& game_state, SDL_GPURenderPass* pass
 
     SDL_GPUBufferBinding vbo = {.buffer = starshipVertexBuffer, .offset = 0};
     SDL_BindGPUVertexBuffers(pass, 0, &vbo, 1);
+
+    SDL_GPUTextureSamplerBinding sprite_binding = {.texture = m_starship_texture, .sampler = m_sprite_sampler};
+    SDL_BindGPUFragmentSamplers(pass, 0, &sprite_binding, 1);
 
     SDL_DrawGPUPrimitives(pass,
                           (uint32_t)starshipVertices.size(), // vertices per quad
@@ -448,6 +462,98 @@ void RenderSystem::createFontAtlasSampler()
                                              .address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
                                              .address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE};
     fontAtlasSampler = SDL_CreateGPUSampler(gpu, &sampler_info);
+}
+
+void RenderSystem::createSpriteSampler()
+{
+    // max_lod must be raised from its default of 0, or the GPU is never allowed past mip level 0 (no mipmaps at all)
+    SDL_GPUSamplerCreateInfo sampler_info = {.min_filter = SDL_GPU_FILTER_LINEAR,
+                                             .mag_filter = SDL_GPU_FILTER_LINEAR,
+                                             .mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_LINEAR,
+                                             .address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
+                                             .address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
+                                             .address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
+                                             .max_lod = 1000.0f};
+    m_sprite_sampler = SDL_CreateGPUSampler(gpu, &sampler_info);
+}
+
+SDL_GPUTexture* RenderSystem::loadSpriteTexture(const std::string& asset_path)
+{
+    // 1. Load the PNG into a CPU-side image
+    SDL_Surface* loaded = SDL_LoadPNG(Utilities::GetResourcePath(asset_path).c_str());
+    if (loaded == nullptr)
+    {
+        std::cerr << "Couldn't load sprite '" << asset_path << "': " << SDL_GetError() << std::endl;
+        return nullptr;
+    }
+
+    // 2. Make the bytes R, G, B, A in that order, which is what the R8G8B8A8 texture below expects
+    SDL_Surface* image = SDL_ConvertSurface(loaded, SDL_PIXELFORMAT_RGBA32);
+    SDL_DestroySurface(loaded);
+    if (image == nullptr)
+    {
+        std::cerr << "Couldn't convert sprite '" << asset_path << "': " << SDL_GetError() << std::endl;
+        return nullptr;
+    }
+
+    // 3. Premultiply (colour *= alpha), so filtering never blends the black of transparent pixels into the edges
+    SDL_PremultiplySurfaceAlpha(image, false);
+
+    // 4. One mip level per halving of the larger side, plus the full-size image itself (2048 -> 12 levels)
+    uint32_t mip_levels = 1;
+    uint32_t side = (uint32_t)std::max(image->w, image->h);
+    while (side > 1)
+    {
+        side /= 2;
+        mip_levels++;
+    }
+
+    // SAMPLER: shaders read it. COLOR_TARGET: SDL renders into the smaller levels when generating the mipmaps.
+    SDL_GPUTextureCreateInfo tex_info = {.type = SDL_GPU_TEXTURETYPE_2D,
+                                         .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+                                         .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET,
+                                         .width = (Uint32)image->w,
+                                         .height = (Uint32)image->h,
+                                         .layer_count_or_depth = 1,
+                                         .num_levels = mip_levels};
+    SDL_GPUTexture* texture = SDL_CreateGPUTexture(gpu, &tex_info);
+    if (texture == nullptr)
+    {
+        std::cerr << "Couldn't create a texture for sprite '" << asset_path << "': " << SDL_GetError() << std::endl;
+        SDL_DestroySurface(image);
+        return nullptr;
+    }
+
+    // 5. Copy the full-size image into a transfer buffer, row by row (a surface's rows can be padded: pitch)
+    Uint32 row_bytes = (Uint32)image->w * 4;
+    SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+                                               .size = row_bytes * (Uint32)image->h};
+    SDL_GPUTransferBuffer* transfer_buffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
+    Uint8* dst = (Uint8*)SDL_MapGPUTransferBuffer(gpu, transfer_buffer, false); // brand-new buffer: nothing to cycle
+    Uint8* src = (Uint8*)image->pixels;
+    for (int row = 0; row < image->h; row++)
+    {
+        SDL_memcpy(dst + row * row_bytes, src + row * image->pitch, row_bytes);
+    }
+    SDL_UnmapGPUTransferBuffer(gpu, transfer_buffer);
+
+    // 6. Upload it into mip level 0, then let the GPU shrink level 0 into all the smaller levels
+    SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(gpu);
+    SDL_GPUCopyPass* copy_pass = SDL_BeginGPUCopyPass(cmdbuf);
+    SDL_GPUTextureTransferInfo src_info = {.transfer_buffer = transfer_buffer,
+                                           .offset = 0,
+                                           .pixels_per_row = (Uint32)image->w,
+                                           .rows_per_layer = (Uint32)image->h};
+    SDL_GPUTextureRegion dst_region = {
+        .texture = texture, .mip_level = 0, .w = (Uint32)image->w, .h = (Uint32)image->h, .d = 1};
+    SDL_UploadToGPUTexture(copy_pass, &src_info, &dst_region, false);
+    SDL_EndGPUCopyPass(copy_pass);
+    SDL_GenerateMipmapsForGPUTexture(cmdbuf, texture); // must be outside any pass, so after EndGPUCopyPass
+    SDL_SubmitGPUCommandBuffer(cmdbuf);
+
+    SDL_ReleaseGPUTransferBuffer(gpu, transfer_buffer); // SDL frees it once the upload has finished
+    SDL_DestroySurface(image);
+    return texture;
 }
 
 void RenderSystem::rebuildFontAtlas(float pixel_scale)
@@ -994,7 +1100,7 @@ void RenderSystem::createStarshipGPUBufferAndPipeline()
     starshipTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
 
     SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/Starship.vert", 0, 1);
-    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/Starship.frag", 0, 0);
+    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/Starship.frag", 1, 0); // 1 sampler
 
     SDL_GPUVertexAttribute vertex_attributes[5];
 
@@ -1035,9 +1141,11 @@ void RenderSystem::createStarshipGPUBufferAndPipeline()
     color_target.format = SDL_GetGPUSwapchainTextureFormat(gpu, window);
     color_target.blend_state.enable_blend = true;
 
-    color_target.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    // Premultiplied alpha (the sprite's colours were already multiplied by alpha when it was loaded), so the
+    // source is added as-is (ONE) instead of being multiplied by its alpha a second time
+    color_target.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE;
     color_target.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
-    color_target.blend_state.src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    color_target.blend_state.src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE;
     color_target.blend_state.dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
 
     // MUST SET THESE EXPLICITLY:
