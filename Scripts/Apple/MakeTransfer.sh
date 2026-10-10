@@ -76,7 +76,7 @@ if [[ ! -x "$SHADERCROSS" ]]; then
 fi
 mkdir -p "$SHADER_OUT"
 
-SHADERS=(UnifiedGravBody TwinklingStar UIElement VelocityVector Starship)
+SHADERS=(UnifiedGravBody TwinklingStar UIElement VelocityVector Starship DebugLine)
 
 for name in "${SHADERS[@]}"; do
     "$SHADERCROSS" "$SHADER_SRC/$name.vert.hlsl" -o "$SHADER_OUT/$name.vert.msl"

@@ -107,6 +107,8 @@ void PhysicsSystem::handleCollisions(GameState& game_state)
     handleMacroMacroCollisions(game_state);
     handleMacroParticleCollisions(game_state);
     handleParticleParticleCollisions(game_state);
+    handleShipCollisions(game_state);
+    handleParticleParticleCollisions(game_state);
 
     // All loops over particles are finished: now it's safe to grow the vector
     std::vector<GravitationalBody>& particles = game_state.getParticlesMutable();
@@ -234,7 +236,87 @@ void PhysicsSystem::handleParticleParticleCollisions(GameState& game_state)
         }
     }
 }
+void PhysicsSystem::handleShipCollisions(GameState& game_state)
+{
+    Starship& ship = game_state.getPlayerMutable().starship;
+    double impact_energy_this_tick = 0.0;
 
+    // Planets
+    for (GravitationalBody& body : game_state.getMacroBodiesMutable())
+    {
+        if (!body.isCollidable || body.isMacroGhost || body.isMarkedForDeletion)
+        {
+            continue;
+        }
+        DynamoEngine::CircleContact contact =
+            DynamoEngine::circleVsConvexPolygon(body.position, body.radius, ship.collisionPolygon());
+        if (contact.touching)
+        {
+            impact_energy_this_tick += resolveShipContact(ship, body, contact);
+        }
+    }
+
+    // Debris: a cheap distance check against the ship's bounding radius first, so only the few particles near the
+    // ship get the full polygon test
+    double ship_reach = ship.boundingRadius();
+    for (GravitationalBody& particle : game_state.getParticlesMutable())
+    {
+        if (!particle.isCollidable || particle.isMarkedForDeletion)
+        {
+            continue;
+        }
+        double reach = ship_reach + particle.radius;
+        if ((particle.position - ship.center()).squareMagnitude() > reach * reach)
+        {
+            continue;
+        }
+        DynamoEngine::CircleContact contact =
+            DynamoEngine::circleVsConvexPolygon(particle.position, particle.radius, ship.collisionPolygon());
+        if (contact.touching)
+        {
+            impact_energy_this_tick += resolveShipContact(ship, particle, contact);
+        }
+    }
+
+    ship.setLastImpactEnergy(impact_energy_this_tick);
+}
+
+double PhysicsSystem::resolveShipContact(Starship& ship, GravitationalBody& body,
+                                         const DynamoEngine::CircleContact& contact)
+{
+    // Inverse masses say how easily each side is moved. A force-static body counts as infinitely heavy (0).
+    double ship_inverse_mass = 1.0 / ship.mass();
+    double body_inverse_mass = body.isForceStatic ? 0.0 : body.invMass;
+    double total_inverse_mass = ship_inverse_mass + body_inverse_mass;
+    if (total_inverse_mass <= 0.0)
+    {
+        return 0.0; // only possible with negative masses (see REWORK); nothing sensible to do
+    }
+
+    // 1. Push them apart so they just touch, each moving in proportion to how light it is.
+    //    contact.normal points from the ship toward the body, so the ship moves against it and the body along it.
+    ship.moveBy(contact.normal * (-contact.depth * ship_inverse_mass / total_inverse_mass));
+    body.position += contact.normal * (contact.depth * body_inverse_mass / total_inverse_mass);
+
+    // 2. Bounce, but only if they're still moving toward each other along the normal (same rule as the bodies')
+    double normal_speed = (body.velocity - ship.velocity()).dot(contact.normal); // < 0: closing
+    if (normal_speed >= 0.0)
+    {
+        return 0.0;
+    }
+
+    // The impulse that turns the closing speed around and keeps SHIP_RESTITUTION of it, equal and opposite on both
+    // sides, so momentum is conserved
+    double impulse_size = -(1.0 + SHIP_RESTITUTION) * normal_speed / total_inverse_mass;
+    DynamoEngine::Vector2D impulse = contact.normal * impulse_size;
+    body.velocity += impulse * body_inverse_mass;
+    ship.applyImpulse(impulse * -1.0);
+
+    // The kinetic energy the bounce absorbed: 1/2 * reduced mass * closing speed^2 * (1 - e^2).
+    // The reduced mass 1 / (1/m_ship + 1/m_body) is about the ship's own mass against a planet, less against debris.
+    double reduced_mass = 1.0 / total_inverse_mass;
+    return 0.5 * reduced_mass * normal_speed * normal_speed * (1.0 - SHIP_RESTITUTION * SHIP_RESTITUTION);
+}
 void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& gravBodyPair, const CollisionInfo& collisionInfo,
                                            GameState& game_state)
 {
@@ -551,6 +633,7 @@ void PhysicsSystem::substituteWithParticlesFromImpact(GravitationalBody& origina
 void PhysicsSystem::updateAllForces(GameState& game_state)
 {
     updateGravityForSystem(game_state);
+    updateShipGravity(game_state);
     // Update other forces
 }
 
@@ -588,6 +671,39 @@ void PhysicsSystem::updateGravityForSystem(GameState& game_state)
     //         calculateGravity(particles[i], particles[j]);
     //     }
     // }
+}
+void PhysicsSystem::updateShipGravity(GameState& game_state)
+{
+    // Two-way gravity between the ship and every planet (Newton's third law): the same pull acts on both, in
+    // opposite directions. The ship is so much lighter than any planet that planets barely notice it.
+    Starship& ship = game_state.getPlayerMutable().starship;
+    DynamoEngine::Vector2D ship_center = ship.center();
+    DynamoEngine::Vector2D total_force_on_ship = {0.0, 0.0};
+
+    for (GravitationalBody& body : game_state.getMacroBodiesMutable())
+    {
+        if (firstWithinEpsilonOfSecond(body.mass, 0.0))
+        {
+            continue;
+        }
+
+        // Same softening rule as calculateGravity (half the two sizes), so the pull stays finite up close
+        double softening = (ship.halfSize() + body.radius) / 2.0;
+        DynamoEngine::Vector2D direction = body.position - ship_center;
+        double softened_distance = std::sqrt(direction.squareMagnitude() + softening * softening);
+        double softened_distance_cubed = softened_distance * softened_distance * softened_distance;
+
+        // The pull on the ship, toward the planet (direction isn't normalised: its length r is folded into r^3)
+        DynamoEngine::Vector2D force =
+            direction * (GRAVITATIONAL_CONSTANT * ship.mass() * body.mass / softened_distance_cubed);
+        total_force_on_ship += force;
+        if (!body.isForceStatic)
+        {
+            body.netForce -= force; // the equal and opposite pull on the planet
+        }
+    }
+
+    ship.setGravityForce(total_force_on_ship);
 }
 
 void PhysicsSystem::calculateGravity(GravitationalBody& firstBody, GravitationalBody& secondBody)
@@ -650,7 +766,7 @@ void PhysicsSystem::integrateForwardsVelocityVerletPhase1(GameState& game_state)
     {
         applyVelocityVerletPhase1(macro_body);
     }
-    game_state.getPlayerMutable().starship.integratePosition();
+    game_state.getPlayerMutable().starship.applyVelocityVerletPhase1();
 }
 
 void PhysicsSystem::applyVelocityVerletPhase1(GravitationalBody& gravBody)
@@ -683,6 +799,7 @@ void PhysicsSystem::integrateForwardsVelocityVerletPhase2(GameState& game_state)
     {
         applyVelocityVerletPhase2(macro_body);
     }
+    game_state.getPlayerMutable().starship.applyVelocityVerletPhase2();
 }
 
 void PhysicsSystem::applyVelocityVerletPhase2(GravitationalBody& gravBody)
@@ -876,7 +993,7 @@ void PhysicsSystem::cleanupMacroBodies(GameState& game_state)
 void PhysicsSystem::updatePlayerPhysics(GameState& game_state, UIState& uiState)
 {
     game_state.getPlayerMutable().starship.applyRotation(uiState);
-    game_state.getPlayerMutable().starship.applyVelocity(uiState);
+    game_state.getPlayerMutable().starship.applyThrust(uiState);
 }
 
 uint32_t PhysicsSystem::survivableFragmentCount(const GravitationalBody& body, uint32_t maxCount)

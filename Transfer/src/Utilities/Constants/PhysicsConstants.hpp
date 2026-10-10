@@ -20,6 +20,10 @@ constexpr double ELASTIC_LOSS_FACTOR = 0.994;                        // Keep 99.
 constexpr double MUTUAL_SHATTER_MASS_RATIO_THRESHOLD = 10.0; // below this heavy/light ratio, both bodies shatter
 constexpr double MAX_ACCRETION_COLLISION_SPEED = 160000.0;   // in px/s (in world space) need to rescale later to m/s
 constexpr double MIN_SHATTER_SPEED = 400.0;                  // in px/s (in world space) need to rescale later to m/s
+// How bouncy the player's ship is: the share of its closing speed it keeps after hitting something (0 = stops dead,
+// 1 = no energy lost). 0.2 keeps a fifth of the speed, 4% of the impact energy: a dull thud. The rest is the
+// impact energy that damage will be calculated from.
+constexpr double SHIP_RESTITUTION = 0.2;
 
 // Inactive for now, used if we reenable particle particle accretion and promotion
 constexpr double MIN_PARTICLE_PARTICLE_ACCRETION_THRESHOLD_RATIO = 8.0;

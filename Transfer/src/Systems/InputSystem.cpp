@@ -248,6 +248,11 @@ void InputSystem::translateGameInputs(GameState& game_state, UIState& ui_state, 
         legacy_state.isCreatingParticleCluster = true;
     }
 
+    // F3: show or hide the debug overlay (hitboxes)
+    if (m_input.wasKeyPressed(SDL_SCANCODE_F3))
+    {
+        ui_state.setRenderDebug(!ui_state.getRenderDebug());
+    }
     // Update the visor if necessary
     updateVisor(game_state.getCameraStateMutable());
 }

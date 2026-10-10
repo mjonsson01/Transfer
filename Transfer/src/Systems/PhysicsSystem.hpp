@@ -6,6 +6,7 @@
 #include "Core/GameState.hpp"
 #include "Core/UIState.hpp"
 #include "DynamoEngine/Math/Vector2.hpp"
+#include "DynamoEngine/Physics/Collision2D.hpp"
 #include "Entities/Physics/GravitationalBody.hpp"
 #include "Entities/Physics/GravitationalBodyPair.hpp"
 #include "Utilities/Constants/EngineConstants.hpp"
@@ -55,6 +56,12 @@ class PhysicsSystem
     void handleMacroMacroCollisions(GameState& game_state);
     void handleMacroParticleCollisions(GameState& game_state);
     void handleParticleParticleCollisions(GameState& game_state);
+    // The player's ship against planets and debris: never overlapping, bouncing with SHIP_RESTITUTION
+    void handleShipCollisions(GameState& game_state);
+    // Pushes the ship and one body apart along the contact normal, then bounces them if they're still closing.
+    // Returns the kinetic energy the bounce absorbed (0 if they weren't closing).
+    double resolveShipContact(Starship& ship, GravitationalBody& body, const DynamoEngine::CircleContact& contact);
+
     void handleDynamicCollision(GravitationalBodyPair& gravBodyPair, const CollisionInfo& collisionInfo,
                                 GameState& game_state);
     // Handles a 'bouncy' (elastic) collision between two bodies, when the collision
@@ -82,6 +89,8 @@ class PhysicsSystem
     void calculateGravity(GravitationalBody& firstBody,
                           GravitationalBody& secondBody); // Calculate and apply gravity between two
                                                           // gravitational bodies
+    // Gravity between the player's ship and every planet, both ways (the ship pulls the gravitational bodies too)
+    void updateShipGravity(GameState& game_state);
 
     // --- Integration (Velocity Verlet) ---
     void integrateForwardsVelocityVerletPhase1(GameState& game_state);

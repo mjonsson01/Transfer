@@ -46,6 +46,7 @@ RenderSystem::RenderSystem(GameState& game_state)
     createSpriteSampler();
     m_starship_texture = loadSpriteTexture("Visual/Ships/FutureShip.png");
     createStarshipGPUBufferAndPipeline();
+    createDebugLineGPUBufferAndPipeline();
     createTwinklingStarField(game_state.getCameraState().max_display_width,
                              game_state.getCameraState().max_display_height);
     if (gpu)
@@ -110,6 +111,14 @@ void RenderSystem::CleanUp()
         SDL_ReleaseGPUTexture(gpu, m_starship_texture);
     if (m_sprite_sampler != nullptr)
         SDL_ReleaseGPUSampler(gpu, m_sprite_sampler);
+
+    // Release Debug Overlay Pipeline
+    if (m_debug_line_vertex_buffer != nullptr)
+        SDL_ReleaseGPUBuffer(gpu, m_debug_line_vertex_buffer);
+    if (m_debug_line_transfer_buffer != nullptr)
+        SDL_ReleaseGPUTransferBuffer(gpu, m_debug_line_transfer_buffer);
+    if (m_debug_line_pipeline != nullptr)
+        SDL_ReleaseGPUGraphicsPipeline(gpu, m_debug_line_pipeline);
 
     // Release Font Resources
     if (fontAtlasTexture != nullptr)
@@ -191,6 +200,8 @@ void RenderSystem::RenderFullFrame(GameState& game_state, UIState& ui_state, con
 
     if (draws_world)
     {
+        buildDebugLines(game_state, ui_state);
+        uploadDebugLines(cmdbuf);
         uploadUnifiedBodies(game_state, ui_state, cmdbuf);
         uploadStarship(game_state, ui_state, cmdbuf);
     }
@@ -237,6 +248,7 @@ void RenderSystem::renderGameFrame(GameState& game_state, UIState& ui_state, con
     renderBodies(game_state, ui_state, pass, cmdbuf);
     renderStarship(game_state, pass, cmdbuf, game_state.getCameraState());
     renderVelocityVectors(pass, cmdbuf, game_state.getCameraState());
+    renderDebugLines(pass, cmdbuf, game_state.getCameraState()); // over the whole world, under the UI
     renderUIElements(pass, cmdbuf, ui);
 }
 
@@ -1261,4 +1273,165 @@ void RenderSystem::renderVelocityVectors(SDL_GPURenderPass* pass, SDL_GPUCommand
     SDL_GPUBufferBinding vbo = {.buffer = velocityVectorVertexBuffer, .offset = 0};
     SDL_BindGPUVertexBuffers(pass, 0, &vbo, 1);
     SDL_DrawGPUPrimitives(pass, (uint32_t)velocityVectorVertices.size(), 1, 0, 0);
+}
+
+void RenderSystem::createDebugLineGPUBufferAndPipeline()
+{
+    SDL_GPUBufferCreateInfo vb_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX,
+                                       .size = MAX_DEBUG_LINE_VERTICES * sizeof(DebugLineVertex)};
+    m_debug_line_vertex_buffer = SDL_CreateGPUBuffer(gpu, &vb_info);
+
+    SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+                                               .size = MAX_DEBUG_LINE_VERTICES * sizeof(DebugLineVertex)};
+    m_debug_line_transfer_buffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
+
+    SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/DebugLine.vert", 0, 1);
+    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/DebugLine.frag", 0, 0);
+
+    // The three fields of DebugLineVertex, in the order the vertex shader lists its inputs
+    SDL_GPUVertexAttribute vertex_attributes[3];
+
+    // Position float2
+    vertex_attributes[0].location = 0;
+    vertex_attributes[0].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2;
+    vertex_attributes[0].offset = offsetof(DebugLineVertex, x);
+    vertex_attributes[0].buffer_slot = 0;
+
+    // Previous-tick position float2
+    vertex_attributes[1].location = 1;
+    vertex_attributes[1].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2;
+    vertex_attributes[1].offset = offsetof(DebugLineVertex, prevX);
+    vertex_attributes[1].buffer_slot = 0;
+
+    // Color float4
+    vertex_attributes[2].location = 2;
+    vertex_attributes[2].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4;
+    vertex_attributes[2].offset = offsetof(DebugLineVertex, r);
+    vertex_attributes[2].buffer_slot = 0;
+
+    SDL_GPUColorTargetDescription color_target = {};
+    color_target.format = SDL_GetGPUSwapchainTextureFormat(gpu, window);
+    color_target.blend_state.enable_blend = true;
+    color_target.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    color_target.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+    color_target.blend_state.src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    color_target.blend_state.dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+    color_target.blend_state.color_blend_op = SDL_GPU_BLENDOP_ADD;
+    color_target.blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD;
+
+    SDL_GPUVertexBufferDescription vbo_desc = {
+        .slot = 0, .pitch = sizeof(DebugLineVertex), .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX};
+
+    SDL_GPUGraphicsPipelineCreateInfo pipeline_info = {};
+    pipeline_info.target_info.num_color_targets = 1;
+    pipeline_info.target_info.color_target_descriptions = &color_target;
+    pipeline_info.vertex_shader = vert_shader;
+    pipeline_info.fragment_shader = frag_shader;
+    pipeline_info.primitive_type = SDL_GPU_PRIMITIVETYPE_LINELIST; // every 2 vertices = one separate line
+    pipeline_info.vertex_input_state.vertex_attributes = vertex_attributes;
+    pipeline_info.vertex_input_state.num_vertex_attributes = 3;
+    pipeline_info.vertex_input_state.vertex_buffer_descriptions = &vbo_desc;
+    pipeline_info.vertex_input_state.num_vertex_buffers = 1;
+
+    m_debug_line_pipeline = SDL_CreateGPUGraphicsPipeline(gpu, &pipeline_info);
+    if (!m_debug_line_pipeline)
+        std::cerr << "Debug line pipeline creation failed: " << SDL_GetError() << std::endl;
+    SDL_ReleaseGPUShader(gpu, vert_shader);
+    SDL_ReleaseGPUShader(gpu, frag_shader);
+}
+
+void RenderSystem::buildDebugLines(const GameState& game_state, UIState& ui_state)
+{
+    m_debug_line_vertices.clear();
+    if (!ui_state.getRenderDebug())
+    {
+        return; // overlay is off (F3): nothing to draw
+    }
+
+    // Planets: their collision circle is simply their radius (yellow)
+    const SDL_FColor PLANET_COLOR = {1.0f, 0.9f, 0.1f, 1.0f};
+    for (const GravitationalBody& body : game_state.getMacroBodies())
+    {
+        addDebugCircle(body.position, body.previousPosition, body.radius, PLANET_COLOR);
+    }
+
+    // The ship: its hitbox polygon (green). One tick ago it was the same shape moved back by this tick's movement
+    // (the rotation isn't interpolated, exactly like the sprite)
+    const SDL_FColor SHIP_COLOR = {0.2f, 1.0f, 0.3f, 1.0f};
+    const Starship& ship = game_state.getPlayer().starship;
+    std::vector<DynamoEngine::Vector2D> corners = ship.collisionPolygon();
+    DynamoEngine::Vector2D movement = ship.movementThisTick();
+    for (size_t i = 0; i < corners.size(); ++i)
+    {
+        const DynamoEngine::Vector2D& start = corners[i];
+        const DynamoEngine::Vector2D& end = corners[(i + 1) % corners.size()]; // the last corner joins the first
+        addDebugLine(start, start - movement, end, end - movement, SHIP_COLOR);
+    }
+}
+
+void RenderSystem::addDebugLine(const DynamoEngine::Vector2D& start, const DynamoEngine::Vector2D& prev_start,
+                                const DynamoEngine::Vector2D& end, const DynamoEngine::Vector2D& prev_end,
+                                SDL_FColor color)
+{
+    m_debug_line_vertices.push_back({(float)start.x_val, (float)start.y_val, (float)prev_start.x_val,
+                                     (float)prev_start.y_val, color.r, color.g, color.b, color.a});
+    m_debug_line_vertices.push_back({(float)end.x_val, (float)end.y_val, (float)prev_end.x_val, (float)prev_end.y_val,
+                                     color.r, color.g, color.b, color.a});
+}
+
+void RenderSystem::addDebugCircle(const DynamoEngine::Vector2D& center, const DynamoEngine::Vector2D& prev_center,
+                                  double radius, SDL_FColor color)
+{
+    // Drawn as DEBUG_CIRCLE_SEGMENTS straight lines around the edge: plenty to look round at any zoom
+    const int DEBUG_CIRCLE_SEGMENTS = 32;
+    for (int i = 0; i < DEBUG_CIRCLE_SEGMENTS; ++i)
+    {
+        double start_angle = DynamoEngine::TWO_PI * i / DEBUG_CIRCLE_SEGMENTS;
+        double end_angle = DynamoEngine::TWO_PI * (i + 1) / DEBUG_CIRCLE_SEGMENTS;
+        DynamoEngine::Vector2D start_offset = {std::cos(start_angle) * radius, std::sin(start_angle) * radius};
+        DynamoEngine::Vector2D end_offset = {std::cos(end_angle) * radius, std::sin(end_angle) * radius};
+        addDebugLine(center + start_offset, prev_center + start_offset, center + end_offset, prev_center + end_offset,
+                     color);
+    }
+}
+
+void RenderSystem::uploadDebugLines(SDL_GPUCommandBuffer* cmdbuf)
+{
+    if (m_debug_line_vertices.empty())
+        return;
+
+    // Never copy more than the buffer holds; renderDebugLines draws m_debug_line_vertices.size(), so it stays in sync
+    if (m_debug_line_vertices.size() > MAX_DEBUG_LINE_VERTICES)
+    {
+        printf("Too many debug line vertices %zu > %u\n", m_debug_line_vertices.size(), MAX_DEBUG_LINE_VERTICES);
+        m_debug_line_vertices.resize(MAX_DEBUG_LINE_VERTICES);
+    }
+
+    // cycle = true: last frame's commands may still be reading these buffers; SDL hands us a free copy instead
+    void* map = SDL_MapGPUTransferBuffer(gpu, m_debug_line_transfer_buffer, true);
+    SDL_memcpy(map, m_debug_line_vertices.data(), m_debug_line_vertices.size() * sizeof(DebugLineVertex));
+    SDL_UnmapGPUTransferBuffer(gpu, m_debug_line_transfer_buffer);
+
+    SDL_GPUCopyPass* copy_pass = SDL_BeginGPUCopyPass(cmdbuf);
+    SDL_GPUTransferBufferLocation src = {.transfer_buffer = m_debug_line_transfer_buffer, .offset = 0};
+    SDL_GPUBufferRegion dst = {.buffer = m_debug_line_vertex_buffer,
+                               .offset = 0,
+                               .size = (uint32_t)(m_debug_line_vertices.size() * sizeof(DebugLineVertex))};
+    SDL_UploadToGPUBuffer(copy_pass, &src, &dst, true);
+    SDL_EndGPUCopyPass(copy_pass);
+}
+
+void RenderSystem::renderDebugLines(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
+                                    const CameraState& camera_state)
+{
+    if (m_debug_line_vertices.empty())
+        return; // overlay off, or nothing to outline
+
+    SDL_BindGPUGraphicsPipeline(pass, m_debug_line_pipeline);
+    CameraConstants camera_constants = buildCameraConstants(camera_state, camera_state.offset);
+    SDL_PushGPUVertexUniformData(cmdbuf, 0, &camera_constants, sizeof(camera_constants));
+
+    SDL_GPUBufferBinding vbo = {.buffer = m_debug_line_vertex_buffer, .offset = 0};
+    SDL_BindGPUVertexBuffers(pass, 0, &vbo, 1);
+    SDL_DrawGPUPrimitives(pass, (uint32_t)m_debug_line_vertices.size(), 1, 0, 0);
 }

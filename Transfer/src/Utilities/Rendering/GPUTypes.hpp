@@ -36,6 +36,15 @@ struct VelocityVectorVertex
     float r, g, b, a;
 };
 
+// One end of a debug-overlay line, in world space. Like the ship sprite it also carries its previous-tick position,
+// so the overlay is interpolated exactly like the things it outlines and sits right on top of them.
+struct DebugLineVertex
+{
+    float x, y;
+    float prevX, prevY;
+    float r, g, b, a;
+};
+
 struct StarshipVertex
 {
     float x, y;

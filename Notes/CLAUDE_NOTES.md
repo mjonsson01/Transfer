@@ -300,6 +300,36 @@ Lambdas capture Game members by reference, which is safe because they outlive th
   t0/s0 space2. Pipeline: frag 1 sampler, blend src = ONE (premultiplied). Draw order now stars -> bodies -> ship -> arrow -> UI
   (Marco: ship above bodies; he plans physics so they never overlap). Old buildGeometry kept commented out by Marco (to delete).
   Open quiz: what the ship would look like zoomed in vs out without the mipmap generation call.
+- **Ship physics, DONE (2026-10-09, `Bugfixes`, typed by Marco step by step, 'works great' in-game).** Marco's decisions: convex POLYGON hitbox, BOUNCE on impact (pushed
+  out = never overlaps, loses energy), ONE-WAY gravity (planets pull the ship, not back), rotation player-only (no spin physics).
+  Plan: (1) DynamoEngine/Physics/Collision2D: `CircleContact circleVsConvexPolygon(center, radius, polygon)` -> {touching,
+  normal (polygon -> circle, unit), depth}; inside-centre case = nearest edge's outward normal, depth r + d; outside r - d;
+  exactly touching = not touching; outward normals flipped using the corner average (any winding). DONE: typed by Marco,
+  Tests/DynamoEngine/Physics/Test_Collision2D.cpp 9 tests (Claude wrote the last 3 at Marco's request and FIXED his
+  squareReversed(), which wasn't reversed: the winding mutation then went uncaught). Mutation-checked, TidyEngine 36 files clean.
+  DECISION CHANGE (same day): gravity is TWO-WAY after all (Marco: 'I do want actual mass'); ship DRY_MASS = 1000 (m_mass,
+  fuel goes on top later). Marco first thought the ship needed mass to orbit: it doesn't (a = GM/r^2, its mass cancels) --
+  mass matters for pulling planets back, collisions and thrust. LONG-TERM (Marco): Tsiolkovsky rocket equation with fuel mass
+  for main-engine and RCS burns: simulate it (fuel -= mass_flow*dt; accel = thrust_force / current mass), the equation itself
+  only for UI (delta-v remaining). Seam = Starship::applyThrust. RCS ROTATION would reverse 'player-only rotation' (needs
+  angular velocity/torque/inertia): a conscious later decision.
+  FINAL DESIGN (supersedes parts of the plan below): (3) debug overlay done (F3, green ship polygon + yellow planet circles,
+  DebugLine shaders listed in BOTH MakeTransfer scripts). (4) Starship: m_mass = DRY_MASS 1000; applyThrust sets
+  m_thrust_acceleration = nose x THRUST_ACCELERATION (1200 px/s^2 = old feel); KDK Verlet applyVelocityVerletPhase1/2 inside the
+  bodies' phases; PhysicsSystem::updateShipGravity (in updateAllForces) = TWO-WAY ship<->planet forces (same softening rule as
+  calculateGravity), setGravityForce -> a = F/m + thrust. Debris and ship don't attract. (5) handleShipCollisions (in
+  handleCollisions, before the pending-fragment flush): planets + particles (bounding-radius pre-check), resolveShipContact =
+  push apart split by inverse mass (force-static = 0), impulse with SHIP_RESTITUTION = 0.2 only when closing, returns absorbed
+  energy 1/2 mu v^2 (1-e^2) -> ship.setLastImpactEnergy (hook for future DAMAGE; Marco's plan). NO ship-caused shattering
+  (Marco: planets will be scaled way up; strong gravity made any fall exceed MIN_SHATTER_SPEED). Marco renamed all Starship
+  members to m_ style (m_position, m_prev_position, m_rotation, m_ship_size, m_velocity + velocity() getter).
+  Harnesses in Notes/drafts/Harnesses: hitbox_, ship_physics_ (thrust/orbit/momentum), ship_collision_ (energy audit exact,
+  bounce, no shatter, debris momentum, resting); they use `#define private public` to place the ship.
+  (2) ship shape: 6 points traced from the PNG's convex hull, as fractions of the image x shipSize: (32,1464) (959,366)
+  (1094,366) (2021,1464) (1242,1744) (811,1744) of 2048 px (96.4% of hull area). (3) debug lines + F3 toggle wiring the unused
+  UIState::renderDebug (default VIEW_DEBUG): ship polygon green, planet circles yellow, no particles; own LINELIST pipeline with
+  prev+current positions (interpolated like the sprite). (4) ship mass, one-way gravity, Verlet, thrust = accel x dt.
+  (5) collisions vs macros + particles: push out + bounce (ELASTIC_LOSS_FACTOR).
 - Physics fix (2026-09-27, applied by Claude at Marco's request; committed in `26a094a`): shatter fragments go into
   `PhysicsSystem::m_pending_fragments` (via a `fragments_out` parameter on substituteWithParticles / ...FromImpact) and are appended
   to `particles` after all three collision passes (`handleCollisions`); `createParticleCluster` passes `particles` directly (no loop

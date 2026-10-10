@@ -16,8 +16,12 @@ constexpr uint32_t INITIAL_UNIFIED_BODY_CAPACITY = MAX_LIVE_PARTICLES + 1;
 constexpr uint32_t MAX_UI_VERTICES = 65536;
 
 constexpr uint32_t MAX_STARSHIP_VERTICES = 32; // Unknown if needed
+// Debug overlay (F3): 2 vertices per line. Each planet outline is 32 lines (the budget allows at most 25 planets),
+// the ship's hitbox 6 lines, so this leaves plenty of room for future debug drawings
+constexpr uint32_t MAX_DEBUG_LINE_VERTICES = 8192;
+
 // Grav body max/mins
 constexpr double MAX_MASS = 1e11;
-constexpr double MAX_RADIUS = 300;
+constexpr double MAX_RADIUS = 700;
 
 constexpr double MIN_PARTICLE_RADIUS = 1.0;
