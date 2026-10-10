@@ -281,6 +281,41 @@ TEST(UIColumn, StacksChildrenTopToBottom)
     EXPECT_FLOAT_EQ(second.rect().y, 25.0f);
 }
 
+// The spawn panel's shape: a row of sections, each section a column of a title over a row of boxes. Every container
+// must be right on the very FIRST update, not a frame per nesting level later (UIElement::updateSize).
+TEST(UIRow, NestedContainersAreRightAfterOneUpdate)
+{
+    UIRoot root; // 1280 x 720
+
+    auto inner_row = std::make_unique<UIRow>(/*spacing=*/10.0f);
+    UIElement& first_box = inner_row->addChild(boxOfSize({100.0f, 30.0f}));
+    inner_row->addChild(boxOfSize({100.0f, 30.0f})); // inner row: 100 + 10 + 100 = 210 wide, 30 tall
+
+    auto section = std::make_unique<UIColumn>(/*spacing=*/5.0f);
+    section->addChild(boxOfSize({0.0f, 20.0f})); // a 20-tall title line (0 wide: the row sets the width)
+    UIElement& added_inner_row = section->addChild(std::move(inner_row)); // section: 210 wide, 20 + 5 + 30 = 55 tall
+
+    auto outer_row = std::make_unique<UIRow>(/*spacing=*/40.0f);
+    outer_row->setPlacement({.align = UIAlign::BottomCenter, .margin = 20.0f});
+    outer_row->addChild(std::move(section));
+    outer_row->addChild(boxOfSize({50.0f, 55.0f})); // outer row: 210 + 40 + 50 = 300 wide, 55 tall
+    UIElement& added_outer_row = root.addChild(std::move(outer_row));
+
+    root.updateElements(0.016f); // ONE update
+
+    // Outer row: bottom-center, 20 up -> x = 640 - 150 = 490, y = 720 - 55 - 20 = 645
+    EXPECT_FLOAT_EQ(added_outer_row.rect().w, 300.0f);
+    EXPECT_FLOAT_EQ(added_outer_row.rect().h, 55.0f);
+    EXPECT_FLOAT_EQ(added_outer_row.rect().x, 490.0f);
+    EXPECT_FLOAT_EQ(added_outer_row.rect().y, 645.0f);
+
+    // Inner row: under the title and the gap -> y = 645 + 20 + 5 = 670, and its first box at the outer row's left edge
+    EXPECT_FLOAT_EQ(added_inner_row.rect().w, 210.0f);
+    EXPECT_FLOAT_EQ(added_inner_row.rect().y, 670.0f);
+    EXPECT_FLOAT_EQ(first_box.rect().x, 490.0f);
+    EXPECT_FLOAT_EQ(first_box.rect().y, 670.0f);
+}
+
 // --- Dropdown --- //
 
 // A 200 x 40 dropdown at the top-left: the button covers y 0-40, and option row i covers y 40(i+1) to 40(i+2)

@@ -8,9 +8,15 @@
 
 namespace DynamoEngine
 {
-void UIRow::updateLayout(const SDL_FRect& parent_rect)
+void UIRow::updateSize()
 {
-    // 1. Size the row to fit its children: widths added up (plus spacing), height of the tallest child
+    // Children first: a row or column nested inside this one must know its size THIS frame, not last frame's
+    for (const std::unique_ptr<UIElement>& child : children())
+    {
+        child->updateSize();
+    }
+
+    // Fit the children: widths added up (plus spacing), height of the tallest child
     float total_width = 0.0f;
     float tallest = 0.0f;
     for (const std::unique_ptr<UIElement>& child : children())
@@ -23,6 +29,12 @@ void UIRow::updateLayout(const SDL_FRect& parent_rect)
         total_width += m_spacing * static_cast<float>(children().size() - 1);
     }
     m_placement.size = {total_width, tallest};
+}
+
+void UIRow::updateLayout(const SDL_FRect& parent_rect)
+{
+    // 1. Size the row (and, through updateSize, every row and column inside it) to fit its children
+    updateSize();
 
     // 2. Place the row itself inside its parent
     m_rect = m_placement.placeInside(parent_rect);
@@ -37,9 +49,15 @@ void UIRow::updateLayout(const SDL_FRect& parent_rect)
     }
 }
 
-void UIColumn::updateLayout(const SDL_FRect& parent_rect)
+void UIColumn::updateSize()
 {
-    // 1. Size the column to fit its children: heights added up (plus spacing), width of the widest child
+    // Children first: a row or column nested inside this one must know its size THIS frame, not last frame's
+    for (const std::unique_ptr<UIElement>& child : children())
+    {
+        child->updateSize();
+    }
+
+    // Fit the children: heights added up (plus spacing), width of the widest child
     float total_height = 0.0f;
     float widest = 0.0f;
     for (const std::unique_ptr<UIElement>& child : children())
@@ -52,6 +70,12 @@ void UIColumn::updateLayout(const SDL_FRect& parent_rect)
         total_height += m_spacing * static_cast<float>(children().size() - 1);
     }
     m_placement.size = {widest, total_height};
+}
+
+void UIColumn::updateLayout(const SDL_FRect& parent_rect)
+{
+    // 1. Size the column (and, through updateSize, every row and column inside it) to fit its children
+    updateSize();
 
     // 2. Place the column itself inside its parent
     m_rect = m_placement.placeInside(parent_rect);

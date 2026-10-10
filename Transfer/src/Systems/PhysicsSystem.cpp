@@ -363,22 +363,24 @@ void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& grav_body_pair
         return;
     }
 
-    if (collisionInfo.shouldBlowUp && lighter.isShatterable)
+    // Each body decides for itself whether a hit this hard breaks it: the lighter one if it's shatterable, the heavier
+    // one only if it's shatterable AND the masses are comparable (a much heavier body shrugs the hit off).
+    // Deciding per body means it can't matter which one is called "lighter" (for equal masses: whichever came first).
+    bool lighter_shatters = lighter.isShatterable;
+    bool heavier_shatters = heavier.isShatterable && grav_body_pair.ratio <= MUTUAL_SHATTER_MASS_RATIO_THRESHOLD;
+    if (collisionInfo.shouldBlowUp && (lighter_shatters || heavier_shatters))
     {
-        if (!lighter.isShatterable)
-        {
-            handleElasticCollisions(lighter, heavier);
-            return;
-        }
-
         DynamoEngine::Vector2D toward_lighter = (lighter.position - heavier.position).normalize();
         DynamoEngine::Vector2D impact_point = heavier.position + toward_lighter * heavier.radius;
 
-        if (heavier.isShatterable && grav_body_pair.ratio <= MUTUAL_SHATTER_MASS_RATIO_THRESHOLD)
+        if (heavier_shatters)
         {
             substituteWithParticlesFromImpact(heavier, m_pending_fragments, DEFAULT_FRAGMENT_COUNT, impact_point);
         }
-        substituteWithParticlesFromImpact(lighter, m_pending_fragments, DEFAULT_FRAGMENT_COUNT, impact_point);
+        if (lighter_shatters)
+        {
+            substituteWithParticlesFromImpact(lighter, m_pending_fragments, DEFAULT_FRAGMENT_COUNT, impact_point);
+        }
         return;
     }
 

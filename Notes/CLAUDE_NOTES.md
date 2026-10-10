@@ -365,6 +365,14 @@ Lambdas capture Game members by reference, which is safe because they outlive th
   helpers addSpawnCheckbox(row, label, bool&) and makeSpawnSection(title, row). Checkbox labels get 164 of 200 points
   (18 pt SpaceMono ~11 pt/char, 'Shatterable Macro' = 187 did not fit). UIColumn lives in UIRow.hpp.
   Harnesses: spawn_flags_, static_bounce_, static_spawn_, layout_ (prints frame 1 and frame 3).
+- **Nested layout fix (2026-10-10, APPLIED BY CLAUDE at Marco's explicit one-off request, with a test):** new
+  `virtual void UIElement::updateSize() {}`; UIRow/UIColumn override it: children's updateSize first, then fit around them;
+  their updateLayout now starts with updateSize(). Before, a nested row/column reported LAST frame's size (0 on frame 1),
+  one frame of lag per nesting level (the spawn panel sat below the screen for 2 frames). Test
+  UIRow.NestedContainersAreRightAfterOneUpdate (Test_UIWidgets.cpp): row > column(title + row) > boxes, checked after ONE
+  update; failed before the fix (outer row 90 wide instead of 300), passes after, fails again if the children-first loop is
+  removed. 139/139, tidy 38 clean. Small known cost: a nested container's size is recomputed once per ancestor level
+  (tiny UI trees, irrelevant).
 - Physics fix (2026-09-27, applied by Claude at Marco's request; committed in `26a094a`): shatter fragments go into
   `PhysicsSystem::m_pending_fragments` (via a `fragments_out` parameter on substituteWithParticles / ...FromImpact) and are appended
   to `particles` after all three collision passes (`handleCollisions`); `createParticleCluster` passes `particles` directly (no loop
