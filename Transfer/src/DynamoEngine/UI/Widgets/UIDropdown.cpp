@@ -97,7 +97,7 @@ bool UIDropdown::onMousePressed(Vector2F mouse_position)
         // Closed: containsPoint only lets this press through because its on the button, so open the list
         m_is_open = true;
         m_is_button_held = true;
-        requestSound(UISound::Click);
+        requestSound(UISound::StandardClick);
         return true;
     }
 
@@ -109,11 +109,11 @@ bool UIDropdown::onMousePressed(Vector2F mouse_position)
     if (isOnButton(mouse_position))
     {
         m_is_button_held = true;
-        requestSound(UISound::Click);
+        requestSound(UISound::StandardClick);
     }
     else if (pressed_option != NO_OPTION)
     {
-        requestSound(UISound::Click);
+        requestSound(UISound::StandardClick);
         const bool is_new_choice = (pressed_option != m_selected_option);
         m_selected_option = pressed_option;
         if (is_new_choice && m_on_option_chosen)

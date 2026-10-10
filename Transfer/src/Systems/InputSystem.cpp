@@ -209,7 +209,14 @@ void InputSystem::translateGameInputs(GameState& game_state, UIState& ui_state, 
     // Clear the screen once per tap (was: every frame while the key was held)
     if (m_input.wasKeyPressed(SDL_SCANCODE_BACKSPACE) || m_input.wasKeyPressed(SDL_SCANCODE_DELETE))
     {
-        legacy_state.clearAllBodies();
+        if (m_input.isShiftDown())
+        {
+            legacy_state.clearAllBodies();
+        }
+        else
+        {
+            legacy_state.undoNewestSpawn();
+        }
         legacy_state.resetTransientFlags();
         return;
     }
@@ -248,6 +255,11 @@ void InputSystem::translateGameInputs(GameState& game_state, UIState& ui_state, 
         legacy_state.isCreatingParticleCluster = true;
     }
 
+    // F3: show or hide the debug overlay (hitboxes)
+    if (m_input.wasKeyPressed(SDL_SCANCODE_F3))
+    {
+        ui_state.setRenderDebug(!ui_state.getRenderDebug());
+    }
     // Update the visor if necessary
     updateVisor(game_state.getCameraStateMutable());
 }

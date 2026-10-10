@@ -2,6 +2,7 @@
 
 build/
 build-tests/
+build-profile/
 
 venv/
 # for macOS
@@ -10,3 +11,4 @@ venv/
 # from windows workspace
 ThirdParty/
 Transfer/Assets/Shaders/
+Notes/drafts/

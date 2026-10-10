@@ -94,6 +94,12 @@ void Game::Run()
         if (runs_simulation)
         {
             physics_time_accumulator += (frame_delta * ui_state.getTimeScaleFactor());
+            // Cap catchup to 8 steps maximum to prevent spiralling frozen frames
+            const float max_physics_backlog = MAX_PHYSICS_STEPS_PER_FRAME * PHYSICS_TIME_STEP;
+            if (physics_time_accumulator > max_physics_backlog)
+            {
+                physics_time_accumulator = max_physics_backlog;
+            }
         }
         else
         {

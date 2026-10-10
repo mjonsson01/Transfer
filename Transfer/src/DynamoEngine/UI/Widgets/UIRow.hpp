@@ -15,6 +15,7 @@ class UIRow : public UIElement
 {
   public:
     explicit UIRow(float spacing) : m_spacing(spacing) {}
+    void updateSize() override; // sizes the children first, then fits around them
     void updateLayout(const SDL_FRect& parent_rect) override;
 
   private:
@@ -26,6 +27,7 @@ class UIColumn : public UIElement
 {
   public:
     explicit UIColumn(float spacing) : m_spacing(spacing) {}
+    void updateSize() override; // sizes the children first, then fits around them
     void updateLayout(const SDL_FRect& parent_rect) override;
 
   private:

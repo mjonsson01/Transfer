@@ -63,6 +63,7 @@ class RenderSystem
     SDL_GPUBuffer* unifiedBodyVertexBuffer = nullptr;
     SDL_GPUTransferBuffer* unifiedBodyTransferBuffer = nullptr;
     SDL_GPUGraphicsPipeline* unifiedBodyPipeline = nullptr;
+    uint32_t m_unified_body_capacity = 0; // how many bodies the two buffers above can hold right now
 
     // Twinkling Star Rendering Components
     std::vector<TwinklingStarVertex> twinklingStarVertices;
@@ -87,6 +88,14 @@ class RenderSystem
     SDL_GPUBuffer* starshipVertexBuffer = nullptr;
     SDL_GPUTransferBuffer* starshipTransferBuffer = nullptr;
     SDL_GPUGraphicsPipeline* starshipPipeline = nullptr;
+    SDL_GPUTexture* m_starship_texture = nullptr; // the ship sprite, alpha premultiplied, with a full mipmap chain
+    SDL_GPUSampler* m_sprite_sampler = nullptr;   // smooth filtering, between pixels AND between mipmap levels
+
+    // Debug Overlay Rendering Components (F3: hitboxes)
+    std::vector<DebugLineVertex> m_debug_line_vertices;
+    SDL_GPUBuffer* m_debug_line_vertex_buffer = nullptr;
+    SDL_GPUTransferBuffer* m_debug_line_transfer_buffer = nullptr;
+    SDL_GPUGraphicsPipeline* m_debug_line_pipeline = nullptr;
 
     // Text Rendering Components
     SDL_GPUTexture* fontAtlasTexture = nullptr;
@@ -110,6 +119,10 @@ class RenderSystem
                                                      // bodies (both Macro and Particle)
 
     void uploadUnifiedBodies(GameState& game_state, UIState& ui_state, SDL_GPUCommandBuffer* cmdbuf);
+    // (Re)creates both body buffers to hold `capacity` bodies, releasing the old ones.
+    // Returns false if the GPU couldn't provide the memory; nothing may be uploaded then.
+    bool createUnifiedBodyBuffers(uint32_t capacity);
+
     SDL_GPUShader* LoadShader(SDL_GPUDevice* device, const char* base_file_name, uint32_t numSamplers = 0,
                               uint32_t numUniformBuffers = 0);
 
@@ -118,7 +131,21 @@ class RenderSystem
     void createVelocityVectorGPUBufferAndPipeline();
     void createTwinklingStarGPUBufferAndPipeline();
     void createStarshipGPUBufferAndPipeline();
+    void createDebugLineGPUBufferAndPipeline();
+
+    // Debug overlay: fills m_debug_line_vertices with the hitboxes when ui_state's debug flag is on (empty otherwise)
+    void buildDebugLines(const GameState& game_state, UIState& ui_state);
+    void addDebugLine(const DynamoEngine::Vector2D& start, const DynamoEngine::Vector2D& prev_start,
+                      const DynamoEngine::Vector2D& end, const DynamoEngine::Vector2D& prev_end, SDL_FColor color);
+    void addDebugCircle(const DynamoEngine::Vector2D& center, const DynamoEngine::Vector2D& prev_center, double radius,
+                        SDL_FColor color);
+    void uploadDebugLines(SDL_GPUCommandBuffer* cmdbuf);
+    void renderDebugLines(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf, const CameraState& camera_state);
     void createFontAtlasSampler();
+    // Loads a PNG (path relative to Assets/) into a GPU texture: alpha premultiplied, full mipmap chain.
+    // Returns nullptr and logs why if it fails. The caller owns the texture and must SDL_ReleaseGPUTexture it.
+    SDL_GPUTexture* loadSpriteTexture(const std::string& asset_path);
+    void createSpriteSampler();
     // Bakes fontAtlas from UIFontRegular for `pixel_scale` (screen pixels per UI point) and uploads it to the GPU,
     // replacing the previous atlas texture
     void rebuildFontAtlas(float pixel_scale);

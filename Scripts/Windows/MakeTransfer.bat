@@ -76,7 +76,7 @@ echo Compiling shaders...
 REM Every shader has a .vert.hlsl and a .frag.hlsl. "if errorlevel 1" is checked when each line RUNS (unlike
 REM %ERRORLEVEL%, which a () block expands once, up front), so the first failing shader stops the build.
 REM The failure jumps OUT of the loop to :shaderFailed: an "exit /b 1" inside a for loop can lose its exit code.
-for %%S in (UnifiedGravBody TwinklingStar UIElement VelocityVector Starship) do (
+for %%S in (UnifiedGravBody TwinklingStar UIElement VelocityVector Starship DebugLine) do (
     for %%T in (vert frag) do (
         "%SHADERCROSS%" "%SHADER_SRC%\%%S.%%T.hlsl" -o "%SHADER_OUT%\%%S.%%T.spv"
         if errorlevel 1 (

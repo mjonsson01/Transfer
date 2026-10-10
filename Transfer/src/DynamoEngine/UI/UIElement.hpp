@@ -43,6 +43,10 @@ class UIElement
     // --- Position and size --- //
     void setPlacement(const UIPlacement& placement) { m_placement = placement; }
     virtual void updateLayout(const SDL_FRect& parent_rect); // sets rect(), then updates the children
+    // Works out this element's own size before anything is placed. Containers that size themselves to fit their
+    // children (UIRow, UIColumn) override it and size their children FIRST, so nested containers are right in the
+    // same frame. Everything else keeps the size it was given with setPlacement, so the default does nothing.
+    virtual void updateSize() {}
     const SDL_FRect& rect() const { return m_rect; }
     virtual bool containsPoint(Vector2F point) const;
 

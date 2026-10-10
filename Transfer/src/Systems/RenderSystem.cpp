@@ -43,12 +43,17 @@ RenderSystem::RenderSystem(GameState& game_state)
     createVelocityVectorGPUBufferAndPipeline();
     createUIGPUBufferAndPipeline();
     createFontAtlasSampler(); // the atlas itself is baked on the first frame, once the UI scale is known
+    createSpriteSampler();
+    m_starship_texture = loadSpriteTexture("Visual/Ships/FutureShip.png");
     createStarshipGPUBufferAndPipeline();
+    createDebugLineGPUBufferAndPipeline();
     createTwinklingStarField(game_state.getCameraState().max_display_width,
                              game_state.getCameraState().max_display_height);
     if (gpu)
     {
         SDL_GPUCommandBuffer* initCmdBuf = SDL_AcquireGPUCommandBuffer(gpu);
+        // The star field never changes (twinkling and parallax happen in the shader), so upload it once, here
+        uploadTwinklingStarField(initCmdBuf);
         SDL_SubmitGPUCommandBuffer(initCmdBuf);
     }
 }
@@ -102,6 +107,18 @@ void RenderSystem::CleanUp()
         SDL_ReleaseGPUGraphicsPipeline(gpu, starshipPipeline);
     if (starshipTransferBuffer != nullptr)
         SDL_ReleaseGPUTransferBuffer(gpu, starshipTransferBuffer);
+    if (m_starship_texture != nullptr)
+        SDL_ReleaseGPUTexture(gpu, m_starship_texture);
+    if (m_sprite_sampler != nullptr)
+        SDL_ReleaseGPUSampler(gpu, m_sprite_sampler);
+
+    // Release Debug Overlay Pipeline
+    if (m_debug_line_vertex_buffer != nullptr)
+        SDL_ReleaseGPUBuffer(gpu, m_debug_line_vertex_buffer);
+    if (m_debug_line_transfer_buffer != nullptr)
+        SDL_ReleaseGPUTransferBuffer(gpu, m_debug_line_transfer_buffer);
+    if (m_debug_line_pipeline != nullptr)
+        SDL_ReleaseGPUGraphicsPipeline(gpu, m_debug_line_pipeline);
 
     // Release Font Resources
     if (fontAtlasTexture != nullptr)
@@ -183,7 +200,8 @@ void RenderSystem::RenderFullFrame(GameState& game_state, UIState& ui_state, con
 
     if (draws_world)
     {
-        uploadTwinklingStarField(cmdbuf);
+        buildDebugLines(game_state, ui_state);
+        uploadDebugLines(cmdbuf);
         uploadUnifiedBodies(game_state, ui_state, cmdbuf);
         uploadStarship(game_state, ui_state, cmdbuf);
     }
@@ -226,10 +244,11 @@ void RenderSystem::renderGameFrame(GameState& game_state, UIState& ui_state, con
                                    SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf)
 {
     game_state.getCameraStateMutable().render_alpha = game_state.getAlpha();
-    renderStarship(game_state, pass, cmdbuf, game_state.getCameraState());
     renderTwinklingStarField(pass, cmdbuf, game_state.getCameraState());
     renderBodies(game_state, ui_state, pass, cmdbuf);
+    renderStarship(game_state, pass, cmdbuf, game_state.getCameraState());
     renderVelocityVectors(pass, cmdbuf, game_state.getCameraState());
+    renderDebugLines(pass, cmdbuf, game_state.getCameraState()); // over the whole world, under the UI
     renderUIElements(pass, cmdbuf, ui);
 }
 
@@ -266,15 +285,28 @@ void RenderSystem::uploadUnifiedBodies(GameState& game_state, UIState& ui_state,
     appendPreviewBodies(unifiedBodyVertices, ui_state, game_state.getCameraState());
     uploadVelocityVectorVertices(cmdbuf);
 
-    if (unifiedBodyVertices.size() > MAX_UNIFIED_BODIES)
+    // Emergency only: the particle budget should make this impossible. If a rule change ever breaks it, grow the
+    // buffers (doubling, so it happens rarely) and say so, instead of hiding bodies or writing past the buffer.
+    if (unifiedBodyVertices.size() > m_unified_body_capacity)
     {
-        printf("Too many bodies! %zu > %d\n", unifiedBodyVertices.size(), MAX_UNIFIED_BODIES);
-        return;
+        uint32_t new_capacity = std::max(m_unified_body_capacity, INITIAL_UNIFIED_BODY_CAPACITY);
+        while (new_capacity < unifiedBodyVertices.size())
+        {
+            new_capacity *= 2;
+        }
+        printf("WARNING: %zu bodies don't fit the body buffers (%u), growing them to %u. Is the particle budget "
+               "still being enforced?\n",
+               unifiedBodyVertices.size(), m_unified_body_capacity, new_capacity);
+        if (!createUnifiedBodyBuffers(new_capacity))
+        {
+            unifiedBodyVertices.clear(); // no GPU memory: draw no bodies this frame rather than write past the buffer
+            return;
+        }
     }
     // Copy pass
     if (!unifiedBodyVertices.empty())
     {
-        void* map = SDL_MapGPUTransferBuffer(gpu, unifiedBodyTransferBuffer, false);
+        void* map = SDL_MapGPUTransferBuffer(gpu, unifiedBodyTransferBuffer, true);
         SDL_memcpy(map, unifiedBodyVertices.data(), unifiedBodyVertices.size() * sizeof(UnifiedBodyVertex));
         SDL_UnmapGPUTransferBuffer(gpu, unifiedBodyTransferBuffer);
 
@@ -285,7 +317,7 @@ void RenderSystem::uploadUnifiedBodies(GameState& game_state, UIState& ui_state,
                                    .offset = 0,
                                    .size = (uint32_t)(unifiedBodyVertices.size() * sizeof(UnifiedBodyVertex))};
 
-        SDL_UploadToGPUBuffer(copyPass, &src, &dst, false);
+        SDL_UploadToGPUBuffer(copyPass, &src, &dst, true);
         SDL_EndGPUCopyPass(copyPass);
     }
 }
@@ -298,9 +330,11 @@ void RenderSystem::uploadStarship(GameState& game_state, UIState& ui_state, SDL_
     // Rework into getPlayer const since this method doesn't actually do anything to the starship
     game_state.getPlayerMutable().starship.buildGeometry(starshipVertices);
 
+    // Never copy more than the buffer holds; renderStarship draws starshipVertices.size(), so it stays in sync
     if (starshipVertices.size() > MAX_STARSHIP_VERTICES)
     {
-        printf("Too many starship vertices %zu > %d\n", starshipVertices.size(), MAX_STARSHIP_VERTICES);
+        printf("Too many starship vertices %zu > %u\n", starshipVertices.size(), MAX_STARSHIP_VERTICES);
+        starshipVertices.resize(MAX_STARSHIP_VERTICES);
     }
     if (starshipVertices.empty())
     {
@@ -308,7 +342,7 @@ void RenderSystem::uploadStarship(GameState& game_state, UIState& ui_state, SDL_
     }
     if (!starshipVertices.empty())
     {
-        void* map = SDL_MapGPUTransferBuffer(gpu, starshipTransferBuffer, false);
+        void* map = SDL_MapGPUTransferBuffer(gpu, starshipTransferBuffer, true);
         SDL_memcpy(map, starshipVertices.data(), starshipVertices.size() * sizeof(StarshipVertex));
         SDL_UnmapGPUTransferBuffer(gpu, starshipTransferBuffer);
         SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdbuf);
@@ -317,7 +351,7 @@ void RenderSystem::uploadStarship(GameState& game_state, UIState& ui_state, SDL_
                                    .offset = 0,
                                    .size = (uint32_t)(starshipVertices.size() * sizeof(StarshipVertex))};
 
-        SDL_UploadToGPUBuffer(copyPass, &src, &dst, false);
+        SDL_UploadToGPUBuffer(copyPass, &src, &dst, true);
         SDL_EndGPUCopyPass(copyPass);
     }
 }
@@ -325,22 +359,9 @@ void RenderSystem::uploadStarship(GameState& game_state, UIState& ui_state, SDL_
 void RenderSystem::renderBodies(GameState& game_state, UIState& ui_state, SDL_GPURenderPass* pass,
                                 SDL_GPUCommandBuffer* cmdbuf)
 {
-    // Quickly count how many total instances are active for drawing
-    uint32_t instance_count = 0;
-    for (auto& p : game_state.getParticles())
-        if (p.visible)
-            instance_count++;
-    for (auto& b : game_state.getMacroBodies())
-        if (b.visible)
-            instance_count++;
-
-    if (ui_state.getMutableDEPRECATED_InputState().isPreviewingMacro)
-    {
-        instance_count++;
-    }
-
-    // Safety check and raw drawing
-    if (instance_count > 0 && instance_count <= MAX_UNIFIED_BODIES)
+    // Draw exactly what uploadUnifiedBodies put in the buffer (one instance per body)
+    uint32_t instance_count = (uint32_t)unifiedBodyVertices.size();
+    if (instance_count > 0)
     {
         SDL_BindGPUGraphicsPipeline(pass, unifiedBodyPipeline);
         CameraConstants camera_constants =
@@ -360,6 +381,11 @@ void RenderSystem::renderBodies(GameState& game_state, UIState& ui_state, SDL_GP
 void RenderSystem::renderStarship(GameState& game_state, SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
                                   const CameraState& camera_state)
 {
+    // No sprite (loadSpriteTexture already logged why at startup) or nothing to draw: skip the ship
+    if (m_starship_texture == nullptr || starshipVertices.empty())
+    {
+        return;
+    }
     SDL_BindGPUGraphicsPipeline(pass, starshipPipeline);
     CameraConstants camera_constants =
         buildCameraConstants(game_state.getCameraState(), game_state.getCameraState().offset);
@@ -367,6 +393,9 @@ void RenderSystem::renderStarship(GameState& game_state, SDL_GPURenderPass* pass
 
     SDL_GPUBufferBinding vbo = {.buffer = starshipVertexBuffer, .offset = 0};
     SDL_BindGPUVertexBuffers(pass, 0, &vbo, 1);
+
+    SDL_GPUTextureSamplerBinding sprite_binding = {.texture = m_starship_texture, .sampler = m_sprite_sampler};
+    SDL_BindGPUFragmentSamplers(pass, 0, &sprite_binding, 1);
 
     SDL_DrawGPUPrimitives(pass,
                           (uint32_t)starshipVertices.size(), // vertices per quad
@@ -447,6 +476,98 @@ void RenderSystem::createFontAtlasSampler()
     fontAtlasSampler = SDL_CreateGPUSampler(gpu, &sampler_info);
 }
 
+void RenderSystem::createSpriteSampler()
+{
+    // max_lod must be raised from its default of 0, or the GPU is never allowed past mip level 0 (no mipmaps at all)
+    SDL_GPUSamplerCreateInfo sampler_info = {.min_filter = SDL_GPU_FILTER_LINEAR,
+                                             .mag_filter = SDL_GPU_FILTER_LINEAR,
+                                             .mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_LINEAR,
+                                             .address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
+                                             .address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
+                                             .address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
+                                             .max_lod = 1000.0f};
+    m_sprite_sampler = SDL_CreateGPUSampler(gpu, &sampler_info);
+}
+
+SDL_GPUTexture* RenderSystem::loadSpriteTexture(const std::string& asset_path)
+{
+    // 1. Load the PNG into a CPU-side image
+    SDL_Surface* loaded = SDL_LoadPNG(Utilities::GetResourcePath(asset_path).c_str());
+    if (loaded == nullptr)
+    {
+        std::cerr << "Couldn't load sprite '" << asset_path << "': " << SDL_GetError() << std::endl;
+        return nullptr;
+    }
+
+    // 2. Make the bytes R, G, B, A in that order, which is what the R8G8B8A8 texture below expects
+    SDL_Surface* image = SDL_ConvertSurface(loaded, SDL_PIXELFORMAT_RGBA32);
+    SDL_DestroySurface(loaded);
+    if (image == nullptr)
+    {
+        std::cerr << "Couldn't convert sprite '" << asset_path << "': " << SDL_GetError() << std::endl;
+        return nullptr;
+    }
+
+    // 3. Premultiply (colour *= alpha), so filtering never blends the black of transparent pixels into the edges
+    SDL_PremultiplySurfaceAlpha(image, false);
+
+    // 4. One mip level per halving of the larger side, plus the full-size image itself (2048 -> 12 levels)
+    uint32_t mip_levels = 1;
+    uint32_t side = (uint32_t)std::max(image->w, image->h);
+    while (side > 1)
+    {
+        side /= 2;
+        mip_levels++;
+    }
+
+    // SAMPLER: shaders read it. COLOR_TARGET: SDL renders into the smaller levels when generating the mipmaps.
+    SDL_GPUTextureCreateInfo tex_info = {.type = SDL_GPU_TEXTURETYPE_2D,
+                                         .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+                                         .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET,
+                                         .width = (Uint32)image->w,
+                                         .height = (Uint32)image->h,
+                                         .layer_count_or_depth = 1,
+                                         .num_levels = mip_levels};
+    SDL_GPUTexture* texture = SDL_CreateGPUTexture(gpu, &tex_info);
+    if (texture == nullptr)
+    {
+        std::cerr << "Couldn't create a texture for sprite '" << asset_path << "': " << SDL_GetError() << std::endl;
+        SDL_DestroySurface(image);
+        return nullptr;
+    }
+
+    // 5. Copy the full-size image into a transfer buffer, row by row (a surface's rows can be padded: pitch)
+    Uint32 row_bytes = (Uint32)image->w * 4;
+    SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+                                               .size = row_bytes * (Uint32)image->h};
+    SDL_GPUTransferBuffer* transfer_buffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
+    Uint8* dst = (Uint8*)SDL_MapGPUTransferBuffer(gpu, transfer_buffer, false); // brand-new buffer: nothing to cycle
+    Uint8* src = (Uint8*)image->pixels;
+    for (int row = 0; row < image->h; row++)
+    {
+        SDL_memcpy(dst + row * row_bytes, src + row * image->pitch, row_bytes);
+    }
+    SDL_UnmapGPUTransferBuffer(gpu, transfer_buffer);
+
+    // 6. Upload it into mip level 0, then let the GPU shrink level 0 into all the smaller levels
+    SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(gpu);
+    SDL_GPUCopyPass* copy_pass = SDL_BeginGPUCopyPass(cmdbuf);
+    SDL_GPUTextureTransferInfo src_info = {.transfer_buffer = transfer_buffer,
+                                           .offset = 0,
+                                           .pixels_per_row = (Uint32)image->w,
+                                           .rows_per_layer = (Uint32)image->h};
+    SDL_GPUTextureRegion dst_region = {
+        .texture = texture, .mip_level = 0, .w = (Uint32)image->w, .h = (Uint32)image->h, .d = 1};
+    SDL_UploadToGPUTexture(copy_pass, &src_info, &dst_region, false);
+    SDL_EndGPUCopyPass(copy_pass);
+    SDL_GenerateMipmapsForGPUTexture(cmdbuf, texture); // must be outside any pass, so after EndGPUCopyPass
+    SDL_SubmitGPUCommandBuffer(cmdbuf);
+
+    SDL_ReleaseGPUTransferBuffer(gpu, transfer_buffer); // SDL frees it once the upload has finished
+    SDL_DestroySurface(image);
+    return texture;
+}
+
 void RenderSystem::rebuildFontAtlas(float pixel_scale)
 {
     SDL_Surface* atlas_surface = fontAtlas.buildAtlas(UIFontRegular, UI_FONT_SIZE, pixel_scale);
@@ -518,10 +639,17 @@ void RenderSystem::uploadUIVertices(const DynamoEngine::UIRoot& ui, SDL_GPUComma
     // Every visible element of the scene's UI, back to front
     ui.drawElements(builder);
 
+    // Never copy more than the buffer holds; renderUIElements draws m_ui_vertices.size(), so it stays in sync
+    if (m_ui_vertices.size() > MAX_UI_VERTICES)
+    {
+        printf("Too many UI vertices %zu > %u\n", m_ui_vertices.size(), MAX_UI_VERTICES);
+        m_ui_vertices.resize(MAX_UI_VERTICES);
+    }
+
     if (m_ui_vertices.empty())
         return;
 
-    void* map = SDL_MapGPUTransferBuffer(gpu, uiTransferBuffer, false);
+    void* map = SDL_MapGPUTransferBuffer(gpu, uiTransferBuffer, true);
     SDL_memcpy(map, m_ui_vertices.data(), m_ui_vertices.size() * sizeof(DynamoEngine::UIVertex));
     SDL_UnmapGPUTransferBuffer(gpu, uiTransferBuffer);
 
@@ -530,7 +658,7 @@ void RenderSystem::uploadUIVertices(const DynamoEngine::UIRoot& ui, SDL_GPUComma
     SDL_GPUBufferRegion dst = {.buffer = uiVertexBuffer,
                                .offset = 0,
                                .size = (uint32_t)(m_ui_vertices.size() * sizeof(DynamoEngine::UIVertex))};
-    SDL_UploadToGPUBuffer(copyPass, &src, &dst, false);
+    SDL_UploadToGPUBuffer(copyPass, &src, &dst, true);
     SDL_EndGPUCopyPass(copyPass);
 }
 
@@ -636,17 +764,42 @@ SDL_Color RenderSystem::getColorForProperty(const GravitationalBody& body)
     Uint8 opacity = (body.isMacroGhost || !body.isCollidable) ? 175 : 255;
     return SDL_Color{r, g, b, opacity};
 }
+bool RenderSystem::createUnifiedBodyBuffers(uint32_t capacity)
+{
+    // SDL frees these once the GPU has finished with them, so releasing while last frame's draw may still be
+    // running is safe. The contents don't need copying: every frame uploads all bodies from scratch anyway.
+    if (unifiedBodyVertexBuffer != nullptr)
+    {
+        SDL_ReleaseGPUBuffer(gpu, unifiedBodyVertexBuffer);
+    }
+    if (unifiedBodyTransferBuffer != nullptr)
+    {
+        SDL_ReleaseGPUTransferBuffer(gpu, unifiedBodyTransferBuffer);
+    }
+
+    const uint32_t size_in_bytes = capacity * (uint32_t)sizeof(UnifiedBodyVertex);
+
+    SDL_GPUBufferCreateInfo vb_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX, .size = size_in_bytes};
+    unifiedBodyVertexBuffer = SDL_CreateGPUBuffer(gpu, &vb_info);
+
+    SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD, .size = size_in_bytes};
+    unifiedBodyTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
+
+    if (unifiedBodyVertexBuffer == nullptr || unifiedBodyTransferBuffer == nullptr)
+    {
+        printf("Couldn't create body buffers for %u bodies: %s\n", capacity, SDL_GetError());
+        m_unified_body_capacity = 0; // so the next frame tries again
+        return false;
+    }
+
+    m_unified_body_capacity = capacity;
+    return true;
+}
 
 void RenderSystem::createUnifiedBodyGPUBufferAndPipeline()
 {
-
-    SDL_GPUBufferCreateInfo vb_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX,
-                                       .size = MAX_UNIFIED_BODIES * sizeof(UnifiedBodyVertex)};
-    unifiedBodyVertexBuffer = SDL_CreateGPUBuffer(gpu, &vb_info);
-
-    SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-                                               .size = MAX_UNIFIED_BODIES * sizeof(UnifiedBodyVertex)};
-    unifiedBodyTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
+    // Reserved at full size up front, so normal play never reallocates
+    createUnifiedBodyBuffers(INITIAL_UNIFIED_BODY_CAPACITY);
 
     SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/UnifiedGravBody.vert", 0, 1);
     SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/UnifiedGravBody.frag", 0, 0);
@@ -856,7 +1009,7 @@ void RenderSystem::createTwinklingStarField(float fieldMaxWidth, float fieldMaxH
 void RenderSystem::uploadTwinklingStarField(SDL_GPUCommandBuffer* cmdbuf)
 {
 
-    void* map = SDL_MapGPUTransferBuffer(gpu, twinklingStarTransferBuffer, false);
+    void* map = SDL_MapGPUTransferBuffer(gpu, twinklingStarTransferBuffer, true);
 
     SDL_memcpy(map, twinklingStarVertices.data(), twinklingStarVertices.size() * sizeof(TwinklingStarVertex));
 
@@ -870,7 +1023,7 @@ void RenderSystem::uploadTwinklingStarField(SDL_GPUCommandBuffer* cmdbuf)
                                .offset = 0,
                                .size = (uint32_t)(twinklingStarVertices.size() * sizeof(TwinklingStarVertex))};
 
-    SDL_UploadToGPUBuffer(copyPass, &src, &dst, false);
+    SDL_UploadToGPUBuffer(copyPass, &src, &dst, true);
 
     SDL_EndGPUCopyPass(copyPass);
 }
@@ -959,7 +1112,7 @@ void RenderSystem::createStarshipGPUBufferAndPipeline()
     starshipTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
 
     SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/Starship.vert", 0, 1);
-    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/Starship.frag", 0, 0);
+    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/Starship.frag", 1, 0); // 1 sampler
 
     SDL_GPUVertexAttribute vertex_attributes[5];
 
@@ -1000,9 +1153,11 @@ void RenderSystem::createStarshipGPUBufferAndPipeline()
     color_target.format = SDL_GetGPUSwapchainTextureFormat(gpu, window);
     color_target.blend_state.enable_blend = true;
 
-    color_target.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    // Premultiplied alpha (the sprite's colours were already multiplied by alpha when it was loaded), so the
+    // source is added as-is (ONE) instead of being multiplied by its alpha a second time
+    color_target.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE;
     color_target.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
-    color_target.blend_state.src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    color_target.blend_state.src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE;
     color_target.blend_state.dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
 
     // MUST SET THESE EXPLICITLY:
@@ -1083,7 +1238,15 @@ void RenderSystem::uploadVelocityVectorVertices(SDL_GPUCommandBuffer* cmdbuf)
     if (velocityVectorVertices.empty())
         return;
 
-    void* map = SDL_MapGPUTransferBuffer(gpu, velocityVectorTransferBuffer, false);
+    // Never copy more than the buffer holds; renderVelocityVectors draws velocityVectorVertices.size()
+    if (velocityVectorVertices.size() > MAX_VELOCITY_VECTOR_VERTICES)
+    {
+        printf("Too many velocity vector vertices %zu > %d\n", velocityVectorVertices.size(),
+               MAX_VELOCITY_VECTOR_VERTICES);
+        velocityVectorVertices.resize(MAX_VELOCITY_VECTOR_VERTICES);
+    }
+
+    void* map = SDL_MapGPUTransferBuffer(gpu, velocityVectorTransferBuffer, true);
     SDL_memcpy(map, velocityVectorVertices.data(), velocityVectorVertices.size() * sizeof(VelocityVectorVertex));
     SDL_UnmapGPUTransferBuffer(gpu, velocityVectorTransferBuffer);
 
@@ -1092,7 +1255,7 @@ void RenderSystem::uploadVelocityVectorVertices(SDL_GPUCommandBuffer* cmdbuf)
     SDL_GPUBufferRegion dst = {.buffer = velocityVectorVertexBuffer,
                                .offset = 0,
                                .size = (uint32_t)(velocityVectorVertices.size() * sizeof(VelocityVectorVertex))};
-    SDL_UploadToGPUBuffer(copyPass, &src, &dst, false);
+    SDL_UploadToGPUBuffer(copyPass, &src, &dst, true);
     SDL_EndGPUCopyPass(copyPass);
 }
 
@@ -1110,4 +1273,165 @@ void RenderSystem::renderVelocityVectors(SDL_GPURenderPass* pass, SDL_GPUCommand
     SDL_GPUBufferBinding vbo = {.buffer = velocityVectorVertexBuffer, .offset = 0};
     SDL_BindGPUVertexBuffers(pass, 0, &vbo, 1);
     SDL_DrawGPUPrimitives(pass, (uint32_t)velocityVectorVertices.size(), 1, 0, 0);
+}
+
+void RenderSystem::createDebugLineGPUBufferAndPipeline()
+{
+    SDL_GPUBufferCreateInfo vb_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX,
+                                       .size = MAX_DEBUG_LINE_VERTICES * sizeof(DebugLineVertex)};
+    m_debug_line_vertex_buffer = SDL_CreateGPUBuffer(gpu, &vb_info);
+
+    SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+                                               .size = MAX_DEBUG_LINE_VERTICES * sizeof(DebugLineVertex)};
+    m_debug_line_transfer_buffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
+
+    SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/DebugLine.vert", 0, 1);
+    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/DebugLine.frag", 0, 0);
+
+    // The three fields of DebugLineVertex, in the order the vertex shader lists its inputs
+    SDL_GPUVertexAttribute vertex_attributes[3];
+
+    // Position float2
+    vertex_attributes[0].location = 0;
+    vertex_attributes[0].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2;
+    vertex_attributes[0].offset = offsetof(DebugLineVertex, x);
+    vertex_attributes[0].buffer_slot = 0;
+
+    // Previous-tick position float2
+    vertex_attributes[1].location = 1;
+    vertex_attributes[1].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2;
+    vertex_attributes[1].offset = offsetof(DebugLineVertex, prevX);
+    vertex_attributes[1].buffer_slot = 0;
+
+    // Color float4
+    vertex_attributes[2].location = 2;
+    vertex_attributes[2].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4;
+    vertex_attributes[2].offset = offsetof(DebugLineVertex, r);
+    vertex_attributes[2].buffer_slot = 0;
+
+    SDL_GPUColorTargetDescription color_target = {};
+    color_target.format = SDL_GetGPUSwapchainTextureFormat(gpu, window);
+    color_target.blend_state.enable_blend = true;
+    color_target.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    color_target.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+    color_target.blend_state.src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    color_target.blend_state.dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+    color_target.blend_state.color_blend_op = SDL_GPU_BLENDOP_ADD;
+    color_target.blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD;
+
+    SDL_GPUVertexBufferDescription vbo_desc = {
+        .slot = 0, .pitch = sizeof(DebugLineVertex), .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX};
+
+    SDL_GPUGraphicsPipelineCreateInfo pipeline_info = {};
+    pipeline_info.target_info.num_color_targets = 1;
+    pipeline_info.target_info.color_target_descriptions = &color_target;
+    pipeline_info.vertex_shader = vert_shader;
+    pipeline_info.fragment_shader = frag_shader;
+    pipeline_info.primitive_type = SDL_GPU_PRIMITIVETYPE_LINELIST; // every 2 vertices = one separate line
+    pipeline_info.vertex_input_state.vertex_attributes = vertex_attributes;
+    pipeline_info.vertex_input_state.num_vertex_attributes = 3;
+    pipeline_info.vertex_input_state.vertex_buffer_descriptions = &vbo_desc;
+    pipeline_info.vertex_input_state.num_vertex_buffers = 1;
+
+    m_debug_line_pipeline = SDL_CreateGPUGraphicsPipeline(gpu, &pipeline_info);
+    if (!m_debug_line_pipeline)
+        std::cerr << "Debug line pipeline creation failed: " << SDL_GetError() << std::endl;
+    SDL_ReleaseGPUShader(gpu, vert_shader);
+    SDL_ReleaseGPUShader(gpu, frag_shader);
+}
+
+void RenderSystem::buildDebugLines(const GameState& game_state, UIState& ui_state)
+{
+    m_debug_line_vertices.clear();
+    if (!ui_state.getRenderDebug())
+    {
+        return; // overlay is off (F3): nothing to draw
+    }
+
+    // Planets: their collision circle is simply their radius (yellow)
+    const SDL_FColor PLANET_COLOR = {1.0f, 0.9f, 0.1f, 1.0f};
+    for (const GravitationalBody& body : game_state.getMacroBodies())
+    {
+        addDebugCircle(body.position, body.previousPosition, body.radius, PLANET_COLOR);
+    }
+
+    // The ship: its hitbox polygon (green). One tick ago it was the same shape moved back by this tick's movement
+    // (the rotation isn't interpolated, exactly like the sprite)
+    const SDL_FColor SHIP_COLOR = {0.2f, 1.0f, 0.3f, 1.0f};
+    const Starship& ship = game_state.getPlayer().starship;
+    std::vector<DynamoEngine::Vector2D> corners = ship.collisionPolygon();
+    DynamoEngine::Vector2D movement = ship.movementThisTick();
+    for (size_t i = 0; i < corners.size(); ++i)
+    {
+        const DynamoEngine::Vector2D& start = corners[i];
+        const DynamoEngine::Vector2D& end = corners[(i + 1) % corners.size()]; // the last corner joins the first
+        addDebugLine(start, start - movement, end, end - movement, SHIP_COLOR);
+    }
+}
+
+void RenderSystem::addDebugLine(const DynamoEngine::Vector2D& start, const DynamoEngine::Vector2D& prev_start,
+                                const DynamoEngine::Vector2D& end, const DynamoEngine::Vector2D& prev_end,
+                                SDL_FColor color)
+{
+    m_debug_line_vertices.push_back({(float)start.x_val, (float)start.y_val, (float)prev_start.x_val,
+                                     (float)prev_start.y_val, color.r, color.g, color.b, color.a});
+    m_debug_line_vertices.push_back({(float)end.x_val, (float)end.y_val, (float)prev_end.x_val, (float)prev_end.y_val,
+                                     color.r, color.g, color.b, color.a});
+}
+
+void RenderSystem::addDebugCircle(const DynamoEngine::Vector2D& center, const DynamoEngine::Vector2D& prev_center,
+                                  double radius, SDL_FColor color)
+{
+    // Drawn as DEBUG_CIRCLE_SEGMENTS straight lines around the edge: plenty to look round at any zoom
+    const int DEBUG_CIRCLE_SEGMENTS = 32;
+    for (int i = 0; i < DEBUG_CIRCLE_SEGMENTS; ++i)
+    {
+        double start_angle = DynamoEngine::TWO_PI * i / DEBUG_CIRCLE_SEGMENTS;
+        double end_angle = DynamoEngine::TWO_PI * (i + 1) / DEBUG_CIRCLE_SEGMENTS;
+        DynamoEngine::Vector2D start_offset = {std::cos(start_angle) * radius, std::sin(start_angle) * radius};
+        DynamoEngine::Vector2D end_offset = {std::cos(end_angle) * radius, std::sin(end_angle) * radius};
+        addDebugLine(center + start_offset, prev_center + start_offset, center + end_offset, prev_center + end_offset,
+                     color);
+    }
+}
+
+void RenderSystem::uploadDebugLines(SDL_GPUCommandBuffer* cmdbuf)
+{
+    if (m_debug_line_vertices.empty())
+        return;
+
+    // Never copy more than the buffer holds; renderDebugLines draws m_debug_line_vertices.size(), so it stays in sync
+    if (m_debug_line_vertices.size() > MAX_DEBUG_LINE_VERTICES)
+    {
+        printf("Too many debug line vertices %zu > %u\n", m_debug_line_vertices.size(), MAX_DEBUG_LINE_VERTICES);
+        m_debug_line_vertices.resize(MAX_DEBUG_LINE_VERTICES);
+    }
+
+    // cycle = true: last frame's commands may still be reading these buffers; SDL hands us a free copy instead
+    void* map = SDL_MapGPUTransferBuffer(gpu, m_debug_line_transfer_buffer, true);
+    SDL_memcpy(map, m_debug_line_vertices.data(), m_debug_line_vertices.size() * sizeof(DebugLineVertex));
+    SDL_UnmapGPUTransferBuffer(gpu, m_debug_line_transfer_buffer);
+
+    SDL_GPUCopyPass* copy_pass = SDL_BeginGPUCopyPass(cmdbuf);
+    SDL_GPUTransferBufferLocation src = {.transfer_buffer = m_debug_line_transfer_buffer, .offset = 0};
+    SDL_GPUBufferRegion dst = {.buffer = m_debug_line_vertex_buffer,
+                               .offset = 0,
+                               .size = (uint32_t)(m_debug_line_vertices.size() * sizeof(DebugLineVertex))};
+    SDL_UploadToGPUBuffer(copy_pass, &src, &dst, true);
+    SDL_EndGPUCopyPass(copy_pass);
+}
+
+void RenderSystem::renderDebugLines(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
+                                    const CameraState& camera_state)
+{
+    if (m_debug_line_vertices.empty())
+        return; // overlay off, or nothing to outline
+
+    SDL_BindGPUGraphicsPipeline(pass, m_debug_line_pipeline);
+    CameraConstants camera_constants = buildCameraConstants(camera_state, camera_state.offset);
+    SDL_PushGPUVertexUniformData(cmdbuf, 0, &camera_constants, sizeof(camera_constants));
+
+    SDL_GPUBufferBinding vbo = {.buffer = m_debug_line_vertex_buffer, .offset = 0};
+    SDL_BindGPUVertexBuffers(pass, 0, &vbo, 1);
+    SDL_DrawGPUPrimitives(pass, (uint32_t)m_debug_line_vertices.size(), 1, 0, 0);
 }
