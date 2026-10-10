@@ -11,6 +11,8 @@ namespace
 // before packing so negative world positions produce non-negative packed components; floor()
 // (not truncation) is used when deriving the coordinate itself so negative positions bucket
 // the same consistent way positive ones do.
+// queryCandidates RELIES on this layout: sorting by key sorts by column (cx), then by row (cy), so the
+// cells (cx, cy) and (cx, cy + 1) have consecutive keys and a column can be walked with a forward scan.
 constexpr int64_t CELL_COORD_BIAS = 1'000'000;
 
 int64_t packCell(int64_t cx, int64_t cy)
@@ -50,28 +52,43 @@ void UniformParticleGrid::queryCandidates(size_t index, const std::vector<Gravit
     int64_t cx = static_cast<int64_t>(std::floor(pos.x_val / cellSize));
     int64_t cy = static_cast<int64_t>(std::floor(pos.y_val / cellSize));
 
-    // Forward half-stencil: self + 4 directional neighbors. This specific 5-cell shape,
-    // combined with the self-cell index check below, guarantees every adjacent cell pair
-    // (including diagonals) is visited from exactly one side -- no separate de-dup pass needed.
-    static constexpr int64_t offsets[5][2] = {{0, 0}, {1, 0}, {0, 1}, {1, 1}, {-1, 1}};
+    // Forward half-stencil: the own cell, the next row's cell (0,1), and the three cells of the next column
+    // (1,-1), (1,0), (1,1). For every pair of neighbouring cells exactly one sees the other in this shape, so
+    // each pair is reported once. Each column's cells have consecutive keys (see packCell), so a column costs
+    // ONE binary search plus a forward scan, instead of one search per cell.
 
-    for (const auto& offset : offsets)
+    // Column cx: the own cell, then the next row's cell (cy + 1)
+    int64_t own_key = packCell(cx, cy);
+    size_t i = firstEntryAtOrAfter(own_key);
+    while (i < sortedEntries.size() && sortedEntries[i].cellKey == own_key)
     {
-        int64_t neighborKey = packCell(cx + offset[0], cy + offset[1]);
-
-        auto rangeBegin = std::lower_bound(sortedEntries.begin(), sortedEntries.end(), neighborKey,
-                                           [](const Entry& e, int64_t key) { return e.cellKey < key; });
-        auto rangeEnd = std::upper_bound(sortedEntries.begin(), sortedEntries.end(), neighborKey,
-                                         [](int64_t key, const Entry& e) { return key < e.cellKey; });
-
-        bool isSelfCell = (offset[0] == 0 && offset[1] == 0);
-        for (auto it = rangeBegin; it != rangeEnd; ++it)
+        if (sortedEntries[i].particleIndex > index) // each same-cell pair reported once, from the lower index's query
         {
-            if (isSelfCell && it->particleIndex <= index)
-            {
-                continue; // each same-cell pair reported once, from the lower index's query
-            }
-            outCandidates.push_back(it->particleIndex);
+            outCandidates.push_back(sortedEntries[i].particleIndex);
         }
+        ++i;
     }
+    while (i < sortedEntries.size() && sortedEntries[i].cellKey == own_key + 1)
+    {
+        outCandidates.push_back(sortedEntries[i].particleIndex);
+        ++i;
+    }
+
+    // Column cx + 1: the cells from row cy - 1 to cy + 1
+    int64_t first_key = packCell(cx + 1, cy - 1);
+    int64_t last_key = packCell(cx + 1, cy + 1);
+    i = firstEntryAtOrAfter(first_key);
+    while (i < sortedEntries.size() && sortedEntries[i].cellKey <= last_key)
+    {
+        outCandidates.push_back(sortedEntries[i].particleIndex);
+        ++i;
+    }
+}
+
+size_t UniformParticleGrid::firstEntryAtOrAfter(int64_t cellKey) const
+{
+    // Binary search: the first entry whose key is >= cellKey (sortedEntries.size() if there is none)
+    auto it = std::lower_bound(sortedEntries.begin(), sortedEntries.end(), cellKey,
+                               [](const Entry& e, int64_t key) { return e.cellKey < key; });
+    return static_cast<size_t>(it - sortedEntries.begin());
 }

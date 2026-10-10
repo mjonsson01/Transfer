@@ -49,6 +49,8 @@ RenderSystem::RenderSystem(GameState& game_state)
     if (gpu)
     {
         SDL_GPUCommandBuffer* initCmdBuf = SDL_AcquireGPUCommandBuffer(gpu);
+        // The star field never changes (twinkling and parallax happen in the shader), so upload it once, here
+        uploadTwinklingStarField(initCmdBuf);
         SDL_SubmitGPUCommandBuffer(initCmdBuf);
     }
 }
@@ -183,7 +185,6 @@ void RenderSystem::RenderFullFrame(GameState& game_state, UIState& ui_state, con
 
     if (draws_world)
     {
-        uploadTwinklingStarField(cmdbuf);
         uploadUnifiedBodies(game_state, ui_state, cmdbuf);
         uploadStarship(game_state, ui_state, cmdbuf);
     }
@@ -266,15 +267,28 @@ void RenderSystem::uploadUnifiedBodies(GameState& game_state, UIState& ui_state,
     appendPreviewBodies(unifiedBodyVertices, ui_state, game_state.getCameraState());
     uploadVelocityVectorVertices(cmdbuf);
 
-    if (unifiedBodyVertices.size() > MAX_UNIFIED_BODIES)
+    // Emergency only: the particle budget should make this impossible. If a rule change ever breaks it, grow the
+    // buffers (doubling, so it happens rarely) and say so, instead of hiding bodies or writing past the buffer.
+    if (unifiedBodyVertices.size() > m_unified_body_capacity)
     {
-        printf("Too many bodies! %zu > %d\n", unifiedBodyVertices.size(), MAX_UNIFIED_BODIES);
-        return;
+        uint32_t new_capacity = std::max(m_unified_body_capacity, INITIAL_UNIFIED_BODY_CAPACITY);
+        while (new_capacity < unifiedBodyVertices.size())
+        {
+            new_capacity *= 2;
+        }
+        printf("WARNING: %zu bodies don't fit the body buffers (%u), growing them to %u. Is the particle budget "
+               "still being enforced?\n",
+               unifiedBodyVertices.size(), m_unified_body_capacity, new_capacity);
+        if (!createUnifiedBodyBuffers(new_capacity))
+        {
+            unifiedBodyVertices.clear(); // no GPU memory: draw no bodies this frame rather than write past the buffer
+            return;
+        }
     }
     // Copy pass
     if (!unifiedBodyVertices.empty())
     {
-        void* map = SDL_MapGPUTransferBuffer(gpu, unifiedBodyTransferBuffer, false);
+        void* map = SDL_MapGPUTransferBuffer(gpu, unifiedBodyTransferBuffer, true);
         SDL_memcpy(map, unifiedBodyVertices.data(), unifiedBodyVertices.size() * sizeof(UnifiedBodyVertex));
         SDL_UnmapGPUTransferBuffer(gpu, unifiedBodyTransferBuffer);
 
@@ -285,7 +299,7 @@ void RenderSystem::uploadUnifiedBodies(GameState& game_state, UIState& ui_state,
                                    .offset = 0,
                                    .size = (uint32_t)(unifiedBodyVertices.size() * sizeof(UnifiedBodyVertex))};
 
-        SDL_UploadToGPUBuffer(copyPass, &src, &dst, false);
+        SDL_UploadToGPUBuffer(copyPass, &src, &dst, true);
         SDL_EndGPUCopyPass(copyPass);
     }
 }
@@ -298,9 +312,11 @@ void RenderSystem::uploadStarship(GameState& game_state, UIState& ui_state, SDL_
     // Rework into getPlayer const since this method doesn't actually do anything to the starship
     game_state.getPlayerMutable().starship.buildGeometry(starshipVertices);
 
+    // Never copy more than the buffer holds; renderStarship draws starshipVertices.size(), so it stays in sync
     if (starshipVertices.size() > MAX_STARSHIP_VERTICES)
     {
-        printf("Too many starship vertices %zu > %d\n", starshipVertices.size(), MAX_STARSHIP_VERTICES);
+        printf("Too many starship vertices %zu > %u\n", starshipVertices.size(), MAX_STARSHIP_VERTICES);
+        starshipVertices.resize(MAX_STARSHIP_VERTICES);
     }
     if (starshipVertices.empty())
     {
@@ -308,7 +324,7 @@ void RenderSystem::uploadStarship(GameState& game_state, UIState& ui_state, SDL_
     }
     if (!starshipVertices.empty())
     {
-        void* map = SDL_MapGPUTransferBuffer(gpu, starshipTransferBuffer, false);
+        void* map = SDL_MapGPUTransferBuffer(gpu, starshipTransferBuffer, true);
         SDL_memcpy(map, starshipVertices.data(), starshipVertices.size() * sizeof(StarshipVertex));
         SDL_UnmapGPUTransferBuffer(gpu, starshipTransferBuffer);
         SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdbuf);
@@ -317,7 +333,7 @@ void RenderSystem::uploadStarship(GameState& game_state, UIState& ui_state, SDL_
                                    .offset = 0,
                                    .size = (uint32_t)(starshipVertices.size() * sizeof(StarshipVertex))};
 
-        SDL_UploadToGPUBuffer(copyPass, &src, &dst, false);
+        SDL_UploadToGPUBuffer(copyPass, &src, &dst, true);
         SDL_EndGPUCopyPass(copyPass);
     }
 }
@@ -325,22 +341,9 @@ void RenderSystem::uploadStarship(GameState& game_state, UIState& ui_state, SDL_
 void RenderSystem::renderBodies(GameState& game_state, UIState& ui_state, SDL_GPURenderPass* pass,
                                 SDL_GPUCommandBuffer* cmdbuf)
 {
-    // Quickly count how many total instances are active for drawing
-    uint32_t instance_count = 0;
-    for (auto& p : game_state.getParticles())
-        if (p.visible)
-            instance_count++;
-    for (auto& b : game_state.getMacroBodies())
-        if (b.visible)
-            instance_count++;
-
-    if (ui_state.getMutableDEPRECATED_InputState().isPreviewingMacro)
-    {
-        instance_count++;
-    }
-
-    // Safety check and raw drawing
-    if (instance_count > 0 && instance_count <= MAX_UNIFIED_BODIES)
+    // Draw exactly what uploadUnifiedBodies put in the buffer (one instance per body)
+    uint32_t instance_count = (uint32_t)unifiedBodyVertices.size();
+    if (instance_count > 0)
     {
         SDL_BindGPUGraphicsPipeline(pass, unifiedBodyPipeline);
         CameraConstants camera_constants =
@@ -518,10 +521,17 @@ void RenderSystem::uploadUIVertices(const DynamoEngine::UIRoot& ui, SDL_GPUComma
     // Every visible element of the scene's UI, back to front
     ui.drawElements(builder);
 
+    // Never copy more than the buffer holds; renderUIElements draws m_ui_vertices.size(), so it stays in sync
+    if (m_ui_vertices.size() > MAX_UI_VERTICES)
+    {
+        printf("Too many UI vertices %zu > %u\n", m_ui_vertices.size(), MAX_UI_VERTICES);
+        m_ui_vertices.resize(MAX_UI_VERTICES);
+    }
+
     if (m_ui_vertices.empty())
         return;
 
-    void* map = SDL_MapGPUTransferBuffer(gpu, uiTransferBuffer, false);
+    void* map = SDL_MapGPUTransferBuffer(gpu, uiTransferBuffer, true);
     SDL_memcpy(map, m_ui_vertices.data(), m_ui_vertices.size() * sizeof(DynamoEngine::UIVertex));
     SDL_UnmapGPUTransferBuffer(gpu, uiTransferBuffer);
 
@@ -530,7 +540,7 @@ void RenderSystem::uploadUIVertices(const DynamoEngine::UIRoot& ui, SDL_GPUComma
     SDL_GPUBufferRegion dst = {.buffer = uiVertexBuffer,
                                .offset = 0,
                                .size = (uint32_t)(m_ui_vertices.size() * sizeof(DynamoEngine::UIVertex))};
-    SDL_UploadToGPUBuffer(copyPass, &src, &dst, false);
+    SDL_UploadToGPUBuffer(copyPass, &src, &dst, true);
     SDL_EndGPUCopyPass(copyPass);
 }
 
@@ -636,17 +646,42 @@ SDL_Color RenderSystem::getColorForProperty(const GravitationalBody& body)
     Uint8 opacity = (body.isMacroGhost || !body.isCollidable) ? 175 : 255;
     return SDL_Color{r, g, b, opacity};
 }
+bool RenderSystem::createUnifiedBodyBuffers(uint32_t capacity)
+{
+    // SDL frees these once the GPU has finished with them, so releasing while last frame's draw may still be
+    // running is safe. The contents don't need copying: every frame uploads all bodies from scratch anyway.
+    if (unifiedBodyVertexBuffer != nullptr)
+    {
+        SDL_ReleaseGPUBuffer(gpu, unifiedBodyVertexBuffer);
+    }
+    if (unifiedBodyTransferBuffer != nullptr)
+    {
+        SDL_ReleaseGPUTransferBuffer(gpu, unifiedBodyTransferBuffer);
+    }
+
+    const uint32_t size_in_bytes = capacity * (uint32_t)sizeof(UnifiedBodyVertex);
+
+    SDL_GPUBufferCreateInfo vb_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX, .size = size_in_bytes};
+    unifiedBodyVertexBuffer = SDL_CreateGPUBuffer(gpu, &vb_info);
+
+    SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD, .size = size_in_bytes};
+    unifiedBodyTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
+
+    if (unifiedBodyVertexBuffer == nullptr || unifiedBodyTransferBuffer == nullptr)
+    {
+        printf("Couldn't create body buffers for %u bodies: %s\n", capacity, SDL_GetError());
+        m_unified_body_capacity = 0; // so the next frame tries again
+        return false;
+    }
+
+    m_unified_body_capacity = capacity;
+    return true;
+}
 
 void RenderSystem::createUnifiedBodyGPUBufferAndPipeline()
 {
-
-    SDL_GPUBufferCreateInfo vb_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX,
-                                       .size = MAX_UNIFIED_BODIES * sizeof(UnifiedBodyVertex)};
-    unifiedBodyVertexBuffer = SDL_CreateGPUBuffer(gpu, &vb_info);
-
-    SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-                                               .size = MAX_UNIFIED_BODIES * sizeof(UnifiedBodyVertex)};
-    unifiedBodyTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
+    // Reserved at full size up front, so normal play never reallocates
+    createUnifiedBodyBuffers(INITIAL_UNIFIED_BODY_CAPACITY);
 
     SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/UnifiedGravBody.vert", 0, 1);
     SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/UnifiedGravBody.frag", 0, 0);
@@ -856,7 +891,7 @@ void RenderSystem::createTwinklingStarField(float fieldMaxWidth, float fieldMaxH
 void RenderSystem::uploadTwinklingStarField(SDL_GPUCommandBuffer* cmdbuf)
 {
 
-    void* map = SDL_MapGPUTransferBuffer(gpu, twinklingStarTransferBuffer, false);
+    void* map = SDL_MapGPUTransferBuffer(gpu, twinklingStarTransferBuffer, true);
 
     SDL_memcpy(map, twinklingStarVertices.data(), twinklingStarVertices.size() * sizeof(TwinklingStarVertex));
 
@@ -870,7 +905,7 @@ void RenderSystem::uploadTwinklingStarField(SDL_GPUCommandBuffer* cmdbuf)
                                .offset = 0,
                                .size = (uint32_t)(twinklingStarVertices.size() * sizeof(TwinklingStarVertex))};
 
-    SDL_UploadToGPUBuffer(copyPass, &src, &dst, false);
+    SDL_UploadToGPUBuffer(copyPass, &src, &dst, true);
 
     SDL_EndGPUCopyPass(copyPass);
 }
@@ -1083,7 +1118,15 @@ void RenderSystem::uploadVelocityVectorVertices(SDL_GPUCommandBuffer* cmdbuf)
     if (velocityVectorVertices.empty())
         return;
 
-    void* map = SDL_MapGPUTransferBuffer(gpu, velocityVectorTransferBuffer, false);
+    // Never copy more than the buffer holds; renderVelocityVectors draws velocityVectorVertices.size()
+    if (velocityVectorVertices.size() > MAX_VELOCITY_VECTOR_VERTICES)
+    {
+        printf("Too many velocity vector vertices %zu > %d\n", velocityVectorVertices.size(),
+               MAX_VELOCITY_VECTOR_VERTICES);
+        velocityVectorVertices.resize(MAX_VELOCITY_VECTOR_VERTICES);
+    }
+
+    void* map = SDL_MapGPUTransferBuffer(gpu, velocityVectorTransferBuffer, true);
     SDL_memcpy(map, velocityVectorVertices.data(), velocityVectorVertices.size() * sizeof(VelocityVectorVertex));
     SDL_UnmapGPUTransferBuffer(gpu, velocityVectorTransferBuffer);
 
@@ -1092,7 +1135,7 @@ void RenderSystem::uploadVelocityVectorVertices(SDL_GPUCommandBuffer* cmdbuf)
     SDL_GPUBufferRegion dst = {.buffer = velocityVectorVertexBuffer,
                                .offset = 0,
                                .size = (uint32_t)(velocityVectorVertices.size() * sizeof(VelocityVectorVertex))};
-    SDL_UploadToGPUBuffer(copyPass, &src, &dst, false);
+    SDL_UploadToGPUBuffer(copyPass, &src, &dst, true);
     SDL_EndGPUCopyPass(copyPass);
 }
 

@@ -2,6 +2,7 @@
 
 build/
 build-tests/
+build-profile/
 
 venv/
 # for macOS

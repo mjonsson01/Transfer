@@ -1,4 +1,6 @@
-// File: Transfer/src/Utilities/Physics/UniformParticleGrid.hpp
+// The grid BEFORE the 2026-10-09 column-stencil change (5 cells x lower_bound + upper_bound), kept as the reference
+// implementation for grid_equivalence_harness.cpp.
+// File: Transfer/src/Utilities/Physics/OldParticleGrid.hpp
 
 #pragma once
 
@@ -13,7 +15,7 @@
 // *this tick*, so it stays correct regardless of what generated the particles or how much their
 // sizes vary -- it never needs to know about density factors, impact skew, or anything else
 // upstream.
-class UniformParticleGrid
+class OldParticleGrid
 {
   public:
     // Builds the grid from the current particle list. Must be called before queryCandidates().
@@ -32,8 +34,7 @@ class UniformParticleGrid
         int64_t cellKey;
         size_t particleIndex;
     };
-    // Index of the first entry in sortedEntries whose cellKey is >= cellKey (sortedEntries.size() if none)
-    size_t firstEntryAtOrAfter(int64_t cellKey) const;
+
     double cellSize = 1.0;
     std::vector<Entry> sortedEntries;
 };

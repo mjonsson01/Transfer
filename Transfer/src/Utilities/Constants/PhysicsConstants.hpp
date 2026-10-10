@@ -6,6 +6,9 @@
 // Global Physics DT
 constexpr float PHYSICS_TIME_STEP = 1.0f / 120.0f; // 120Hz physics update rate
 constexpr float INV_PHYSICS_TIME_STEP = 120.0f;
+// Most physics steps one frame may run to catch up. Normal play needs 2 per frame (60 FPS), 4 at 2x speed.
+// Time beyond this is dropped (the simulation briefly runs slower) instead of piling up into a spiral of death.
+constexpr int MAX_PHYSICS_STEPS_PER_FRAME = 8;
 
 // Grav constant, default to 1, scale other values
 constexpr double GRAVITATIONAL_CONSTANT = 1.0;

@@ -63,6 +63,7 @@ class RenderSystem
     SDL_GPUBuffer* unifiedBodyVertexBuffer = nullptr;
     SDL_GPUTransferBuffer* unifiedBodyTransferBuffer = nullptr;
     SDL_GPUGraphicsPipeline* unifiedBodyPipeline = nullptr;
+    uint32_t m_unified_body_capacity = 0; // how many bodies the two buffers above can hold right now
 
     // Twinkling Star Rendering Components
     std::vector<TwinklingStarVertex> twinklingStarVertices;
@@ -110,6 +111,10 @@ class RenderSystem
                                                      // bodies (both Macro and Particle)
 
     void uploadUnifiedBodies(GameState& game_state, UIState& ui_state, SDL_GPUCommandBuffer* cmdbuf);
+    // (Re)creates both body buffers to hold `capacity` bodies, releasing the old ones.
+    // Returns false if the GPU couldn't provide the memory; nothing may be uploaded then.
+    bool createUnifiedBodyBuffers(uint32_t capacity);
+
     SDL_GPUShader* LoadShader(SDL_GPUDevice* device, const char* base_file_name, uint32_t numSamplers = 0,
                               uint32_t numUniformBuffers = 0);
 
