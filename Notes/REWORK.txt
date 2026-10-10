@@ -12,7 +12,6 @@ Read-through done 2026-09-24 on branch VisorViews. The old UI (UISystem, old sce
 ==================== PHYSICS ====================
 
 [REFACTOR] cleanupParticles / cleanupMacroBodies — src/Systems/PhysicsSystem.cpp — the comments say remove_if "moves elements marked for deletion to the end"; it actually moves the KEPT elements forward and leaves the tail unspecified (only erase makes it meaningful). cleanupMacroBodies also names its macro-body vector `particles`.
-[REFACTOR] PhysicsSystem::handleDynamicCollision — src/Systems/PhysicsSystem.cpp — the `if (!lighter.isShatterable)` inside a branch already guarded by `lighter.isShatterable` is dead code.
 [BUG] PhysicsSystem::handleAccretion — src/Systems/PhysicsSystem.cpp — negative-mass edge case (the mass slider allows negative mass, pickMassPair compares abs): with opposite-sign masses new_mass can be ~0 (velocity → inf), and pow(new_mass/heavier.mass, 1/3) of a negative ratio is NaN; define negative-mass merge rules. (Deferred by Marco.)
 [REFACTOR] PhysicsSystem::handleElasticCollisions — src/Systems/PhysicsSystem.cpp — ELASTIC_LOSS_FACTOR means different things in the static branch (restitution: 1 + e) and the dynamic branch (a scale on the velocity change); pick one meaning. (The missing approaching check was fixed 2026-09-28.)
 [REFACTOR] pickMassPair — src/Systems/PhysicsSystem.cpp — uses unqualified `abs()` on doubles; use std::abs so it can't resolve to the int overload.

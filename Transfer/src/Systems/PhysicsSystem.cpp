@@ -433,20 +433,27 @@ void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& grav_body_pair
         handleElasticCollisions(lighter, heavier);
     }
 }
+// The unit vector pointing from `from` to `to`. Two bodies exactly on top of each other have no such direction, so a
+// random one is used instead: any direction pushes them apart, and a random one keeps a stack of exactly-overlapping
+// pairs (e.g. two identical clusters spawned on the same spot) from all sliding the same way.
+static DynamoEngine::Vector2D directionFromTo(const DynamoEngine::Vector2D& from, const DynamoEngine::Vector2D& to)
+{
+    DynamoEngine::Vector2D offset = to - from;
+    double distance = offset.magnitude();
+    if (firstWithinEpsilonOfSecond(distance, 0.0))
+    {
+        double angle = randomDouble(0.0, DynamoEngine::TWO_PI);
+        return {std::cos(angle), std::sin(angle)};
+    }
+    return offset / distance;
+}
 
 void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, GravitationalBody& largerBody)
 {
     if (smallerBody.isForceStatic && largerBody.isForceStatic)
     {
-        // Two "infinitely heavy" bodies: neither outweighs the other, so they share the bounce like two bodies of EQUAL
-        // mass. Each takes half the push-apart and half the velocity change. Both stay static.
-        DynamoEngine::Vector2D offset = largerBody.position - smallerBody.position;
-        double distance = offset.magnitude();
-        if (firstWithinEpsilonOfSecond(distance, 0.0))
-        {
-            return; // exactly on top of each other: no direction to push in
-        }
-        DynamoEngine::Vector2D n = offset / distance; // points from the smaller body to the larger one
+        double distance = (largerBody.position - smallerBody.position).magnitude();
+        DynamoEngine::Vector2D n = directionFromTo(smallerBody.position, largerBody.position); // smaller -> larger
 
         double closing_speed = (smallerBody.velocity - largerBody.velocity).dot(n); // > 0: the gap is shrinking
         if (closing_speed > 0.0)
@@ -471,13 +478,9 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, Grav
         GravitationalBody& dyn = smallerBody.isForceStatic ? largerBody : smallerBody;
         GravitationalBody& stat = smallerBody.isForceStatic ? smallerBody : largerBody;
 
-        DynamoEngine::Vector2D offset = dyn.position - stat.position;
-        double distance = offset.magnitude();
-        if (firstWithinEpsilonOfSecond(distance, 0.0))
-        {
-            return; // exactly on top of each other: no direction to push in
-        }
-        DynamoEngine::Vector2D n = offset / distance; // points from the static body to the other one
+        double distance = (dyn.position - stat.position).magnitude();
+        DynamoEngine::Vector2D n =
+            directionFromTo(stat.position, dyn.position); // from the static body to the other one
 
         // The closing speed RELATIVE to the static body: a static body can be drifting, so the other body's own
         // velocity isn't enough (a resting body hit by a drifting static one would otherwise feel nothing and get
@@ -503,15 +506,9 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, Grav
         return;
     }
 
-    DynamoEngine::Vector2D r_vector = largerBody.position - smallerBody.position;
-    double distance = r_vector.magnitude();
-
-    if (firstWithinEpsilonOfSecond(distance, 0.0))
-    {
-        return;
-    }
-
-    DynamoEngine::Vector2D normal_vector = r_vector / distance; // points from the smaller body to the larger one
+    double distance = (largerBody.position - smallerBody.position).magnitude();
+    DynamoEngine::Vector2D normal_vector =
+        directionFromTo(smallerBody.position, largerBody.position); // smaller -> larger
     double v_smaller_n = smallerBody.velocity.dot(normal_vector);
     double v_larger_n = largerBody.velocity.dot(normal_vector);
     double m_smaller = smallerBody.mass;
@@ -552,14 +549,19 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, Grav
         }
         else
         {
-            double totalInvMass = smallerBody.invMass + largerBody.invMass;
-            if (totalInvMass > DynamoEngine::EPSILON)
+            // Share the push by inverse mass (the lighter body moves more): ratios, so they work at any scale.
+            // That only makes sense when both masses have the same sign; with one negative mass (see REWORK) the
+            // shares can blow up, so split the push evenly instead.
+            double smaller_share = 0.5;
+            double larger_share = 0.5;
+            if (smallerBody.invMass * largerBody.invMass > 0.0) // same sign
             {
-                double smaller_share = smallerBody.invMass / totalInvMass;
-                double larger_share = largerBody.invMass / totalInvMass;
-                smallerBody.position -= correction * smaller_share;
-                largerBody.position += correction * larger_share;
+                double total_inv_mass = smallerBody.invMass + largerBody.invMass;
+                smaller_share = smallerBody.invMass / total_inv_mass;
+                larger_share = largerBody.invMass / total_inv_mass;
             }
+            smallerBody.position -= correction * smaller_share;
+            largerBody.position += correction * larger_share;
             largerBody.previousPosition = largerBody.position;
             smallerBody.previousPosition = smallerBody.position;
         }

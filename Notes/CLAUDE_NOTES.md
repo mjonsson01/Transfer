@@ -373,6 +373,26 @@ Lambdas capture Game members by reference, which is safe because they outlive th
   update; failed before the fix (outer row 90 wide instead of 300), passes after, fails again if the children-first loop is
   removed. 139/139, tidy 38 clean. Small known cost: a nested container's size is recomputed once per ancestor level
   (tiny UI trees, irrelevant).
+- **Shatter order + stacked bodies (2026-10-10, `Bugfixes`):** (a) Shatter decided PER BODY (typed by Marco):
+  lighter_shatters = lighter.isShatterable; heavier_shatters = heavier.isShatterable && ratio <= MUTUAL_SHATTER_...; shatter if
+  shouldBlowUp && (either). Before, everything was gated on the lighter one, and for EQUAL masses 'lighter' = spawned second
+  (pickMassPair returns {a, b} on a tie), so a shatterable set-up body hit by a non-shatterable one just bounced. A surviving
+  non-shatterable planet then absorbs the debris it flies through (accretion, ratio ~800). (b) Exactly stacked bodies (same
+  click spot, or two identical clusters = same Vogel positions) stuck forever: every handleElasticCollisions branch returned
+  on distance 0. Helper `directionFromTo(from, to)` = unit vector, or a RANDOM unit vector when the points coincide; used in
+  all three branches (APPLIED BY CLAUDE at Marco's request; Marco had started it -> Claude's first script inserted a duplicate
+  helper, then cleaned it up and finished his half-typed both-static branch). Mostly-overlapped bodies were always fine
+  (planets separate in ~10 ticks; 1-px-offset identical clusters take ~2 s: crowding). Harnesses: stacked_spawn_,
+  overlap_spawn_, shatter_order_. Tip: compile Transfer/src once to .o files and link harnesses (per-harness full
+  recompiles timed out at 600 s).
+- **Heavy bodies never separated (2026-10-10):** the dynamic push-apart in handleElasticCollisions was guarded by
+  `totalInvMass > EPSILON` (1e-8): every pair heavier than ~2e8 each was SKIPPED (stacked 3e8 planets stuck at full overlap).
+  Marco changed it to `> 0`; Claude proposed the same-sign version (shares by inverse mass only when invMass_a * invMass_b > 0,
+  else 0.5/0.5) so negative-mass pairs also separate without the shares exploding when inverse masses nearly cancel.
+  Lesson: a fixed epsilon only makes sense at a known scale (masses span 1..1e10). Marco's decision: very heavy planets that
+  touch may shatter right after separating (two 1e9 r=60 planets gain ~414 px/s closing speed in one tick from gravity, >
+  MIN_SHATTER_SPEED) -- fine (option B). Ideas kept for later: shatter threshold relative to mutual escape speed; resting
+  contact bounces forever (ELASTIC_LOSS_FACTOR 0.994). Harnesses: placement_separation_, heavy_overlap_.
 - Physics fix (2026-09-27, applied by Claude at Marco's request; committed in `26a094a`): shatter fragments go into
   `PhysicsSystem::m_pending_fragments` (via a `fragments_out` parameter on substituteWithParticles / ...FromImpact) and are appended
   to `particles` after all three collision passes (`handleCollisions`); `createParticleCluster` passes `particles` directly (no loop
