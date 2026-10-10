@@ -209,7 +209,14 @@ void InputSystem::translateGameInputs(GameState& game_state, UIState& ui_state, 
     // Clear the screen once per tap (was: every frame while the key was held)
     if (m_input.wasKeyPressed(SDL_SCANCODE_BACKSPACE) || m_input.wasKeyPressed(SDL_SCANCODE_DELETE))
     {
-        legacy_state.clearAllBodies();
+        if (m_input.isShiftDown())
+        {
+            legacy_state.clearAllBodies();
+        }
+        else
+        {
+            legacy_state.undoNewestSpawn();
+        }
         legacy_state.resetTransientFlags();
         return;
     }

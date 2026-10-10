@@ -5,6 +5,7 @@
 // Custom Imports
 #include "Core/DEPRECATED_InputState.hpp"
 #include "DynamoEngine/UI/Widgets/UIButton.hpp"
+#include "DynamoEngine/UI/Widgets/UICheckbox.hpp"
 #include "DynamoEngine/UI/Widgets/UIDropdown.hpp"
 #include "DynamoEngine/UI/Widgets/UILabel.hpp"
 #include "DynamoEngine/UI/Widgets/UIRow.hpp"
@@ -25,6 +26,7 @@ using DynamoEngine::SceneSettings;
 using DynamoEngine::SliderMapping;
 using DynamoEngine::UIAlign;
 using DynamoEngine::UIButton;
+using DynamoEngine::UICheckbox;
 using DynamoEngine::UIDropdown;
 using DynamoEngine::UILabel;
 using DynamoEngine::UIRow;
@@ -49,6 +51,9 @@ void queueUISound(UIState& ui_state, UISound sound)
         break;
     case UISound::Tick:
         ui_state.QueueSoundEffect("SliderTick");
+        break;
+    case UISound::Checkbox:
+        ui_state.QueueSoundEffect("CheckboxToggle");
         break;
     }
 }
@@ -171,7 +176,17 @@ std::unique_ptr<Scene> buildPauseScene(SceneManager& scenes, UIState& ui_state)
 // A test bed: the simulation runs and takes game input, but nothing is drawn yet
 std::unique_ptr<Scene> buildTestVisualScene(UIState& ui_state)
 {
-    return makeScene(SceneSettings{.runs_simulation = true, .draws_world = false}, ui_state);
+    std::unique_ptr<Scene> scene = makeScene(SceneSettings{.runs_simulation = true, .draws_world = false}, ui_state);
+
+    // A lone checkbox to look at and click (its sound, hover and held colors). It isn't wired to anything yet:
+    // it just logs its new state.
+    std::unique_ptr<UICheckbox> test_checkbox = std::make_unique<UICheckbox>("Test Checkbox", false);
+    test_checkbox->setPlacement({.align = UIAlign::Center, .size = {260.0f, 40.0f}});
+    test_checkbox->setOnToggled([](bool is_checked)
+                                { SDL_Log("Test checkbox is now %s", is_checked ? "checked" : "unchecked"); });
+    scene->ui().addChild(std::move(test_checkbox));
+
+    return scene;
 }
 } // namespace
 

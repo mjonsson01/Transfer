@@ -52,7 +52,8 @@ struct DEPRECATED_InputState
     bool isCreatingWithInitialVelocity = false;
 
     // Managed by player input
-    bool clearAll = false; // Toggled when screen wipe is requested
+    bool clearAll = false;          // Toggled when screen wipe is requested
+    bool removeNewestSpawn = false; // Toggled when undoing the last spawn is requested
     bool isPaused = false;
     bool isPreviewingMacro = false;
     bool isPreviewingWithInitialVelocity = false;
@@ -136,6 +137,12 @@ struct DEPRECATED_InputState
     DEPRECATED_InputState& clearAllBodies()
     {
         clearAll = true;
+        return *this;
+    }
+
+    DEPRECATED_InputState& undoNewestSpawn()
+    {
+        removeNewestSpawn = true;
         return *this;
     }
 };

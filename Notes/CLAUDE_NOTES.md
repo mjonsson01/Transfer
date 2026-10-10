@@ -330,6 +330,18 @@ Lambdas capture Game members by reference, which is safe because they outlive th
   UIState::renderDebug (default VIEW_DEBUG): ship polygon green, planet circles yellow, no particles; own LINELIST pipeline with
   prev+current positions (interpolated like the sprite). (4) ship mass, one-way gravity, Verlet, thrust = accel x dt.
   (5) collisions vs macros + particles: push out + bounce (ELASTIC_LOSS_FACTOR).
+- **Delete keys (2026-10-09, `Bugfixes`, typed by Marco):** Delete/Backspace (a Mac's 'delete' key IS SDL_SCANCODE_BACKSPACE)
+  = undo the newest spawn, repeatable; Shift + Delete = clear everything (the old behaviour). PhysicsSystem::removeNewestSpawn:
+  highest macroIdentifier still carried by any body, std::erase_if on macros + particles (immediately, so it works with time
+  stopped); no history stored. Clusters now get a spawn ID too (fixed the shared -1 shader seed). Harness:
+  Notes/drafts/Harnesses/undo_spawn_harness.cpp. Max planet radius was raised by Marco ('bigger planets'), nothing else needed.
+- **UICheckbox (2026-10-09, `Bugfixes`, header + .cpp typed by Marco; Test_UICheckbox.cpp (9 tests) and the TestVisual demo
+  checkbox written by Claude at Marco's request):** engine widget = UIButton look/feel (128/108/88 gray, click on release
+  inside) + m_is_checked; ToggledAction(bool new_state), CheckedSource pulled in update() (dropdown pattern), setChecked doesn't
+  report. Box = 60% of row height, white fill inset 20%, label after one gap. New UISound::Checkbox (Marco's name) mapped in
+  TransferScenes queueUISound. AudioSystem auto-loads every .wav in Assets/SoundEffects by file STEM. Mutation-checked, tidy
+  38 files clean. NEXT (phase 2): persistent spawn-settings struct (populateGravBodyProperties... hard-codes flags; the
+  isCreating* flags are reset by resetTransientFlags after every spawn), a panel of checkboxes bound via source + action.
 - Physics fix (2026-09-27, applied by Claude at Marco's request; committed in `26a094a`): shatter fragments go into
   `PhysicsSystem::m_pending_fragments` (via a `fragments_out` parameter on substituteWithParticles / ...FromImpact) and are appended
   to `particles` after all three collision passes (`handleCollisions`); `createParticleCluster` passes `particles` directly (no loop

@@ -64,6 +64,12 @@ void PhysicsSystem::UpdateGravBodyInstantiations(GameState& game_state, UIState&
     {
         // run limiters?
     }
+    // Undo the newest spawn (plain Delete)
+    if (input_state.removeNewestSpawn)
+    {
+        removeNewestSpawn(game_state);
+        input_state.removeNewestSpawn = false;
+    }
     // Check if all Gravitational Bodies are supposed to be wiped
     if (input_state.clearAll)
     {
@@ -71,6 +77,33 @@ void PhysicsSystem::UpdateGravBodyInstantiations(GameState& game_state, UIState&
         game_state.getParticlesMutable().clear();
         input_state.clearAll = false;
     }
+}
+void PhysicsSystem::removeNewestSpawn(GameState& game_state)
+{
+    std::vector<GravitationalBody>& macro_bodies = game_state.getMacroBodiesMutable();
+    std::vector<GravitationalBody>& particles = game_state.getParticlesMutable();
+
+    // Every spawn gets the next ID and its debris inherits it, so the newest spawn still in the scene is simply the
+    // highest ID any body still carries. (A spawn that merged into another body no longer exists, so it's skipped.)
+    int newest_id = -1;
+    for (const GravitationalBody& body : macro_bodies)
+    {
+        newest_id = std::max(newest_id, body.macroIdentifier);
+    }
+    for (const GravitationalBody& particle : particles)
+    {
+        newest_id = std::max(newest_id, particle.macroIdentifier);
+    }
+    if (newest_id < 0)
+    {
+        return; // nothing the player spawned is left
+    }
+
+    // Remove every body carrying that ID: the planet or cluster itself, and any debris it broke into.
+    // Erased right away (not just marked), because this also has to work while time is stopped.
+    std::erase_if(macro_bodies,
+                  [newest_id](const GravitationalBody& body) { return body.macroIdentifier == newest_id; });
+    std::erase_if(particles, [newest_id](const GravitationalBody& body) { return body.macroIdentifier == newest_id; });
 }
 
 // --------- COLLISION HANDLING --------- //
@@ -912,7 +945,10 @@ void PhysicsSystem::createParticleCluster(GameState& game_state, DEPRECATED_Inpu
     {
         return;
     }
-
+    // A spawn ID like a planet's: its particles inherit it, so Delete can undo the whole cluster at once
+    // (and each cluster gets its own shader seed)
+    game_state.incrementMaxIDInstantiated();
+    macro_body.macroIdentifier = game_state.getMaxIDInstantiated();
     substituteWithParticles(macro_body, particles, DEFAULT_FRAGMENT_COUNT); // no loop is running: add them directly
 }
 

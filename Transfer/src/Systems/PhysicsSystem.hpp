@@ -49,6 +49,9 @@ class PhysicsSystem
     void UpdateGravBodyInstantiations(GameState& game_state, UIState& uiState);
 
   private:
+    // Removes the most recently spawned planet or cluster that still exists, with all of its debris (plain Delete)
+    void removeNewestSpawn(GameState& game_state);
+
     // --- Collision Handling ---
     // Top-level collision handler. Makes decisions about the kinds of
     // collisions encountered and dispatches to the subhandlers
