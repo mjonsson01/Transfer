@@ -53,16 +53,16 @@ TEST(UISound, RequestsTravelUpToTheRootHandler)
 
     UIElement& panel = root.addChild(std::make_unique<UIElement>());
     UIElement& deep_child = panel.addChild(std::make_unique<UIElement>());
-    deep_child.requestSound(UISound::Click);
+    deep_child.requestSound(UISound::SpecialClick);
 
-    EXPECT_EQ(sounds_heard, (std::vector<UISound>{UISound::Click}));
+    EXPECT_EQ(sounds_heard, (std::vector<UISound>{UISound::SpecialClick}));
 }
 
 TEST(UISound, NoHandlerMeansSilence)
 {
     UIRoot root; // no handler set
     UIElement& child = root.addChild(std::make_unique<UIElement>());
-    child.requestSound(UISound::Click); // must simply do nothing
+    child.requestSound(UISound::SpecialClick); // must simply do nothing
     SUCCEED();
 }
 
@@ -104,7 +104,7 @@ TEST_F(UIButtonTest, ReleaseInsideClicksAndPlaysTheClickSound)
     button->onMouseReleased({0.0f, 0.0f}, /*released_inside=*/true);
 
     EXPECT_EQ(clicks, 1);
-    EXPECT_EQ(sounds_heard, (std::vector<UISound>{UISound::Click}));
+    EXPECT_EQ(sounds_heard, (std::vector<UISound>{UISound::SpecialClick}));
 }
 
 TEST_F(UIButtonTest, ReleaseOutsideCancelsTheClick)
@@ -324,7 +324,7 @@ TEST_F(UIDropdownTest, PressingTheButtonOpensTheListWithAClick)
 {
     EXPECT_TRUE(dropdown->onMousePressed(ON_BUTTON));
     EXPECT_TRUE(dropdown->isOpen());
-    EXPECT_EQ(sounds_heard, (std::vector<UISound>{UISound::Click}));
+    EXPECT_EQ(sounds_heard, (std::vector<UISound>{UISound::StandardClick}));
 }
 
 TEST_F(UIDropdownTest, ChoosingADifferentOptionReportsItAndCloses)
@@ -343,7 +343,8 @@ TEST_F(UIDropdownTest, RechoosingTheCurrentOptionClosesWithoutReporting)
     dropdown->onMousePressed(onOption(0));
     EXPECT_EQ(dropdown->selectedOption(), 0);
     EXPECT_EQ(options_chosen, (std::vector<int>{}));
-    EXPECT_EQ(sounds_heard, (std::vector<UISound>{UISound::Click, UISound::Click})); // open + re-choose both click
+    EXPECT_EQ(sounds_heard,
+              (std::vector<UISound>{UISound::StandardClick, UISound::StandardClick})); // open + re-choose both click
     EXPECT_FALSE(dropdown->isOpen());
 }
 
@@ -353,7 +354,7 @@ TEST_F(UIDropdownTest, PressingOutsideClosesAndStillTakesThePress)
     EXPECT_TRUE(dropdown->containsPoint(FAR_AWAY));
     EXPECT_FALSE(dropdown->UIElement::containsPoint(FAR_AWAY));
     dropdown->onMousePressed(FAR_AWAY);
-    EXPECT_EQ(sounds_heard, (std::vector<UISound>{UISound::Click})); // just a click from the open
+    EXPECT_EQ(sounds_heard, (std::vector<UISound>{UISound::StandardClick})); // just a click from the open
     EXPECT_FALSE(dropdown->isOpen());
 }
 

@@ -83,7 +83,7 @@ TEST_F(UICheckboxTest, ReleaseInsideFlipsReportsAndPlaysItsSound)
 
     EXPECT_TRUE(checkbox->isChecked());
     EXPECT_EQ(reported, (std::vector<bool>{true})); // the action gets the NEW state
-    EXPECT_EQ(sounds_heard, (std::vector<UISound>{UISound::Checkbox}));
+    EXPECT_EQ(sounds_heard, (std::vector<UISound>{UISound::StandardClick}));
 
     clickInside();
 

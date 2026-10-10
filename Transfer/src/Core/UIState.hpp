@@ -7,6 +7,7 @@
 
 // Custom Imports
 #include "Core/DEPRECATED_InputState.hpp"
+#include "Core/SpawnSettings.hpp"
 #include "Entities/Sound/MusicModeEnum.hpp"
 #include "Utilities/Constants/GameSystemConstants.hpp"
 
@@ -27,6 +28,9 @@ class UIState
     bool getRenderDebug() { return renderDebug; }
     void setRenderDebug(bool rd) { renderDebug = rd; }
     float getTimeScaleFactor() const { return static_cast<float>(inputState.selectedSimSpeedScale); }
+    // What the next spawned planet or cluster will be like (edited by the spawn panel's checkboxes)
+    SpawnSettings& spawnSettings() { return m_spawn_settings; }
+    const SpawnSettings& spawnSettings() const { return m_spawn_settings; }
 
     void QueueSoundEffect(const std::string& soundName) { pendingSoundEffects.push(soundName); };
     bool HasPendingSoundEffects() const { return !pendingSoundEffects.empty(); };
@@ -49,6 +53,7 @@ class UIState
 
   private:
     DEPRECATED_InputState inputState;
+    SpawnSettings m_spawn_settings;
     float framesPerSecond = TARGET_FPS;
 
     bool renderDebug = VIEW_DEBUG; // Toggles rendering of debug elements like

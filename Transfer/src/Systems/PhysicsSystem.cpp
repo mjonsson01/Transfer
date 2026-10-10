@@ -10,7 +10,7 @@ PhysicsSystem::PhysicsSystem()
 
 PhysicsSystem::~PhysicsSystem() {}
 
-void PhysicsSystem::UpdateSystemFrame(GameState& game_state, UIState& uiState)
+void PhysicsSystem::UpdateSystemFrame(GameState& game_state, UIState& ui_state)
 {
     // Mental Model of System
 
@@ -21,7 +21,7 @@ void PhysicsSystem::UpdateSystemFrame(GameState& game_state, UIState& uiState)
 
     handleCollisions(game_state);
 
-    updatePlayerPhysics(game_state, uiState);
+    updatePlayerPhysics(game_state, ui_state);
 
     // promoteOversizedParticles(game_state); //TODO: Review?
 
@@ -42,21 +42,22 @@ void PhysicsSystem::CleanUp()
     // Any necessary cleanup code for the physics system
 }
 
-void PhysicsSystem::UpdateGravBodyInstantiations(GameState& game_state, UIState& uiState)
+void PhysicsSystem::UpdateGravBodyInstantiations(GameState& game_state, UIState& ui_state)
 {
-    DEPRECATED_InputState& input_state = uiState.getMutableDEPRECATED_InputState();
+    DEPRECATED_InputState& input_state = ui_state.getMutableDEPRECATED_InputState();
     if (!input_state.UIInputConsumed)
     {
         if (input_state.isCreatingMacro)
         {
-            createMacroBody(game_state,
-                            input_state); // can inline replace with other create* methods for test. isCreatingMacro
-                                          // should eventually be unique to just creating planets, etc.
+            createMacroBody(
+                game_state, input_state,
+                ui_state.spawnSettings()); // can inline replace with other create* methods for test. isCreatingMacro
+                                           // should eventually be unique to just creating planets, etc.
             input_state.resetTransientFlags();
         }
         else if (input_state.isCreatingParticleCluster)
         {
-            createParticleCluster(game_state, input_state);
+            createParticleCluster(game_state, input_state, ui_state.spawnSettings());
             input_state.resetTransientFlags();
         }
     }
@@ -350,13 +351,13 @@ double PhysicsSystem::resolveShipContact(Starship& ship, GravitationalBody& body
     double reduced_mass = 1.0 / total_inverse_mass;
     return 0.5 * reduced_mass * normal_speed * normal_speed * (1.0 - SHIP_RESTITUTION * SHIP_RESTITUTION);
 }
-void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& gravBodyPair, const CollisionInfo& collisionInfo,
+void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& grav_body_pair, const CollisionInfo& collisionInfo,
                                            GameState& game_state)
 {
-    GravitationalBody& heavier = *gravBodyPair.heavierBody;
-    GravitationalBody& lighter = *gravBodyPair.lighterBody;
+    GravitationalBody& heavier = *grav_body_pair.heavierBody;
+    GravitationalBody& lighter = *grav_body_pair.lighterBody;
 
-    if (heavier.isBounce && lighter.isBounce)
+    if (heavier.isBounce || lighter.isBounce)
     {
         handleElasticCollisions(lighter, heavier);
         return;
@@ -373,7 +374,7 @@ void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& gravBodyPair, 
         DynamoEngine::Vector2D toward_lighter = (lighter.position - heavier.position).normalize();
         DynamoEngine::Vector2D impact_point = heavier.position + toward_lighter * heavier.radius;
 
-        if (heavier.isShatterable && gravBodyPair.ratio <= MUTUAL_SHATTER_MASS_RATIO_THRESHOLD)
+        if (heavier.isShatterable && grav_body_pair.ratio <= MUTUAL_SHATTER_MASS_RATIO_THRESHOLD)
         {
             substituteWithParticlesFromImpact(heavier, m_pending_fragments, DEFAULT_FRAGMENT_COUNT, impact_point);
         }
@@ -403,7 +404,7 @@ void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& gravBodyPair, 
         accretion_ratio_threshold = MIN_PARTICLE_PARTICLE_ACCRETION_THRESHOLD_RATIO;
     }
 
-    if (lighter.isAccretable && gravBodyPair.ratio >= accretion_ratio_threshold)
+    if (lighter.isAccretable && grav_body_pair.ratio >= accretion_ratio_threshold)
     {
         // Macro bodies crumble into fragments that then accrete individually; particles merge directly.
         // This is a very gentle collision compared to our normal explosion collision and requires that major mass
@@ -422,7 +423,7 @@ void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& gravBodyPair, 
         }
         else
         {
-            handleAccretion(gravBodyPair);
+            handleAccretion(grav_body_pair);
         }
     }
     else
@@ -435,19 +436,62 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, Grav
 {
     if (smallerBody.isForceStatic && largerBody.isForceStatic)
     {
+        // Two "infinitely heavy" bodies: neither outweighs the other, so they share the bounce like two bodies of EQUAL
+        // mass. Each takes half the push-apart and half the velocity change. Both stay static.
+        DynamoEngine::Vector2D offset = largerBody.position - smallerBody.position;
+        double distance = offset.magnitude();
+        if (firstWithinEpsilonOfSecond(distance, 0.0))
+        {
+            return; // exactly on top of each other: no direction to push in
+        }
+        DynamoEngine::Vector2D n = offset / distance; // points from the smaller body to the larger one
+
+        double closing_speed = (smallerBody.velocity - largerBody.velocity).dot(n); // > 0: the gap is shrinking
+        if (closing_speed > 0.0)
+        {
+            // Equal masses: the closing speed is turned around (times the loss factor), half the change on each
+            DynamoEngine::Vector2D velocity_change = n * ((1.0 + ELASTIC_LOSS_FACTOR) * closing_speed / 2.0);
+            smallerBody.velocity -= velocity_change;
+            largerBody.velocity += velocity_change;
+        }
+
+        double penetration = (smallerBody.radius + largerBody.radius) - distance;
+        if (penetration > 0.0)
+        {
+            smallerBody.position -= n * (penetration / 2.0);
+            largerBody.position += n * (penetration / 2.0);
+        }
         return;
     }
     if (smallerBody.isForceStatic != largerBody.isForceStatic)
     {
+        // One static body: an immovable wall (infinite mass), so only the other body (dyn) changes
         GravitationalBody& dyn = smallerBody.isForceStatic ? largerBody : smallerBody;
         GravitationalBody& stat = smallerBody.isForceStatic ? smallerBody : largerBody;
 
-        DynamoEngine::Vector2D n = (dyn.position - stat.position).normalize();
-        double v_n = dyn.velocity.dot(n);
+        DynamoEngine::Vector2D offset = dyn.position - stat.position;
+        double distance = offset.magnitude();
+        if (firstWithinEpsilonOfSecond(distance, 0.0))
+        {
+            return; // exactly on top of each other: no direction to push in
+        }
+        DynamoEngine::Vector2D n = offset / distance; // points from the static body to the other one
 
+        // The closing speed RELATIVE to the static body: a static body can be drifting, so the other body's own
+        // velocity isn't enough (a resting body hit by a drifting static one would otherwise feel nothing and get
+        // passed through)
+        double v_n = (dyn.velocity - stat.velocity).dot(n);
         if (v_n < 0.0)
         {
             dyn.velocity -= n * (1.0 + ELASTIC_LOSS_FACTOR) * v_n;
+        }
+
+        // Push the other body all the way out: the static one can't move, and a drifting static body would otherwise
+        // keep sliding deeper into it every tick
+        double penetration = (dyn.radius + stat.radius) - distance;
+        if (penetration > 0.0)
+        {
+            dyn.position += n * penetration;
         }
         return;
     }
@@ -520,10 +564,10 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, Grav
     }
 }
 
-void PhysicsSystem::handleAccretion(GravitationalBodyPair& gravBodyPair)
+void PhysicsSystem::handleAccretion(GravitationalBodyPair& grav_body_pair)
 {
-    GravitationalBody& heavier = *gravBodyPair.heavierBody;
-    GravitationalBody& lighter = *gravBodyPair.lighterBody;
+    GravitationalBody& heavier = *grav_body_pair.heavierBody;
+    GravitationalBody& lighter = *grav_body_pair.lighterBody;
 
     if (heavier.isParticle)
     {
@@ -531,7 +575,21 @@ void PhysicsSystem::handleAccretion(GravitationalBodyPair& gravBodyPair)
     }
 
     double new_mass = heavier.mass + lighter.mass;
-    heavier.velocity = (heavier.velocity * heavier.mass + lighter.velocity * lighter.mass) / new_mass;
+    // Force-static bodies count as infinitely heavy wherever momentum is exchanged (GravitationalBody::isForceStatic)
+    if (heavier.isForceStatic)
+    {
+        // The absorber is "infinitely heavy": its velocity can't change, the absorbed momentum vanishes into it
+    }
+    else if (lighter.isForceStatic)
+    {
+        // The absorber now contains an "infinite" mass: it takes the static body's velocity and becomes static itself
+        heavier.velocity = lighter.velocity;
+        heavier.isForceStatic = true;
+    }
+    else
+    {
+        heavier.velocity = (heavier.velocity * heavier.mass + lighter.velocity * lighter.mass) / new_mass;
+    }
     heavier.radius *= pow(new_mass / heavier.mass, 1.0 / 3.0);
     heavier.mass = new_mass;
     heavier.invMass = 1.0 / heavier.mass;
@@ -802,21 +860,21 @@ void PhysicsSystem::integrateForwardsVelocityVerletPhase1(GameState& game_state)
     game_state.getPlayerMutable().starship.applyVelocityVerletPhase1();
 }
 
-void PhysicsSystem::applyVelocityVerletPhase1(GravitationalBody& gravBody)
+void PhysicsSystem::applyVelocityVerletPhase1(GravitationalBody& grav_body)
 {
-    gravBody.previousPosition = gravBody.position;
-    gravBody.prevForce = gravBody.netForce;
-    bool has_mass = !(firstWithinEpsilonOfSecond(gravBody.mass, 0.0));
-    if (has_mass && !gravBody.isForceStatic)
+    grav_body.previousPosition = grav_body.position;
+    grav_body.prevForce = grav_body.netForce;
+    bool has_mass = !(firstWithinEpsilonOfSecond(grav_body.mass, 0.0));
+    if (has_mass && !grav_body.isForceStatic)
     {
         // Calculate the acceleration from the previous frame's final force
-        DynamoEngine::Vector2D acceleration = gravBody.netForce * gravBody.invMass;
-        gravBody.velocity += acceleration * (PHYSICS_TIME_STEP / 2); // Half of a full integrated step
+        DynamoEngine::Vector2D acceleration = grav_body.netForce * grav_body.invMass;
+        grav_body.velocity += acceleration * (PHYSICS_TIME_STEP / 2); // Half of a full integrated step
     }
     // Step the position
-    gravBody.position += gravBody.velocity * PHYSICS_TIME_STEP;
+    grav_body.position += grav_body.velocity * PHYSICS_TIME_STEP;
     // Reset to force 0 for next frame
-    gravBody.netForce = DynamoEngine::Vector2D(0.0, 0.0);
+    grav_body.netForce = DynamoEngine::Vector2D(0.0, 0.0);
 }
 
 void PhysicsSystem::integrateForwardsVelocityVerletPhase2(GameState& game_state)
@@ -835,73 +893,75 @@ void PhysicsSystem::integrateForwardsVelocityVerletPhase2(GameState& game_state)
     game_state.getPlayerMutable().starship.applyVelocityVerletPhase2();
 }
 
-void PhysicsSystem::applyVelocityVerletPhase2(GravitationalBody& gravBody)
+void PhysicsSystem::applyVelocityVerletPhase2(GravitationalBody& grav_body)
 {
-    bool has_mass = !(firstWithinEpsilonOfSecond(gravBody.mass, 0.0));
+    bool has_mass = !(firstWithinEpsilonOfSecond(grav_body.mass, 0.0));
 
-    if (!has_mass || gravBody.isForceStatic)
+    if (!has_mass || grav_body.isForceStatic)
     {
         return;
     }
     else
     {
-        DynamoEngine::Vector2D acceleration = gravBody.netForce * gravBody.invMass;
-        gravBody.velocity += acceleration * (PHYSICS_TIME_STEP / 2.0); // Other half of full integrated step
+        DynamoEngine::Vector2D acceleration = grav_body.netForce * grav_body.invMass;
+        grav_body.velocity += acceleration * (PHYSICS_TIME_STEP / 2.0); // Other half of full integrated step
     }
 }
 
 // --------- GRAVITATIONAL BODY CREATION --------- //
 
-static inline void populateGravBodyPropertiesFromDEPRECATED_InputState(GravitationalBody& gravBody,
+static inline void populateGravBodyPropertiesFromDEPRECATED_InputState(GravitationalBody& grav_body,
                                                                        GameState& game_state,
-                                                                       DEPRECATED_InputState& inputState)
+                                                                       DEPRECATED_InputState& input_state,
+                                                                       const SpawnSettings& spawn_settings)
 {
     // Default sets, position may be overwrriten if isCreatingWithInitialVelocity set to true
-    gravBody.mass = inputState.selectedMass;
-    gravBody.invMass = 1 / gravBody.mass;
-    gravBody.radius = inputState.selectedRadius;
-    gravBody.position = ScreenToWorldCoordinates(inputState.mouseCurrPosition, game_state.getCameraState());
-    gravBody.previousPosition = gravBody.position;
+    grav_body.mass = input_state.selectedMass;
+    grav_body.invMass = 1 / grav_body.mass;
+    grav_body.radius = input_state.selectedRadius;
+    grav_body.position = ScreenToWorldCoordinates(input_state.mouseCurrPosition, game_state.getCameraState());
+    grav_body.previousPosition = grav_body.position;
 
-    // Flags (will be moved to control from within the inputState)
+    // Flags (will be moved to control from within the input_state)
     // Type flag
-    gravBody.isMacro = true;
+    grav_body.isMacro = true;
 
     // Property Flags
-    gravBody.isAccretable = true;
-    gravBody.isBounce = false;
-    gravBody.isCollidable = true;
-    gravBody.isForceStatic = false;
-    gravBody.isFragment = false; // not a child of a collision
-    gravBody.isMacroGhost = false;
-    gravBody.isPreview = false;
-    gravBody.isShatterable = true;
-    gravBody.isTransient = false;
+    grav_body.isAccretable = spawn_settings.is_accretable;
+    grav_body.isBounce = spawn_settings.is_bounce;
+    grav_body.isCollidable = true;
+    grav_body.isForceStatic = spawn_settings.is_force_static;
+    grav_body.isFragment = false; // not a child of a collision
+    grav_body.isMacroGhost = false;
+    grav_body.isPreview = false;
+    grav_body.isShatterable = spawn_settings.is_shatterable;
+    grav_body.isTransient = false;
 
     // Visual Identifier Flags
-    gravBody.isDust = false;
-    gravBody.isGas = false;
-    gravBody.isGravStar = false;
-    gravBody.isMoon = false;
-    gravBody.isPlanet = true; // Default for now until I implement procedural texture generation.
+    grav_body.isDust = false;
+    grav_body.isGas = false;
+    grav_body.isGravStar = false;
+    grav_body.isMoon = false;
+    grav_body.isPlanet = true; // Default for now until I implement procedural texture generation.
 
-    if (inputState.isCreatingWithInitialVelocity)
+    if (input_state.isCreatingWithInitialVelocity)
     {
-        gravBody.position = ScreenToWorldCoordinates(inputState.mouseDragStartPosition, game_state.getCameraState());
-        gravBody.previousPosition = gravBody.position;
-        gravBody.velocity =
-            (inputState.mouseCurrPosition - inputState.mouseDragStartPosition) / game_state.getCameraState().zoom;
+        grav_body.position = ScreenToWorldCoordinates(input_state.mouseDragStartPosition, game_state.getCameraState());
+        grav_body.previousPosition = grav_body.position;
+        grav_body.velocity =
+            (input_state.mouseCurrPosition - input_state.mouseDragStartPosition) / game_state.getCameraState().zoom;
     }
 }
 
-void PhysicsSystem::createMacroBody(GameState& game_state, DEPRECATED_InputState& inputState)
+void PhysicsSystem::createMacroBody(GameState& game_state, DEPRECATED_InputState& input_state,
+                                    const SpawnSettings& spawn_settings)
 {
     std::vector<GravitationalBody>& macro_bodies = game_state.getMacroBodiesMutable();
-    if (inputState.selectedRadius <= 1.0)
+    if (input_state.selectedRadius <= 1.0)
     {
         return;
     }
-    if (firstWithinEpsilonOfSecond((inputState.selectedMass), 0.0))
+    if (firstWithinEpsilonOfSecond((input_state.selectedMass), 0.0))
     {
         return;
     }
@@ -916,29 +976,30 @@ void PhysicsSystem::createMacroBody(GameState& game_state, DEPRECATED_InputState
     GravitationalBody macro_body;
     macro_body.macroIdentifier = new_macro_body_id;
 
-    // Pass flags from inputState as possible.
-    populateGravBodyPropertiesFromDEPRECATED_InputState(macro_body, game_state, inputState);
+    // Pass flags from input_state as possible.
+    populateGravBodyPropertiesFromDEPRECATED_InputState(macro_body, game_state, input_state, spawn_settings);
 
     // Now with populated flags, nudge particles out?
     macro_bodies.push_back(macro_body);
 }
 
-void PhysicsSystem::createParticleCluster(GameState& game_state, DEPRECATED_InputState& inputState)
+void PhysicsSystem::createParticleCluster(GameState& game_state, DEPRECATED_InputState& input_state,
+                                          const SpawnSettings& spawn_settings)
 {
     std::vector<GravitationalBody>& particles = game_state.getParticlesMutable();
-    if (inputState.selectedRadius <= 1.0)
+    if (input_state.selectedRadius <= 1.0)
     {
         return;
     }
-    if (firstWithinEpsilonOfSecond((inputState.selectedMass), 0.0))
+    if (firstWithinEpsilonOfSecond((input_state.selectedMass), 0.0))
     {
         return;
     }
 
     GravitationalBody macro_body;
 
-    // Pass flags from inputState as possible.
-    populateGravBodyPropertiesFromDEPRECATED_InputState(macro_body, game_state, inputState);
+    // Pass flags from input_state as possible.
+    populateGravBodyPropertiesFromDEPRECATED_InputState(macro_body, game_state, input_state, spawn_settings);
 
     // Load limit: refuse the whole cluster rather than add part of it (needs the radius, so it comes after populate)
     if (!hasRoomForParticles(game_state, survivableFragmentCount(macro_body, DEFAULT_FRAGMENT_COUNT)))
@@ -949,7 +1010,13 @@ void PhysicsSystem::createParticleCluster(GameState& game_state, DEPRECATED_Inpu
     // (and each cluster gets its own shader seed)
     game_state.incrementMaxIDInstantiated();
     macro_body.macroIdentifier = game_state.getMaxIDInstantiated();
+    size_t first_new_particle = particles.size();
     substituteWithParticles(macro_body, particles, DEFAULT_FRAGMENT_COUNT); // no loop is running: add them directly
+    for (size_t i = first_new_particle; i < particles.size(); ++i)
+    {
+        particles[i].isAccretable = spawn_settings.is_accretable;
+        particles[i].isBounce = spawn_settings.is_bounce;
+    }
 }
 
 // --------- UTILITY --------- //
@@ -1026,10 +1093,10 @@ void PhysicsSystem::cleanupMacroBodies(GameState& game_state)
     particles.erase(new_end, particles.end());
 }
 
-void PhysicsSystem::updatePlayerPhysics(GameState& game_state, UIState& uiState)
+void PhysicsSystem::updatePlayerPhysics(GameState& game_state, UIState& ui_state)
 {
-    game_state.getPlayerMutable().starship.applyRotation(uiState);
-    game_state.getPlayerMutable().starship.applyThrust(uiState);
+    game_state.getPlayerMutable().starship.applyRotation(ui_state);
+    game_state.getPlayerMutable().starship.applyThrust(ui_state);
 }
 
 uint32_t PhysicsSystem::survivableFragmentCount(const GravitationalBody& body, uint32_t maxCount)

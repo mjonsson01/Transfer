@@ -80,7 +80,7 @@ void UICheckbox::onMouseReleased(Vector2F mouse_position, bool released_inside)
     }
 
     m_is_checked = !m_is_checked;
-    requestSound(UISound::Checkbox);
+    requestSound(UISound::StandardClick);
     if (m_on_toggled) // an empty action is "false": nobody is listening
     {
         m_on_toggled(m_is_checked);

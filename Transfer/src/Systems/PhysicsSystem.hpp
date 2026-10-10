@@ -4,6 +4,7 @@
 
 // Custom Imports
 #include "Core/GameState.hpp"
+#include "Core/SpawnSettings.hpp"
 #include "Core/UIState.hpp"
 #include "DynamoEngine/Math/Vector2.hpp"
 #include "DynamoEngine/Physics/Collision2D.hpp"
@@ -65,12 +66,12 @@ class PhysicsSystem
     // Returns the kinetic energy the bounce absorbed (0 if they weren't closing).
     double resolveShipContact(Starship& ship, GravitationalBody& body, const DynamoEngine::CircleContact& contact);
 
-    void handleDynamicCollision(GravitationalBodyPair& gravBodyPair, const CollisionInfo& collisionInfo,
+    void handleDynamicCollision(GravitationalBodyPair& grav_body_pair, const CollisionInfo& collisionInfo,
                                 GameState& game_state);
     // Handles a 'bouncy' (elastic) collision between two bodies, when the collision
     // satisfies Engine-Constant-defined constraints
     void handleElasticCollisions(GravitationalBody& smallerBody, GravitationalBody& largerBody);
-    void handleAccretion(GravitationalBodyPair& gravBodyPair);
+    void handleAccretion(GravitationalBodyPair& grav_body_pair);
     void promoteOversizedParticles(GameState& game_state); // TODO: Prune? currently uncalled, see UpdateSystemFrame
     // Both append the new fragments to `fragments_out`. During collisions that is m_pending_fragments, never the
     // particles vector itself: the collision loops are still walking over (and holding references into) particles.
@@ -97,18 +98,18 @@ class PhysicsSystem
 
     // --- Integration (Velocity Verlet) ---
     void integrateForwardsVelocityVerletPhase1(GameState& game_state);
-    void applyVelocityVerletPhase1(GravitationalBody& gravBody);
+    void applyVelocityVerletPhase1(GravitationalBody& grav_body);
     void integrateForwardsVelocityVerletPhase2(GameState& game_state);
-    void applyVelocityVerletPhase2(GravitationalBody& gravBody);
+    void applyVelocityVerletPhase2(GravitationalBody& grav_body);
 
     // --- Gravitational Body Creation Mechanisms ---
-    void createMacroBody(GameState& game_state,
-                         DEPRECATED_InputState& inputState); // Creates a Macro Gravitational Body
-                                                             // with the user-defined attributes
+    void createMacroBody(GameState& game_state, DEPRECATED_InputState& input_state,
+                         const SpawnSettings& spawn_settings); // Creates a Macro Gravitational Body
+                                                               // with the user-defined attributes
     void createParticle(GameState& game_state,
-                        DEPRECATED_InputState& inputState); // TODO: Prune? declared, never defined or called
-    void createParticleCluster(GameState& game_state,
-                               DEPRECATED_InputState& inputState); // TODO: Prune? declared, never defined or called
+                        DEPRECATED_InputState& input_state); // TODO: Prune? declared, never defined or called
+    void createParticleCluster(GameState& game_state, DEPRECATED_InputState& input_state,
+                               const SpawnSettings& spawn_settings); // TODO: Prune? declared, never defined or called
 
     // --- Utility ---
     void calculateTotalEnergy(GameState& game_state); // TODO: Prune? currently uncalled, see UpdateSystemFrame

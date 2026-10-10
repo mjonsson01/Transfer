@@ -25,8 +25,8 @@ void Game::StartGame()
     // Default to starting in the level scene since other scenes are not
     // implemented yet.
 
-    // scenes.requestSwitch(TransferScene::StartMenu);
-    scenes.requestSwitch(TransferScene::TestVisual);
+    scenes.requestSwitch(TransferScene::StartMenu);
+    // scenes.requestSwitch(TransferScene::TestVisual);
     scenes.applyPendingSwitch(); // start there right away, before the first frame
     ui_state.setPlaySoundEffects(true);
     ui_state.setPlayMusic(true);

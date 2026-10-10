@@ -40,7 +40,7 @@ void UIButton::onMouseReleased(Vector2F mouse_position, bool released_inside)
 
     if (released_inside)
     {
-        requestSound(UISound::Click);
+        requestSound(UISound::SpecialClick);
         if (m_on_click) // an empty UIAction is "false": nothing to do
         {
             m_on_click();

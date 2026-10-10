@@ -9,8 +9,8 @@ namespace DynamoEngine
 {
 enum class UISound : uint8_t
 {
-    Click,    // a button was clicked
-    Tick,     // a slider moved past one of its tick marks
-    Checkbox, // a checkbox was toggled
+    SpecialClick,  // a special button was clicked
+    Tick,          // a slider moved past one of its tick marks
+    StandardClick, // a standard button was clicked
 };
 } // namespace DynamoEngine

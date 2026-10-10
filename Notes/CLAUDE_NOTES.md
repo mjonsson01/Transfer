@@ -338,10 +338,33 @@ Lambdas capture Game members by reference, which is safe because they outlive th
 - **UICheckbox (2026-10-09, `Bugfixes`, header + .cpp typed by Marco; Test_UICheckbox.cpp (9 tests) and the TestVisual demo
   checkbox written by Claude at Marco's request):** engine widget = UIButton look/feel (128/108/88 gray, click on release
   inside) + m_is_checked; ToggledAction(bool new_state), CheckedSource pulled in update() (dropdown pattern), setChecked doesn't
-  report. Box = 60% of row height, white fill inset 20%, label after one gap. New UISound::Checkbox (Marco's name) mapped in
+  report. Box = 60% of row height, white fill inset 20%, label after one gap. New UISound::StandardClick (Marco's name) mapped in
   TransferScenes queueUISound. AudioSystem auto-loads every .wav in Assets/SoundEffects by file STEM. Mutation-checked, tidy
   38 files clean. NEXT (phase 2): persistent spawn-settings struct (populateGravBodyProperties... hard-codes flags; the
   isCreating* flags are reset by resetTransientFlags after every spawn), a panel of checkboxes bound via source + action.
+- **Spawn panel + Static (2026-10-09, `Bugfixes`, typed by Marco):** Core/SpawnSettings.hpp (persistent, NOT reset per spawn;
+  owned by UIState::spawnSettings()), passed into createMacroBody/createParticleCluster/populate... Panel = UIRow of
+  UICheckbox at BottomCenter (margin 20) under the sliders; SLIDER_ROW_BOTTOM_MARGIN is DERIVED (panel margin + checkbox
+  height + 50 gap) so they can't overlap; each checkbox = setCheckedSource + setOnToggled on a SpawnSettings field
+  (~5-6 fit across 16:9 at 200 wide). Marco's MEANING of isForceStatic: no forces act on it; it may shatter, absorb and be
+  absorbed (other flags + normal mass ratios decide); in momentum exchanges it is INFINITELY heavy: bounces/ship = wall;
+  absorbing keeps its velocity; a body that absorbs a static one takes its velocity AND becomes static (option A). Static
+  drifts if spawned with velocity. Spawned clusters: every particle static (loop in createParticleCluster). Shatter/crumble
+  debris of a static body is NOT static (Marco tried it, disliked the behaviour, reverted). Flags stay orthogonal: one
+  checkbox = one flag (isBounce '&&' bug logged in REWORK). Harness: Notes/drafts/Harnesses/static_spawn_harness.cpp
+  (its case 3 expects static debris -> now expect 0 static). CheckboxToggle.wav raised +12 dB (peak -1.5 dBFS).
+- **Spawn flags round 2 (2026-10-09/10, `Bugfixes`):** ONLY PLANETS can be static (Marco: static particle clouds behaved badly);
+  SpawnSettings field renamed is_force_static. handleElasticCollisions static branch uses RELATIVE velocity
+  (dyn.v - stat.v) and pushes the other body fully out (drifting statics passed through resting bodies). isBounce check is
+  now `||` (one bounce body is enough; checked before shatter, so bounce bodies never shatter). New SpawnSettings
+  is_shatterable / is_accretable (default true = old hard-coded) / is_bounce (false); clusters copy accretable + bounce to
+  every particle (not static, not shatterable). Static vs static (and not merging): bounce AS EQUAL MASSES (half the push,
+  swap normal velocities x ELASTIC_LOSS_FACTOR), both stay static (Marco's choice; they used to pass through).
+  Spawn panel = UIRow of two titled sections (UIColumn: UILabel title 27 tall + UIRow of 200x36 checkboxes):
+  'Global Instantiation Properties' (Accretable, Bounce) and 'Macro Body Instantiation Properties' (Static, Shatterable);
+  helpers addSpawnCheckbox(row, label, bool&) and makeSpawnSection(title, row). Checkbox labels get 164 of 200 points
+  (18 pt SpaceMono ~11 pt/char, 'Shatterable Macro' = 187 did not fit). UIColumn lives in UIRow.hpp.
+  Harnesses: spawn_flags_, static_bounce_, static_spawn_, layout_ (prints frame 1 and frame 3).
 - Physics fix (2026-09-27, applied by Claude at Marco's request; committed in `26a094a`): shatter fragments go into
   `PhysicsSystem::m_pending_fragments` (via a `fragments_out` parameter on substituteWithParticles / ...FromImpact) and are appended
   to `particles` after all three collision passes (`handleCollisions`); `createParticleCluster` passes `particles` directly (no loop
