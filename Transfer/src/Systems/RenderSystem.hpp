@@ -20,6 +20,7 @@
 #include "Entities/VisualElements/TwinklingStars.hpp"
 #include "Utilities/Constants/EngineConstants.hpp"
 #include "Utilities/Constants/GameSystemConstants.hpp"
+#include "Utilities/Physics/FragmentLayout.hpp"
 #include "Utilities/Rendering/CameraData.hpp"
 #include "Utilities/Rendering/CameraTransform.hpp"
 #include "Utilities/Rendering/GPUTypes.hpp"
@@ -111,7 +112,7 @@ class RenderSystem
                          SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf);
     void renderNonGameFrame(const DynamoEngine::UIRoot& ui, SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf);
 
-    void appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexData, UIState& ui_state,
+    void appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertex_data, UIState& ui_state,
                              const CameraState& camera_state);
 
     void renderBodies(GameState& game_state, UIState& ui_state, SDL_GPURenderPass* pass,

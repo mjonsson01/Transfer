@@ -14,6 +14,7 @@
 #include "Utilities/Constants/GameSystemConstants.hpp"
 #include "Utilities/Constants/PhysicsConstants.hpp"
 #include "Utilities/Math/CustomMathUtilities.hpp"
+#include "Utilities/Physics/FragmentLayout.hpp"
 #include "Utilities/Physics/UniformParticleGrid.hpp"
 #include "Utilities/Rendering/CameraTransform.hpp"
 
@@ -123,8 +124,6 @@ class PhysicsSystem
                                                     // as marked for deletion
     void cleanupMacroBodies(GameState& game_state); // Clears any Macro Bodies from the screen
                                                     // flagged as marked for deletion
-
-    uint32_t survivableFragmentCount(const GravitationalBody& body, uint32_t maxCount);
     // --- Data Members ---
     UniformParticleGrid particleGrid;
 

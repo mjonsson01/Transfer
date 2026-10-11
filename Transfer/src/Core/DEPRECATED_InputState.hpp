@@ -56,6 +56,7 @@ struct DEPRECATED_InputState
     bool removeNewestSpawn = false; // Toggled when undoing the last spawn is requested
     bool isPaused = false;
     bool isPreviewingMacro = false;
+    bool isPreviewingParticleCluster = false;
     bool isPreviewingWithInitialVelocity = false;
 
     // Starship inputs

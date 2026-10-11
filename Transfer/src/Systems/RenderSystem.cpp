@@ -680,34 +680,48 @@ void RenderSystem::renderUIElements(SDL_GPURenderPass* pass, SDL_GPUCommandBuffe
     SDL_BindGPUFragmentSamplers(pass, 0, &texBinding, 1);
     SDL_DrawGPUPrimitives(pass, (uint32_t)m_ui_vertices.size(), 1, 0, 0);
 }
-void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertexData, UIState& ui_state,
+void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertex_data, UIState& ui_state,
                                        const CameraState& camera_state)
 {
     DEPRECATED_InputState& input_state = ui_state.getMutableDEPRECATED_InputState();
     velocityVectorVertices.clear();
+    if (!input_state.isPreviewingMacro && !input_state.isPreviewingParticleCluster)
+    {
+        return;
+    }
+
+    // The body that will spawn: the chosen size and mass, at the cursor (or at the drag start, with an arrow to the
+    // cursor, when it's being given a velocity)
+    GravitationalBody preview_body = {};
+    preview_body.mass = input_state.selectedMass;
+    preview_body.radius = input_state.selectedRadius;
+    if (input_state.isPreviewingWithInitialVelocity)
+    {
+        preview_body.position = ScreenToWorldCoordinates(input_state.mouseDragStartPosition, camera_state);
+
+        DynamoEngine::Vector2D arrow_end = ScreenToWorldCoordinates(input_state.mouseCurrPosition, camera_state);
+        buildVelocityVectorGeometry(preview_body.position, arrow_end);
+    }
+    else
+    {
+        preview_body.position = ScreenToWorldCoordinates(input_state.mouseCurrPosition, camera_state);
+    }
+    preview_body.previousPosition = preview_body.position; // to prevent alpha interpolation artifacts
+
     if (input_state.isPreviewingMacro)
     {
-        // create pseudo body and convert to unified body vertex to pass to rendering pipeline
-        GravitationalBody new_preview_grav_body = {};
-        new_preview_grav_body.mass = input_state.selectedMass;
-        new_preview_grav_body.radius = input_state.selectedRadius;
-        if (input_state.isPreviewingWithInitialVelocity)
-        {
-            new_preview_grav_body.position = ScreenToWorldCoordinates(input_state.mouseDragStartPosition, camera_state);
+        preview_body.isPreview = true;
+        vertex_data.push_back(preview_body.toUnifiedVertex());
+        return;
+    }
 
-            DynamoEngine::Vector2D arrow_end = ScreenToWorldCoordinates(input_state.mouseCurrPosition, camera_state);
-            buildVelocityVectorGeometry(new_preview_grav_body.position, arrow_end);
-        }
-        else
-        {
-            new_preview_grav_body.position = ScreenToWorldCoordinates(input_state.mouseCurrPosition, camera_state);
-        }
-        new_preview_grav_body.previousPosition =
-            new_preview_grav_body.position; // to prevent alpha interpolation artifacts
-        new_preview_grav_body.isPreview = true;
-
-        UnifiedBodyVertex new_preview_unified_body_vertex = new_preview_grav_body.toUnifiedVertex();
-        vertexData.push_back(new_preview_unified_body_vertex);
+    // A cluster: show the particles it will be made of, laid out exactly as createParticleCluster will place them
+    std::vector<GravitationalBody> preview_particles;
+    layOutFragments(preview_body, DEFAULT_FRAGMENT_COUNT, preview_particles);
+    for (GravitationalBody& particle : preview_particles)
+    {
+        particle.isPreview = true;
+        vertex_data.push_back(particle.toUnifiedVertex());
     }
 }
 

@@ -35,3 +35,5 @@ constexpr double GOLDEN_ANGLE = 2.399963229728653; // pi * (3 - sqrt(5)), the Vo
 constexpr double OVERLAP_MARGIN = 0.75;            // fragment radius vs. exact area-match
 constexpr double IMPACT_SKEW_GROWTH_FACTOR = 3.0;  // max radius growth multiple far from impact point
 constexpr uint32_t DEFAULT_FRAGMENT_COUNT = 800;   // fragments per shattered body, regardless of body size
+// A cluster's spawn preview draws up to DEFAULT_FRAGMENT_COUNT particles, so the renderer reserves that much room
+static_assert(DEFAULT_FRAGMENT_COUNT <= MAX_PREVIEW_BODIES, "the cluster preview wouldn't fit MAX_PREVIEW_BODIES");

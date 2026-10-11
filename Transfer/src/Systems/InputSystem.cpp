@@ -121,10 +121,14 @@ void InputSystem::processSystemInputFrame(GameState& game_state, UIState& ui_sta
         translateMenuInputs(ui_state, scenes);
     }
 
-    // The ghost body follows the cursor while the left button is held down on the world (not on the UI)
-    legacy_state.isPreviewingMacro =
-        runs_simulation && m_input.isMouseButtonDown(DynamoEngine::MouseButton::Left) && !ui_result.pointer_captured;
-    legacy_state.isPreviewingWithInitialVelocity = legacy_state.isPreviewingMacro && m_input.isShiftDown();
+    // A see-through preview follows the cursor while a spawn button is held down on the world (not on the UI):
+    // left = the planet, right = the cluster's particles. If both are held, left wins (one preview at a time).
+    const bool on_world = runs_simulation && !ui_result.pointer_captured;
+    legacy_state.isPreviewingMacro = on_world && m_input.isMouseButtonDown(DynamoEngine::MouseButton::Left);
+    legacy_state.isPreviewingParticleCluster =
+        on_world && m_input.isMouseButtonDown(DynamoEngine::MouseButton::Right) && !legacy_state.isPreviewingMacro;
+    legacy_state.isPreviewingWithInitialVelocity =
+        (legacy_state.isPreviewingMacro || legacy_state.isPreviewingParticleCluster) && m_input.isShiftDown();
 }
 
 DynamoEngine::UIInputResult InputSystem::updateSceneUI(DynamoEngine::UIRoot& ui, const CameraState& camera_state,

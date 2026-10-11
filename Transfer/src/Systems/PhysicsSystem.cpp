@@ -650,38 +650,13 @@ void PhysicsSystem::promoteOversizedParticles(GameState& game_state)
 void PhysicsSystem::substituteWithParticles(GravitationalBody& original_body,
                                             std::vector<GravitationalBody>& fragments_out, uint32_t targetFragmentCount)
 {
-    // uint32_t num_particles = std::max<uint32_t>(1, targetFragmentCount);
-    uint32_t num_particles = survivableFragmentCount(original_body, targetFragmentCount);
+    size_t first_new_fragment = fragments_out.size();
+    layOutFragments(original_body, targetFragmentCount, fragments_out);
 
-    const double R = original_body.radius;
-    const DynamoEngine::Vector2D center = original_body.position;
-    const double original_mass = original_body.mass;
-    const DynamoEngine::Vector2D original_velocity = original_body.velocity;
-
-    double density_factor = (DynamoEngine::PI * R * R) / num_particles;
-    const double fragment_radius = OVERLAP_MARGIN * sqrt(density_factor / DynamoEngine::PI);
-    const double particle_mass = original_mass / num_particles;
-
-    for (uint32_t k = 0; k < num_particles; ++k)
+    // Each fragment keeps roughly the original's velocity, randomly scaled so the pieces spread out
+    for (size_t i = first_new_fragment; i < fragments_out.size(); ++i)
     {
-        double r_k = R * sqrt((k + 0.5) / num_particles);
-        double theta_k = k * GOLDEN_ANGLE;
-        DynamoEngine::Vector2D pos_k = center + DynamoEngine::Vector2D{r_k * cos(theta_k), r_k * sin(theta_k)};
-
-        GravitationalBody p;
-        p.mass = particle_mass;
-        p.invMass = 1.0 / particle_mass;
-        p.radius = fragment_radius;
-        p.position = pos_k;
-        p.previousPosition = pos_k;
-        p.isFragment = true;
-        p.isAccretable = true;
-        p.isCollidable = true;
-        p.macroIdentifier = original_body.macroIdentifier;
-        p.isParticle = true;
-        p.velocity = original_velocity * randomDouble(0.8, 1.1);
-
-        fragments_out.push_back(p);
+        fragments_out[i].velocity = original_body.velocity * randomDouble(0.8, 1.1);
     }
 
     original_body.isMarkedForDeletion = true;
@@ -1101,12 +1076,6 @@ void PhysicsSystem::updatePlayerPhysics(GameState& game_state, UIState& ui_state
 {
     game_state.getPlayerMutable().starship.applyRotation(ui_state);
     game_state.getPlayerMutable().starship.applyThrust(ui_state);
-}
-
-uint32_t PhysicsSystem::survivableFragmentCount(const GravitationalBody& body, uint32_t maxCount)
-{
-    double max_survivable = (OVERLAP_MARGIN * body.radius) / MIN_PARTICLE_RADIUS;
-    return std::clamp(static_cast<uint32_t>(max_survivable * max_survivable), 1u, maxCount);
 }
 
 bool PhysicsSystem::hasRoomForParticles(const GameState& game_state, size_t new_particle_count) const

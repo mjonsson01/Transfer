@@ -6,6 +6,11 @@ Last full rewrite: 2026-09-27, on macOS, branch `EngineSep` at `959b486` ("Finis
 Updated 2026-09-29 on Windows, at `7f852af` (everything committed and pushed; build/scripts rework done on both platforms).
 Updated 2026-10-09 on macOS: EngineSep merged to master (PR 31), Mac packaging merged (PR 32/33, master at `a1cb3a7`).
 The folder was renamed `CLAUDE/` -> `Notes/`. Current working branch: `Bugfixes` (REWORK items first, then new features).
+Updated 2026-10-10 on macOS, end of a long session: Bugfixes merged to master up to PR 35 (`ba10f43`). UNCOMMITTED at handoff:
+the cluster spawn preview (FragmentLayout.hpp/.cpp are new, untracked -- `git add` them) + REWORK edits. 139/139 tests, tidy 38
+clean. Section 5's done list has one entry per feature from 2026-10-09/10 (newest physics ones near the top of 'Done').
+Since 2026-10-09 Marco sometimes asks Claude to APPLY changes directly ("apply it"); the default is still walkthrough
+(he types). Verify in a scratch copy first either way. Tip: compile Transfer/src to .o once and link harnesses against it.
 
 ---
 
@@ -393,6 +398,15 @@ Lambdas capture Game members by reference, which is safe because they outlive th
   touch may shatter right after separating (two 1e9 r=60 planets gain ~414 px/s closing speed in one tick from gravity, >
   MIN_SHATTER_SPEED) -- fine (option B). Ideas kept for later: shatter threshold relative to mutual escape speed; resting
   contact bounces forever (ELASTIC_LOSS_FACTOR 0.994). Harnesses: placement_separation_, heavy_overlap_.
+- **Cluster spawn preview (2026-10-10, applied by Marco, works in-game):** new free functions in
+  Utilities/Physics/FragmentLayout.hpp/.cpp: survivableFragmentCount (was a PhysicsSystem member) + layOutFragments (the Vogel
+  spiral, no velocities, body untouched). substituteWithParticles = layOutFragments + random velocities + mark deleted;
+  RenderSystem::appendPreviewBodies draws layOutFragments(preview_body) for a cluster, so the preview is EXACTLY the real
+  cluster (harness: 0 difference). DEPRECATED_InputState::isPreviewingCluster (right button, on world; left wins if both);
+  shift adds the velocity arrow for either. Right-click had NEVER previewed (checked history back to April) -- Marco thought
+  it regressed. EngineConstants MAX_PREVIEW_BODIES = 800, INITIAL_UNIFIED_BODY_CAPACITY = MAX_LIVE_PARTICLES +
+  MAX_PREVIEW_BODIES; PhysicsConstants static_asserts DEFAULT_FRAGMENT_COUNT <= MAX_PREVIEW_BODIES. randomDouble is seeded
+  from std::random_device: harness output involving fragments/stacking varies run to run (compare ranges, not exact text).
 - Physics fix (2026-09-27, applied by Claude at Marco's request; committed in `26a094a`): shatter fragments go into
   `PhysicsSystem::m_pending_fragments` (via a `fragments_out` parameter on substituteWithParticles / ...FromImpact) and are appended
   to `particles` after all three collision passes (`handleCollisions`); `createParticleCluster` passes `particles` directly (no loop
@@ -429,6 +443,18 @@ Lambdas capture Game members by reference, which is safe because they outlive th
   - R4 RenderContext.
   - SDLContext lifetime fix (SDL_Quit runs before members die; see REWORK).
 - REWORK.txt: ~33 items (physics bugs, render risks, audio, build/tooling).
+- From the 2026-10-09/10 session (Marco's open threads, roughly in the order they came up):
+  - Right-click passes through the UI (UIRoot handles LEFT only): right-clicking a checkbox spawns a cluster behind it and now
+    also shows the cluster preview over the UI. Logged in REWORK; the natural next fix.
+  - Damage from Starship::lastImpactEnergy() (needs a threshold: resting on a planet reports ~7e6 per tick).
+  - Fuel + Tsiolkovsky (thrust force / current mass, fuel burn per tick; seam = Starship::applyThrust); RCS translation fits,
+    RCS rotation would mean real angular physics (reverses 'player-only rotation').
+  - Shatter threshold relative to mutual escape speed (heavy planets that touch shatter from gravity alone; Marco accepted
+    that for now), resting contact that never settles (ELASTIC_LOSS_FACTOR 0.994).
+  - More spawn-panel checkboxes (Collidable, Ghost...): one SpawnSettings field + one addSpawnCheckbox line each; a 3rd
+    section or 2 rows once >2 per section (each section is 412 wide for 2 checkboxes).
+  - Despawn far-away debris to return particle budget (idea, Marco's call).
+  - Small tidy-ups: UIColumn into its own file; StarshipVertex's unused square_size/color; isPreviewingMacro naming (dies with E).
 
 ---
 
