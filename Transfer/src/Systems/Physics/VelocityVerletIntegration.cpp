@@ -16,7 +16,7 @@ void integrateVelocityVerletFirstHalfStep(UniverseState& universe_state)
     {
         applyVelocityVerletFirstHalfStep(macro_body);
     }
-    universe_state.ship.applyVelocityVerletFirstHalf();
+    universe_state.ship.applyVelocityVerletFirstHalfStep();
 }
 
 void applyVelocityVerletFirstHalfStep(GravitationalBody& grav_body)
@@ -64,5 +64,5 @@ void integrateVelocityVerletSecondHalfStep(UniverseState& universe_state)
     {
         applyVelocityVerletSecondHalfStep(macro_body);
     }
-    universe_state.ship.applyVelocityVerletSecondHalf();
+    universe_state.ship.applyVelocityVerletSecondHalfStep();
 }
