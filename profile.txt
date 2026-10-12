@@ -37,7 +37,7 @@ Call graph:
     +       ! :   1 DYLD-STUB$$__error  (in libsystem_c.dylib) + 0  [0x18ccb62c0]
     +       ! 1 SDL_Delay  (in libSDL3.0.dylib) + 0  [0x1010e19b8]
     +       1152 Game::Run()  (in TransferGame) + 512  [0x100ae1c14]
-    +       ! 1055 PhysicsSystem::UpdateSystemFrame(GameState&, UIState&)  (in TransferGame) + 56  [0x100aea518]
+    +       ! 1055 PhysicsSystem::advanceUniverseState(GameState&, UIState&)  (in TransferGame) + 56  [0x100aea518]
     +       ! : 940 PhysicsSystem::handleParticleParticleCollisions(GameState&)  (in TransferGame) + 196  [0x100aeb764]
     +       ! : | 940 UniformParticleGrid::queryCandidates(unsigned long, std::vector<GravitationalBody> const&, std::vector<unsigned long>&) const  (in TransferGame) + 204,240,...  [0x100af148c,0x100af14b0,...]
     +       ! : 91 PhysicsSystem::handleParticleParticleCollisions(GameState&)  (in TransferGame) + 48  [0x100aeb6d0]
@@ -63,13 +63,13 @@ Call graph:
     +       ! : 8 PhysicsSystem::handleParticleParticleCollisions(GameState&)  (in TransferGame) + 492  [0x100aeb88c]
     +       ! :   5 PhysicsSystem::handleElasticCollisions(GravitationalBody&, GravitationalBody&)  (in TransferGame) + 0,176,...  [0x100aebb80,0x100aebc30,...]
     +       ! :   3 PhysicsSystem::handleDynamicCollision(GravitationalBodyPair&, CollisionInfo const&, GameState&)  (in TransferGame) + 52,64,...  [0x100aeb958,0x100aeb964,...]
-    +       ! 39 PhysicsSystem::UpdateSystemFrame(GameState&, UIState&)  (in TransferGame) + 148  [0x100aea574]
-    +       ! : 39 PhysicsSystem::updateGravityForSystem(GameState&)  (in TransferGame) + 400,192,...  [0x100aeca0c,0x100aec93c,...]
-    +       ! 28 PhysicsSystem::UpdateSystemFrame(GameState&, UIState&)  (in TransferGame) + 44  [0x100aea50c]
+    +       ! 39 PhysicsSystem::advanceUniverseState(GameState&, UIState&)  (in TransferGame) + 148  [0x100aea574]
+    +       ! : 39 PhysicsSystem::addGravityBetweenGravBodies(GameState&)  (in TransferGame) + 400,192,...  [0x100aeca0c,0x100aec93c,...]
+    +       ! 28 PhysicsSystem::advanceUniverseState(GameState&, UIState&)  (in TransferGame) + 44  [0x100aea50c]
     +       ! : 28 PhysicsSystem::handleMacroParticleCollisions(GameState&)  (in TransferGame) + 176,280,...  [0x100aeb598,0x100aeb600,...]
-    +       ! 16 PhysicsSystem::UpdateSystemFrame(GameState&, UIState&)  (in TransferGame) + 140  [0x100aea56c]
-    +       ! : 16 PhysicsSystem::integrateForwardsVelocityVerletPhase1(GameState&)  (in TransferGame) + 72,112  [0x100aea96c,0x100aea994]
-    +       ! 14 PhysicsSystem::UpdateSystemFrame(GameState&, UIState&)  (in TransferGame) + 200,764,...  [0x100aea5a8,0x100aea7dc,...]
+    +       ! 16 PhysicsSystem::advanceUniverseState(GameState&, UIState&)  (in TransferGame) + 140  [0x100aea56c]
+    +       ! : 16 PhysicsSystem::integrateVelocityVerletFirstHalfStep(GameState&)  (in TransferGame) + 72,112  [0x100aea96c,0x100aea994]
+    +       ! 14 PhysicsSystem::advanceUniverseState(GameState&, UIState&)  (in TransferGame) + 200,764,...  [0x100aea5a8,0x100aea7dc,...]
     +       343 Game::Run()  (in TransferGame) + 592  [0x100ae1c64]
     +       ! 122 RenderSystem::RenderFullFrame(GameState&, UIState&, DynamoEngine::Scene const&)  (in TransferGame) + 152  [0x100aeedac]
     +       ! : 122 _platform_memmove  (in libsystem_platform.dylib) + 88,104,...  [0x18cdb93b8,0x18cdb93c8,...]
@@ -1803,13 +1803,13 @@ Sort by top of stack, same collapsed (when >= 5):
         _platform_memmove  (in libsystem_platform.dylib)        129
         std::__introsort<std::_ClassicAlgPolicy, UniformParticleGrid::build(std::vector<GravitationalBody> const&)::$_0&, UniformParticleGrid::Entry*, false>(UniformParticleGrid::Entry*, UniformParticleGrid::Entry*, UniformParticleGrid::build(std::vector<GravitationalBody> const&)::$_0&, std::iterator_traits<UniformParticleGrid::Entry*>::difference_type, bool)  (in TransferGame)        85
         kevent_id  (in libsystem_kernel.dylib)        70
-        PhysicsSystem::updateGravityForSystem(GameState&)  (in TransferGame)        39
+        PhysicsSystem::addGravityBetweenGravBodies(GameState&)  (in TransferGame)        39
         PhysicsSystem::handleMacroParticleCollisions(GameState&)  (in TransferGame)        28
         GravitationalBody::toUnifiedVertex() const  (in TransferGame)        20
         __psynch_cvsignal  (in libsystem_kernel.dylib)        17
         PhysicsSystem::handleParticleParticleCollisions(GameState&)  (in TransferGame)        16
-        PhysicsSystem::integrateForwardsVelocityVerletPhase1(GameState&)  (in TransferGame)        16
-        PhysicsSystem::UpdateSystemFrame(GameState&, UIState&)  (in TransferGame)        14
+        PhysicsSystem::integrateVelocityVerletFirstHalfStep(GameState&)  (in TransferGame)        16
+        PhysicsSystem::advanceUniverseState(GameState&, UIState&)  (in TransferGame)        14
         SDL_GetPerformanceCounter_REAL  (in libSDL3.0.dylib)        11
         objc_msgSend  (in libobjc.A.dylib)        11
         DynamoEngine::UIGeometryBuilder::addQuad(SDL_FRect const&, SDL_FRect const&, SDL_Color, DynamoEngine::UIVertexMode)  (in TransferGame)        8

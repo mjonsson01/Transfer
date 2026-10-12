@@ -1,5 +1,4 @@
-// Build (from the repo root, macOS):
-//   clang++ -std=c++20 -O1 -w -ITransfer/src -IThirdParty/SDL3/include -IThirdParty/SDL3_ttf/include Notes/drafts/Harnesses/hitbox_harness.cpp $(find Transfer/src -name '*.cpp' ! -name main.cpp) -LThirdParty/SDL3/lib -LThirdParty/SDL3_ttf/lib -lSDL3 -lSDL3_ttf -Wl,-rpath,$PWD/ThirdParty/SDL3/lib -Wl,-rpath,$PWD/ThirdParty/SDL3_ttf/lib -o /tmp/hitbox_harness && /tmp/hitbox_harness
+// Build + run: see README.md in this folder.
 // The hitbox must face the same way as the ship (getPointingVector) at every rotation, and sit where the sprite is.
 #include "Player/Starship.hpp"
 #include "Core/UIState.hpp"

@@ -4,7 +4,7 @@
 
 // Custom Imports
 #include "Core/CameraState.hpp"
-#include "Entities/Physics/GravitationalBody.hpp"
+#include "Core/UniverseState.hpp"
 #include "Entities/Sound/MusicModeEnum.hpp"
 #include "Player/Player.hpp"
 #include "Utilities/Constants/GameSystemConstants.hpp"
@@ -26,28 +26,18 @@ class GameState
     bool getIsShuttingDownAudioSystem() const { return isShuttingDownAudioSystem; }
     void setIsShuttingDownAudioSystem(bool shutdown) { isShuttingDownAudioSystem = shutdown; }
 
-    // Getters for Particles with a mutable and nonmutable version to respect
-    // System hierarchies
-    const std::vector<GravitationalBody>& getParticles() const { return particles; }
-    std::vector<GravitationalBody>& getParticlesMutable() { return particles; }
-
-    // Getters for Bodies with a mutable and nonmutable version to respect
-    // System hierarchies
-    const std::vector<GravitationalBody>& getMacroBodies() const { return macroBodies; }
-    std::vector<GravitationalBody>& getMacroBodiesMutable() { return macroBodies; }
-
     // Getter and setter for the alpha rendering variable
     float getAlpha() const { return alpha; }
-    void setAlpha(float alphaIn) { alpha = alphaIn; }
-
-    void incrementMaxIDInstantiated() { maxIDInstantiated += 1; }
-    int getMaxIDInstantiated() const { return maxIDInstantiated; }
+    void setAlpha(float alpha_in) { alpha = alpha_in; }
 
     CameraState& getCameraStateMutable() { return cameraState; }
     const CameraState& getCameraState() const { return cameraState; }
 
     Player& getPlayerMutable() { return player; }
     const Player& getPlayer() const { return player; }
+
+    UniverseState& getUniverseStateMutable() { return m_universe_state; }
+    const UniverseState& getUniverseState() const { return m_universe_state; }
 
   private:
     // State variables
@@ -56,11 +46,8 @@ class GameState
     // Frame helper vars
     float alpha = 0.0f;
 
-    // Database for all the Macro Bodies
-    std::vector<GravitationalBody> macroBodies;
-    int maxIDInstantiated = 0;
-    // Database for all the Particle Bodies
-    std::vector<GravitationalBody> particles;
+    // Contains all Physics integratable objects
+    UniverseState m_universe_state;
 
     Player player;
 

@@ -2,6 +2,6 @@
 
 #include "Player/Player.hpp"
 
-Player::Player() : starship() {}
+Player::Player() {}
 
 Player::~Player() {}

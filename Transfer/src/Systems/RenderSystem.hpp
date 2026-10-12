@@ -44,23 +44,23 @@ class RenderSystem
     //  No arguments for now, but will need to pass through resolution and other
     //  info later
     RenderSystem(GameState& game_state);
-    ~RenderSystem(); // make sure to teardown destructor and window
+    ~RenderSystem(); // make sure to teardown destructor and m_window
 
     // Main Loop Rendering Function, renders engine state and the current scene's UI
-    void RenderFullFrame(GameState& game_state, UIState& ui_state, const DynamoEngine::Scene& scene);
+    void renderFullFrame(GameState& game_state, UIState& ui_state, const DynamoEngine::Scene& scene);
 
     // Main Cleanup method (tears down all the SDL components)
-    void CleanUp();
+    void cleanUp();
     // Getters for SDL Components
     TTF_Font* getUIFontRegular() const { return UIFontRegular; }
 
   private:
     // SDL Components
-    SDL_Window* window = nullptr;
-    SDL_GPUDevice* gpu = nullptr;
+    SDL_Window* m_window = nullptr;
+    SDL_GPUDevice* m_gpu = nullptr;
 
     // Unified Body Rendering Components
-    std::vector<UnifiedBodyVertex> unifiedBodyVertices;
+    std::vector<UnifiedBodyVertex> m_unified_body_vertices;
     SDL_GPUBuffer* unifiedBodyVertexBuffer = nullptr;
     SDL_GPUTransferBuffer* unifiedBodyTransferBuffer = nullptr;
     SDL_GPUGraphicsPipeline* unifiedBodyPipeline = nullptr;

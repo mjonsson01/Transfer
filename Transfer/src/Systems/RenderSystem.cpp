@@ -17,9 +17,9 @@ RenderSystem::RenderSystem(GameState& game_state)
 
     // 1. Window & Device Setup
     int window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
-    window = SDL_CreateWindow("Transfer", SCREEN_WIDTH, SCREEN_HEIGHT, window_flags);
+    m_window = SDL_CreateWindow("Transfer", SCREEN_WIDTH, SCREEN_HEIGHT, window_flags);
 
-    SDL_DisplayID display_id = SDL_GetDisplayForWindow(window);
+    SDL_DisplayID display_id = SDL_GetDisplayForWindow(m_window);
     const SDL_DisplayMode* desktop_mode = SDL_GetDesktopDisplayMode(display_id);
     if (desktop_mode)
     {
@@ -32,9 +32,9 @@ RenderSystem::RenderSystem(GameState& game_state)
 #else
     SDL_GPUShaderFormat formats = SDL_GPU_SHADERFORMAT_SPIRV;
 #endif
-    gpu = SDL_CreateGPUDevice(formats, true, nullptr);
-    if (gpu)
-        SDL_ClaimWindowForGPUDevice(gpu, window);
+    m_gpu = SDL_CreateGPUDevice(formats, true, nullptr);
+    if (m_gpu)
+        SDL_ClaimWindowForGPUDevice(m_gpu, m_window);
     // 2. Resource/Font Setup
     UIFontRegular = TTF_OpenFont(Utilities::GetResourcePath("Fonts/SpaceMono-Regular.ttf").c_str(), UI_FONT_SIZE);
 
@@ -49,9 +49,9 @@ RenderSystem::RenderSystem(GameState& game_state)
     createDebugLineGPUBufferAndPipeline();
     createTwinklingStarField(game_state.getCameraState().max_display_width,
                              game_state.getCameraState().max_display_height);
-    if (gpu)
+    if (m_gpu)
     {
-        SDL_GPUCommandBuffer* initCmdBuf = SDL_AcquireGPUCommandBuffer(gpu);
+        SDL_GPUCommandBuffer* initCmdBuf = SDL_AcquireGPUCommandBuffer(m_gpu);
         // The star field never changes (twinkling and parallax happen in the shader), so upload it once, here
         uploadTwinklingStarField(initCmdBuf);
         SDL_SubmitGPUCommandBuffer(initCmdBuf);
@@ -64,81 +64,81 @@ RenderSystem::~RenderSystem()
 }
 
 // --------- CLEANUP METHOD --------- //
-void RenderSystem::CleanUp()
+void RenderSystem::cleanUp()
 {
     // Release GPU-specific resources
 
     // Release Unified Body Resources
     if (unifiedBodyVertexBuffer != nullptr)
-        SDL_ReleaseGPUBuffer(gpu, unifiedBodyVertexBuffer);
+        SDL_ReleaseGPUBuffer(m_gpu, unifiedBodyVertexBuffer);
     if (unifiedBodyPipeline != nullptr)
-        SDL_ReleaseGPUGraphicsPipeline(gpu, unifiedBodyPipeline);
+        SDL_ReleaseGPUGraphicsPipeline(m_gpu, unifiedBodyPipeline);
     if (unifiedBodyTransferBuffer != nullptr)
-        SDL_ReleaseGPUTransferBuffer(gpu, unifiedBodyTransferBuffer);
+        SDL_ReleaseGPUTransferBuffer(m_gpu, unifiedBodyTransferBuffer);
 
     // Release Twinkling Star Resources
     if (twinklingStarVertexBuffer != nullptr)
-        SDL_ReleaseGPUBuffer(gpu, twinklingStarVertexBuffer);
+        SDL_ReleaseGPUBuffer(m_gpu, twinklingStarVertexBuffer);
     if (twinklingStarPipeline != nullptr)
-        SDL_ReleaseGPUGraphicsPipeline(gpu, twinklingStarPipeline);
+        SDL_ReleaseGPUGraphicsPipeline(m_gpu, twinklingStarPipeline);
     if (twinklingStarTransferBuffer != nullptr)
-        SDL_ReleaseGPUTransferBuffer(gpu, twinklingStarTransferBuffer);
+        SDL_ReleaseGPUTransferBuffer(m_gpu, twinklingStarTransferBuffer);
 
     // Release UI Resources
     if (uiVertexBuffer != nullptr)
-        SDL_ReleaseGPUBuffer(gpu, uiVertexBuffer);
+        SDL_ReleaseGPUBuffer(m_gpu, uiVertexBuffer);
     if (uiPipeline != nullptr)
-        SDL_ReleaseGPUGraphicsPipeline(gpu, uiPipeline);
+        SDL_ReleaseGPUGraphicsPipeline(m_gpu, uiPipeline);
     if (uiTransferBuffer != nullptr)
-        SDL_ReleaseGPUTransferBuffer(gpu, uiTransferBuffer);
+        SDL_ReleaseGPUTransferBuffer(m_gpu, uiTransferBuffer);
 
     // Release Velocity Vector Resources
     if (velocityVectorVertexBuffer != nullptr)
-        SDL_ReleaseGPUBuffer(gpu, velocityVectorVertexBuffer);
+        SDL_ReleaseGPUBuffer(m_gpu, velocityVectorVertexBuffer);
     if (velocityVectorPipeline != nullptr)
-        SDL_ReleaseGPUGraphicsPipeline(gpu, velocityVectorPipeline);
+        SDL_ReleaseGPUGraphicsPipeline(m_gpu, velocityVectorPipeline);
     if (velocityVectorTransferBuffer != nullptr)
-        SDL_ReleaseGPUTransferBuffer(gpu, velocityVectorTransferBuffer);
+        SDL_ReleaseGPUTransferBuffer(m_gpu, velocityVectorTransferBuffer);
 
     // Release Starship Pipeline
     if (starshipVertexBuffer != nullptr)
-        SDL_ReleaseGPUBuffer(gpu, starshipVertexBuffer);
+        SDL_ReleaseGPUBuffer(m_gpu, starshipVertexBuffer);
     if (starshipPipeline != nullptr)
-        SDL_ReleaseGPUGraphicsPipeline(gpu, starshipPipeline);
+        SDL_ReleaseGPUGraphicsPipeline(m_gpu, starshipPipeline);
     if (starshipTransferBuffer != nullptr)
-        SDL_ReleaseGPUTransferBuffer(gpu, starshipTransferBuffer);
+        SDL_ReleaseGPUTransferBuffer(m_gpu, starshipTransferBuffer);
     if (m_starship_texture != nullptr)
-        SDL_ReleaseGPUTexture(gpu, m_starship_texture);
+        SDL_ReleaseGPUTexture(m_gpu, m_starship_texture);
     if (m_sprite_sampler != nullptr)
-        SDL_ReleaseGPUSampler(gpu, m_sprite_sampler);
+        SDL_ReleaseGPUSampler(m_gpu, m_sprite_sampler);
 
     // Release Debug Overlay Pipeline
     if (m_debug_line_vertex_buffer != nullptr)
-        SDL_ReleaseGPUBuffer(gpu, m_debug_line_vertex_buffer);
+        SDL_ReleaseGPUBuffer(m_gpu, m_debug_line_vertex_buffer);
     if (m_debug_line_transfer_buffer != nullptr)
-        SDL_ReleaseGPUTransferBuffer(gpu, m_debug_line_transfer_buffer);
+        SDL_ReleaseGPUTransferBuffer(m_gpu, m_debug_line_transfer_buffer);
     if (m_debug_line_pipeline != nullptr)
-        SDL_ReleaseGPUGraphicsPipeline(gpu, m_debug_line_pipeline);
+        SDL_ReleaseGPUGraphicsPipeline(m_gpu, m_debug_line_pipeline);
 
     // Release Font Resources
     if (fontAtlasTexture != nullptr)
-        SDL_ReleaseGPUTexture(gpu, fontAtlasTexture);
+        SDL_ReleaseGPUTexture(m_gpu, fontAtlasTexture);
     if (fontAtlasSampler != nullptr)
-        SDL_ReleaseGPUSampler(gpu, fontAtlasSampler);
+        SDL_ReleaseGPUSampler(m_gpu, fontAtlasSampler);
 
-    // release the window from gpu
-    if (gpu != nullptr && window != nullptr)
-        SDL_ReleaseWindowFromGPUDevice(gpu, window);
+    // release the window from the gpu
+    if (m_gpu != nullptr && m_window != nullptr)
+        SDL_ReleaseWindowFromGPUDevice(m_gpu, m_window);
 
     // destroy the gpu
-    if (gpu != nullptr)
-        SDL_DestroyGPUDevice(gpu);
+    if (m_gpu != nullptr)
+        SDL_DestroyGPUDevice(m_gpu);
 
     // destroy the window
-    if (window)
+    if (m_window)
     {
-        SDL_DestroyWindow(window);
-        window = nullptr;
+        SDL_DestroyWindow(m_window);
+        m_window = nullptr;
     }
 }
 
@@ -183,18 +183,18 @@ SDL_GPUShader* RenderSystem::LoadShader(SDL_GPUDevice* device, const char* base_
 }
 // --------- RENDER FULL FRAME METHOD --------- //
 
-void RenderSystem::RenderFullFrame(GameState& game_state, UIState& ui_state, const DynamoEngine::Scene& scene)
+void RenderSystem::renderFullFrame(GameState& game_state, UIState& ui_state, const DynamoEngine::Scene& scene)
 {
 
-    // Re-bake the text whenever the UI scale or the display's pixel density changes (window resized, or moved to a
+    // Re-bake the text whenever the UI scale or the display's pixel density changes (m_window resized, or moved to a
     // screen with a different density), so text is always drawn at exactly one atlas pixel per screen pixel
-    const float pixel_scale = scene.ui().uiScale() * SDL_GetWindowPixelDensity(window);
+    const float pixel_scale = scene.ui().uiScale() * SDL_GetWindowPixelDensity(m_window);
     if (fontAtlasTexture == nullptr || pixel_scale != fontAtlas.pixelScale())
     {
         rebuildFontAtlas(pixel_scale);
     }
 
-    SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(gpu);
+    SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(m_gpu);
 
     const bool draws_world = scene.settings().draws_world;
 
@@ -209,7 +209,7 @@ void RenderSystem::RenderFullFrame(GameState& game_state, UIState& ui_state, con
     // Acquire the display target
     SDL_GPUTexture* swapchainTexture = nullptr;
     Uint32 w = 0, h = 0;
-    if (!SDL_AcquireGPUSwapchainTexture(cmdbuf, window, &swapchainTexture, &w, &h))
+    if (!SDL_AcquireGPUSwapchainTexture(cmdbuf, m_window, &swapchainTexture, &w, &h))
     {
         SDL_SubmitGPUCommandBuffer(cmdbuf);
         return;
@@ -259,18 +259,18 @@ void RenderSystem::renderNonGameFrame(const DynamoEngine::UIRoot& ui, SDL_GPURen
 }
 void RenderSystem::uploadUnifiedBodies(GameState& game_state, UIState& ui_state, SDL_GPUCommandBuffer* cmdbuf)
 {
-    unifiedBodyVertices.clear();
+    m_unified_body_vertices.clear();
 
-    auto& particles = game_state.getParticles();
-    auto& bodies = game_state.getMacroBodies();
+    auto& particles = game_state.getUniverseState().particles;
+    auto& bodies = game_state.getUniverseState().macro_bodies;
 
-    unifiedBodyVertices.reserve(particles.size() + bodies.size());
+    m_unified_body_vertices.reserve(particles.size() + bodies.size());
 
     for (auto& p : particles)
     {
         if (p.visible)
         {
-            unifiedBodyVertices.push_back(p.toUnifiedVertex());
+            m_unified_body_vertices.push_back(p.toUnifiedVertex());
         }
     }
 
@@ -278,44 +278,45 @@ void RenderSystem::uploadUnifiedBodies(GameState& game_state, UIState& ui_state,
     {
         if (b.visible)
         {
-            unifiedBodyVertices.push_back(b.toUnifiedVertex());
+            m_unified_body_vertices.push_back(b.toUnifiedVertex());
         }
     }
 
-    appendPreviewBodies(unifiedBodyVertices, ui_state, game_state.getCameraState());
+    appendPreviewBodies(m_unified_body_vertices, ui_state, game_state.getCameraState());
     uploadVelocityVectorVertices(cmdbuf);
 
     // Emergency only: the particle budget should make this impossible. If a rule change ever breaks it, grow the
     // buffers (doubling, so it happens rarely) and say so, instead of hiding bodies or writing past the buffer.
-    if (unifiedBodyVertices.size() > m_unified_body_capacity)
+    if (m_unified_body_vertices.size() > m_unified_body_capacity)
     {
         uint32_t new_capacity = std::max(m_unified_body_capacity, INITIAL_UNIFIED_BODY_CAPACITY);
-        while (new_capacity < unifiedBodyVertices.size())
+        while (new_capacity < m_unified_body_vertices.size())
         {
             new_capacity *= 2;
         }
         printf("WARNING: %zu bodies don't fit the body buffers (%u), growing them to %u. Is the particle budget "
                "still being enforced?\n",
-               unifiedBodyVertices.size(), m_unified_body_capacity, new_capacity);
+               m_unified_body_vertices.size(), m_unified_body_capacity, new_capacity);
         if (!createUnifiedBodyBuffers(new_capacity))
         {
-            unifiedBodyVertices.clear(); // no GPU memory: draw no bodies this frame rather than write past the buffer
+            m_unified_body_vertices
+                .clear(); // no GPU memory: draw no bodies this frame rather than write past the buffer
             return;
         }
     }
     // Copy pass
-    if (!unifiedBodyVertices.empty())
+    if (!m_unified_body_vertices.empty())
     {
-        void* map = SDL_MapGPUTransferBuffer(gpu, unifiedBodyTransferBuffer, true);
-        SDL_memcpy(map, unifiedBodyVertices.data(), unifiedBodyVertices.size() * sizeof(UnifiedBodyVertex));
-        SDL_UnmapGPUTransferBuffer(gpu, unifiedBodyTransferBuffer);
+        void* map = SDL_MapGPUTransferBuffer(m_gpu, unifiedBodyTransferBuffer, true);
+        SDL_memcpy(map, m_unified_body_vertices.data(), m_unified_body_vertices.size() * sizeof(UnifiedBodyVertex));
+        SDL_UnmapGPUTransferBuffer(m_gpu, unifiedBodyTransferBuffer);
 
         SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdbuf);
 
         SDL_GPUTransferBufferLocation src = {.transfer_buffer = unifiedBodyTransferBuffer, .offset = 0};
         SDL_GPUBufferRegion dst = {.buffer = unifiedBodyVertexBuffer,
                                    .offset = 0,
-                                   .size = (uint32_t)(unifiedBodyVertices.size() * sizeof(UnifiedBodyVertex))};
+                                   .size = (uint32_t)(m_unified_body_vertices.size() * sizeof(UnifiedBodyVertex))};
 
         SDL_UploadToGPUBuffer(copyPass, &src, &dst, true);
         SDL_EndGPUCopyPass(copyPass);
@@ -327,8 +328,7 @@ void RenderSystem::uploadStarship(GameState& game_state, UIState& ui_state, SDL_
     starshipVertices.clear();
     starshipVertices.reserve(MAX_STARSHIP_VERTICES);
 
-    // Rework into getPlayer const since this method doesn't actually do anything to the starship
-    game_state.getPlayerMutable().starship.buildGeometry(starshipVertices);
+    game_state.getUniverseStateMutable().ship.buildGeometry(starshipVertices);
 
     // Never copy more than the buffer holds; renderStarship draws starshipVertices.size(), so it stays in sync
     if (starshipVertices.size() > MAX_STARSHIP_VERTICES)
@@ -342,9 +342,9 @@ void RenderSystem::uploadStarship(GameState& game_state, UIState& ui_state, SDL_
     }
     if (!starshipVertices.empty())
     {
-        void* map = SDL_MapGPUTransferBuffer(gpu, starshipTransferBuffer, true);
+        void* map = SDL_MapGPUTransferBuffer(m_gpu, starshipTransferBuffer, true);
         SDL_memcpy(map, starshipVertices.data(), starshipVertices.size() * sizeof(StarshipVertex));
-        SDL_UnmapGPUTransferBuffer(gpu, starshipTransferBuffer);
+        SDL_UnmapGPUTransferBuffer(m_gpu, starshipTransferBuffer);
         SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdbuf);
         SDL_GPUTransferBufferLocation src = {.transfer_buffer = starshipTransferBuffer, .offset = 0};
         SDL_GPUBufferRegion dst = {.buffer = starshipVertexBuffer,
@@ -360,7 +360,7 @@ void RenderSystem::renderBodies(GameState& game_state, UIState& ui_state, SDL_GP
                                 SDL_GPUCommandBuffer* cmdbuf)
 {
     // Draw exactly what uploadUnifiedBodies put in the buffer (one instance per body)
-    uint32_t instance_count = (uint32_t)unifiedBodyVertices.size();
+    uint32_t instance_count = (uint32_t)m_unified_body_vertices.size();
     if (instance_count > 0)
     {
         SDL_BindGPUGraphicsPipeline(pass, unifiedBodyPipeline);
@@ -408,13 +408,13 @@ void RenderSystem::createUIGPUBufferAndPipeline()
     SDL_GPUBufferCreateInfo vb_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX,
                                        .size = MAX_UI_VERTICES * sizeof(DynamoEngine::UIVertex)};
 
-    uiVertexBuffer = SDL_CreateGPUBuffer(gpu, &vb_info);
+    uiVertexBuffer = SDL_CreateGPUBuffer(m_gpu, &vb_info);
     SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
                                                .size = MAX_UI_VERTICES * sizeof(DynamoEngine::UIVertex)};
-    uiTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
+    uiTransferBuffer = SDL_CreateGPUTransferBuffer(m_gpu, &tb_info);
 
-    SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/UIElement.vert", 0, 1);
-    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/UIElement.frag", 1, 0);
+    SDL_GPUShader* vert_shader = LoadShader(m_gpu, "Shaders/UIElement.vert", 0, 1);
+    SDL_GPUShader* frag_shader = LoadShader(m_gpu, "Shaders/UIElement.frag", 1, 0);
 
     SDL_GPUVertexAttribute attrs[6];
     attrs[0] = {.location = 0,
@@ -441,7 +441,7 @@ void RenderSystem::createUIGPUBufferAndPipeline()
     pipeline_info.target_info.num_color_targets = 1;
 
     SDL_GPUColorTargetDescription color_target = {};
-    color_target.format = SDL_GetGPUSwapchainTextureFormat(gpu, window);
+    color_target.format = SDL_GetGPUSwapchainTextureFormat(m_gpu, m_window);
     color_target.blend_state.enable_blend = true;
     color_target.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
     color_target.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
@@ -462,9 +462,9 @@ void RenderSystem::createUIGPUBufferAndPipeline()
     pipeline_info.vertex_input_state.vertex_buffer_descriptions = &vbo_desc;
     pipeline_info.vertex_input_state.num_vertex_buffers = 1;
 
-    uiPipeline = SDL_CreateGPUGraphicsPipeline(gpu, &pipeline_info);
-    SDL_ReleaseGPUShader(gpu, vert_shader);
-    SDL_ReleaseGPUShader(gpu, frag_shader);
+    uiPipeline = SDL_CreateGPUGraphicsPipeline(m_gpu, &pipeline_info);
+    SDL_ReleaseGPUShader(m_gpu, vert_shader);
+    SDL_ReleaseGPUShader(m_gpu, frag_shader);
 }
 
 void RenderSystem::createFontAtlasSampler()
@@ -473,7 +473,7 @@ void RenderSystem::createFontAtlasSampler()
                                              .mag_filter = SDL_GPU_FILTER_LINEAR,
                                              .address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
                                              .address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE};
-    fontAtlasSampler = SDL_CreateGPUSampler(gpu, &sampler_info);
+    fontAtlasSampler = SDL_CreateGPUSampler(m_gpu, &sampler_info);
 }
 
 void RenderSystem::createSpriteSampler()
@@ -486,7 +486,7 @@ void RenderSystem::createSpriteSampler()
                                              .address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
                                              .address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
                                              .max_lod = 1000.0f};
-    m_sprite_sampler = SDL_CreateGPUSampler(gpu, &sampler_info);
+    m_sprite_sampler = SDL_CreateGPUSampler(m_gpu, &sampler_info);
 }
 
 SDL_GPUTexture* RenderSystem::loadSpriteTexture(const std::string& asset_path)
@@ -528,7 +528,7 @@ SDL_GPUTexture* RenderSystem::loadSpriteTexture(const std::string& asset_path)
                                          .height = (Uint32)image->h,
                                          .layer_count_or_depth = 1,
                                          .num_levels = mip_levels};
-    SDL_GPUTexture* texture = SDL_CreateGPUTexture(gpu, &tex_info);
+    SDL_GPUTexture* texture = SDL_CreateGPUTexture(m_gpu, &tex_info);
     if (texture == nullptr)
     {
         std::cerr << "Couldn't create a texture for sprite '" << asset_path << "': " << SDL_GetError() << std::endl;
@@ -540,17 +540,17 @@ SDL_GPUTexture* RenderSystem::loadSpriteTexture(const std::string& asset_path)
     Uint32 row_bytes = (Uint32)image->w * 4;
     SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
                                                .size = row_bytes * (Uint32)image->h};
-    SDL_GPUTransferBuffer* transfer_buffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
-    Uint8* dst = (Uint8*)SDL_MapGPUTransferBuffer(gpu, transfer_buffer, false); // brand-new buffer: nothing to cycle
+    SDL_GPUTransferBuffer* transfer_buffer = SDL_CreateGPUTransferBuffer(m_gpu, &tb_info);
+    Uint8* dst = (Uint8*)SDL_MapGPUTransferBuffer(m_gpu, transfer_buffer, false); // brand-new buffer: nothing to cycle
     Uint8* src = (Uint8*)image->pixels;
     for (int row = 0; row < image->h; row++)
     {
         SDL_memcpy(dst + row * row_bytes, src + row * image->pitch, row_bytes);
     }
-    SDL_UnmapGPUTransferBuffer(gpu, transfer_buffer);
+    SDL_UnmapGPUTransferBuffer(m_gpu, transfer_buffer);
 
     // 6. Upload it into mip level 0, then let the GPU shrink level 0 into all the smaller levels
-    SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(gpu);
+    SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(m_gpu);
     SDL_GPUCopyPass* copy_pass = SDL_BeginGPUCopyPass(cmdbuf);
     SDL_GPUTextureTransferInfo src_info = {.transfer_buffer = transfer_buffer,
                                            .offset = 0,
@@ -563,7 +563,7 @@ SDL_GPUTexture* RenderSystem::loadSpriteTexture(const std::string& asset_path)
     SDL_GenerateMipmapsForGPUTexture(cmdbuf, texture); // must be outside any pass, so after EndGPUCopyPass
     SDL_SubmitGPUCommandBuffer(cmdbuf);
 
-    SDL_ReleaseGPUTransferBuffer(gpu, transfer_buffer); // SDL frees it once the upload has finished
+    SDL_ReleaseGPUTransferBuffer(m_gpu, transfer_buffer); // SDL frees it once the upload has finished
     SDL_DestroySurface(image);
     return texture;
 }
@@ -580,7 +580,7 @@ void RenderSystem::rebuildFontAtlas(float pixel_scale)
     // A frame still on the GPU may be using the old texture; SDL_GPU only frees it once that frame is done
     if (fontAtlasTexture != nullptr)
     {
-        SDL_ReleaseGPUTexture(gpu, fontAtlasTexture);
+        SDL_ReleaseGPUTexture(m_gpu, fontAtlasTexture);
     }
 
     SDL_GPUTextureCreateInfo tex_info = {.type = SDL_GPU_TEXTURETYPE_2D,
@@ -590,23 +590,23 @@ void RenderSystem::rebuildFontAtlas(float pixel_scale)
                                          .height = (Uint32)atlas_surface->h,
                                          .layer_count_or_depth = 1,
                                          .num_levels = 1};
-    fontAtlasTexture = SDL_CreateGPUTexture(gpu, &tex_info);
+    fontAtlasTexture = SDL_CreateGPUTexture(m_gpu, &tex_info);
 
     Uint32 pixelDataSize = (Uint32)(atlas_surface->w * atlas_surface->h * 4);
     SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD, .size = pixelDataSize};
-    SDL_GPUTransferBuffer* atlasTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
+    SDL_GPUTransferBuffer* atlasTransferBuffer = SDL_CreateGPUTransferBuffer(m_gpu, &tb_info);
 
     // Copy row by row in case the surface pitch isn't tightly packed.
-    Uint8* dst = (Uint8*)SDL_MapGPUTransferBuffer(gpu, atlasTransferBuffer, false);
+    Uint8* dst = (Uint8*)SDL_MapGPUTransferBuffer(m_gpu, atlasTransferBuffer, false);
     Uint8* src = (Uint8*)atlas_surface->pixels;
     Uint32 rowBytes = (Uint32)atlas_surface->w * 4;
     for (int row = 0; row < atlas_surface->h; row++)
     {
         SDL_memcpy(dst + row * rowBytes, src + row * atlas_surface->pitch, rowBytes);
     }
-    SDL_UnmapGPUTransferBuffer(gpu, atlasTransferBuffer);
+    SDL_UnmapGPUTransferBuffer(m_gpu, atlasTransferBuffer);
 
-    SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(gpu);
+    SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(m_gpu);
     SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdbuf);
 
     SDL_GPUTextureTransferInfo src_info = {.transfer_buffer = atlasTransferBuffer,
@@ -627,7 +627,7 @@ void RenderSystem::rebuildFontAtlas(float pixel_scale)
     SDL_EndGPUCopyPass(copyPass);
     SDL_SubmitGPUCommandBuffer(cmdbuf);
 
-    SDL_ReleaseGPUTransferBuffer(gpu, atlasTransferBuffer);
+    SDL_ReleaseGPUTransferBuffer(m_gpu, atlasTransferBuffer);
     SDL_DestroySurface(atlas_surface);
 }
 
@@ -649,9 +649,9 @@ void RenderSystem::uploadUIVertices(const DynamoEngine::UIRoot& ui, SDL_GPUComma
     if (m_ui_vertices.empty())
         return;
 
-    void* map = SDL_MapGPUTransferBuffer(gpu, uiTransferBuffer, true);
+    void* map = SDL_MapGPUTransferBuffer(m_gpu, uiTransferBuffer, true);
     SDL_memcpy(map, m_ui_vertices.data(), m_ui_vertices.size() * sizeof(DynamoEngine::UIVertex));
-    SDL_UnmapGPUTransferBuffer(gpu, uiTransferBuffer);
+    SDL_UnmapGPUTransferBuffer(m_gpu, uiTransferBuffer);
 
     SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdbuf);
     SDL_GPUTransferBufferLocation src = {.transfer_buffer = uiTransferBuffer, .offset = 0};
@@ -669,7 +669,7 @@ void RenderSystem::renderUIElements(SDL_GPURenderPass* pass, SDL_GPUCommandBuffe
         return;
     SDL_BindGPUGraphicsPipeline(pass, uiPipeline);
 
-    // The UI is built in UI space (window size / UI scale); the shader stretches that space over the whole window
+    // The UI is built in UI space (m_window size / UI scale); the shader stretches that space over the whole m_window
     const DynamoEngine::Vector2F ui_space_size = ui.uiSpaceSize();
     float ui_space[2] = {ui_space_size.x_val, ui_space_size.y_val};
     SDL_PushGPUVertexUniformData(cmdbuf, 0, ui_space, sizeof(ui_space));
@@ -784,20 +784,20 @@ bool RenderSystem::createUnifiedBodyBuffers(uint32_t capacity)
     // running is safe. The contents don't need copying: every frame uploads all bodies from scratch anyway.
     if (unifiedBodyVertexBuffer != nullptr)
     {
-        SDL_ReleaseGPUBuffer(gpu, unifiedBodyVertexBuffer);
+        SDL_ReleaseGPUBuffer(m_gpu, unifiedBodyVertexBuffer);
     }
     if (unifiedBodyTransferBuffer != nullptr)
     {
-        SDL_ReleaseGPUTransferBuffer(gpu, unifiedBodyTransferBuffer);
+        SDL_ReleaseGPUTransferBuffer(m_gpu, unifiedBodyTransferBuffer);
     }
 
     const uint32_t size_in_bytes = capacity * (uint32_t)sizeof(UnifiedBodyVertex);
 
     SDL_GPUBufferCreateInfo vb_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX, .size = size_in_bytes};
-    unifiedBodyVertexBuffer = SDL_CreateGPUBuffer(gpu, &vb_info);
+    unifiedBodyVertexBuffer = SDL_CreateGPUBuffer(m_gpu, &vb_info);
 
     SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD, .size = size_in_bytes};
-    unifiedBodyTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
+    unifiedBodyTransferBuffer = SDL_CreateGPUTransferBuffer(m_gpu, &tb_info);
 
     if (unifiedBodyVertexBuffer == nullptr || unifiedBodyTransferBuffer == nullptr)
     {
@@ -815,8 +815,8 @@ void RenderSystem::createUnifiedBodyGPUBufferAndPipeline()
     // Reserved at full size up front, so normal play never reallocates
     createUnifiedBodyBuffers(INITIAL_UNIFIED_BODY_CAPACITY);
 
-    SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/UnifiedGravBody.vert", 0, 1);
-    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/UnifiedGravBody.frag", 0, 0);
+    SDL_GPUShader* vert_shader = LoadShader(m_gpu, "Shaders/UnifiedGravBody.vert", 0, 1);
+    SDL_GPUShader* frag_shader = LoadShader(m_gpu, "Shaders/UnifiedGravBody.frag", 0, 0);
 
     // Define Pipeline State
     SDL_GPUVertexAttribute vertex_attributes[8];
@@ -873,7 +873,7 @@ void RenderSystem::createUnifiedBodyGPUBufferAndPipeline()
     pipeline_info.target_info.num_color_targets = 1;
 
     SDL_GPUColorTargetDescription color_target = {};
-    color_target.format = SDL_GetGPUSwapchainTextureFormat(gpu, window);
+    color_target.format = SDL_GetGPUSwapchainTextureFormat(m_gpu, m_window);
     color_target.blend_state.enable_blend = true;
 
     color_target.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
@@ -900,11 +900,11 @@ void RenderSystem::createUnifiedBodyGPUBufferAndPipeline()
     pipeline_info.vertex_input_state.vertex_buffer_descriptions = &vbo_desc;
     pipeline_info.vertex_input_state.num_vertex_buffers = 1;
 
-    unifiedBodyPipeline = SDL_CreateGPUGraphicsPipeline(gpu, &pipeline_info);
+    unifiedBodyPipeline = SDL_CreateGPUGraphicsPipeline(m_gpu, &pipeline_info);
 
     // 7. Cleanup temp shader handles
-    SDL_ReleaseGPUShader(gpu, vert_shader);
-    SDL_ReleaseGPUShader(gpu, frag_shader);
+    SDL_ReleaseGPUShader(m_gpu, vert_shader);
+    SDL_ReleaseGPUShader(m_gpu, frag_shader);
 }
 
 void RenderSystem::createTwinklingStarGPUBufferAndPipeline()
@@ -912,15 +912,15 @@ void RenderSystem::createTwinklingStarGPUBufferAndPipeline()
 
     SDL_GPUBufferCreateInfo vb_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX,
                                        .size = STAR_NUM * sizeof(TwinklingStarVertex)};
-    twinklingStarVertexBuffer = SDL_CreateGPUBuffer(gpu, &vb_info);
+    twinklingStarVertexBuffer = SDL_CreateGPUBuffer(m_gpu, &vb_info);
 
     SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
                                                .size = STAR_NUM * sizeof(TwinklingStarVertex)};
 
-    twinklingStarTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
+    twinklingStarTransferBuffer = SDL_CreateGPUTransferBuffer(m_gpu, &tb_info);
 
-    SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/TwinklingStar.vert", 0, 1);
-    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/TwinklingStar.frag", 0, 1);
+    SDL_GPUShader* vert_shader = LoadShader(m_gpu, "Shaders/TwinklingStar.vert", 0, 1);
+    SDL_GPUShader* frag_shader = LoadShader(m_gpu, "Shaders/TwinklingStar.frag", 0, 1);
 
     SDL_GPUVertexAttribute vertex_attributes[5];
 
@@ -954,7 +954,7 @@ void RenderSystem::createTwinklingStarGPUBufferAndPipeline()
     pipeline_info.target_info.num_color_targets = 1;
 
     SDL_GPUColorTargetDescription color_target = {};
-    color_target.format = SDL_GetGPUSwapchainTextureFormat(gpu, window);
+    color_target.format = SDL_GetGPUSwapchainTextureFormat(m_gpu, m_window);
     color_target.blend_state.enable_blend = true;
 
     color_target.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
@@ -981,10 +981,10 @@ void RenderSystem::createTwinklingStarGPUBufferAndPipeline()
     pipeline_info.vertex_input_state.vertex_buffer_descriptions = &vbo_desc;
     pipeline_info.vertex_input_state.num_vertex_buffers = 1;
 
-    twinklingStarPipeline = SDL_CreateGPUGraphicsPipeline(gpu, &pipeline_info);
+    twinklingStarPipeline = SDL_CreateGPUGraphicsPipeline(m_gpu, &pipeline_info);
 
-    SDL_ReleaseGPUShader(gpu, vert_shader);
-    SDL_ReleaseGPUShader(gpu, frag_shader);
+    SDL_ReleaseGPUShader(m_gpu, vert_shader);
+    SDL_ReleaseGPUShader(m_gpu, frag_shader);
 }
 
 void RenderSystem::createTwinklingStarField(float fieldMaxWidth, float fieldMaxHeight)
@@ -1023,11 +1023,11 @@ void RenderSystem::createTwinklingStarField(float fieldMaxWidth, float fieldMaxH
 void RenderSystem::uploadTwinklingStarField(SDL_GPUCommandBuffer* cmdbuf)
 {
 
-    void* map = SDL_MapGPUTransferBuffer(gpu, twinklingStarTransferBuffer, true);
+    void* map = SDL_MapGPUTransferBuffer(m_gpu, twinklingStarTransferBuffer, true);
 
     SDL_memcpy(map, twinklingStarVertices.data(), twinklingStarVertices.size() * sizeof(TwinklingStarVertex));
 
-    SDL_UnmapGPUTransferBuffer(gpu, twinklingStarTransferBuffer);
+    SDL_UnmapGPUTransferBuffer(m_gpu, twinklingStarTransferBuffer);
 
     SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdbuf);
 
@@ -1062,14 +1062,14 @@ void RenderSystem::createVelocityVectorGPUBufferAndPipeline()
 {
     SDL_GPUBufferCreateInfo vb_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX,
                                        .size = MAX_VELOCITY_VECTOR_VERTICES * sizeof(VelocityVectorVertex)};
-    velocityVectorVertexBuffer = SDL_CreateGPUBuffer(gpu, &vb_info);
+    velocityVectorVertexBuffer = SDL_CreateGPUBuffer(m_gpu, &vb_info);
 
     SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
                                                .size = MAX_VELOCITY_VECTOR_VERTICES * sizeof(VelocityVectorVertex)};
-    velocityVectorTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
+    velocityVectorTransferBuffer = SDL_CreateGPUTransferBuffer(m_gpu, &tb_info);
 
-    SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/VelocityVector.vert", 0, 1);
-    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/VelocityVector.frag", 0, 0);
+    SDL_GPUShader* vert_shader = LoadShader(m_gpu, "Shaders/VelocityVector.vert", 0, 1);
+    SDL_GPUShader* frag_shader = LoadShader(m_gpu, "Shaders/VelocityVector.frag", 0, 0);
 
     SDL_GPUVertexAttribute vertex_attributes[2];
     vertex_attributes[0].location = 0;
@@ -1086,7 +1086,7 @@ void RenderSystem::createVelocityVectorGPUBufferAndPipeline()
     pipeline_info.target_info.num_color_targets = 1;
 
     SDL_GPUColorTargetDescription color_target = {};
-    color_target.format = SDL_GetGPUSwapchainTextureFormat(gpu, window);
+    color_target.format = SDL_GetGPUSwapchainTextureFormat(m_gpu, m_window);
     color_target.blend_state.enable_blend = true;
     color_target.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
     color_target.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
@@ -1108,10 +1108,10 @@ void RenderSystem::createVelocityVectorGPUBufferAndPipeline()
     pipeline_info.vertex_input_state.vertex_buffer_descriptions = &vbo_desc;
     pipeline_info.vertex_input_state.num_vertex_buffers = 1;
 
-    velocityVectorPipeline = SDL_CreateGPUGraphicsPipeline(gpu, &pipeline_info);
+    velocityVectorPipeline = SDL_CreateGPUGraphicsPipeline(m_gpu, &pipeline_info);
 
-    SDL_ReleaseGPUShader(gpu, vert_shader);
-    SDL_ReleaseGPUShader(gpu, frag_shader);
+    SDL_ReleaseGPUShader(m_gpu, vert_shader);
+    SDL_ReleaseGPUShader(m_gpu, frag_shader);
 }
 
 void RenderSystem::createStarshipGPUBufferAndPipeline()
@@ -1119,14 +1119,14 @@ void RenderSystem::createStarshipGPUBufferAndPipeline()
     SDL_GPUBufferCreateInfo vb_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX,
                                        .size = MAX_STARSHIP_VERTICES * sizeof(StarshipVertex)};
 
-    starshipVertexBuffer = SDL_CreateGPUBuffer(gpu, &vb_info);
+    starshipVertexBuffer = SDL_CreateGPUBuffer(m_gpu, &vb_info);
 
     SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
                                                .size = MAX_STARSHIP_VERTICES * sizeof(StarshipVertex)};
-    starshipTransferBuffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
+    starshipTransferBuffer = SDL_CreateGPUTransferBuffer(m_gpu, &tb_info);
 
-    SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/Starship.vert", 0, 1);
-    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/Starship.frag", 1, 0); // 1 sampler
+    SDL_GPUShader* vert_shader = LoadShader(m_gpu, "Shaders/Starship.vert", 0, 1);
+    SDL_GPUShader* frag_shader = LoadShader(m_gpu, "Shaders/Starship.frag", 1, 0); // 1 sampler
 
     SDL_GPUVertexAttribute vertex_attributes[5];
 
@@ -1164,7 +1164,7 @@ void RenderSystem::createStarshipGPUBufferAndPipeline()
     pipeline_info.target_info.num_color_targets = 1;
 
     SDL_GPUColorTargetDescription color_target = {};
-    color_target.format = SDL_GetGPUSwapchainTextureFormat(gpu, window);
+    color_target.format = SDL_GetGPUSwapchainTextureFormat(m_gpu, m_window);
     color_target.blend_state.enable_blend = true;
 
     // Premultiplied alpha (the sprite's colours were already multiplied by alpha when it was loaded), so the
@@ -1193,11 +1193,11 @@ void RenderSystem::createStarshipGPUBufferAndPipeline()
     pipeline_info.vertex_input_state.vertex_buffer_descriptions = &vbo_desc;
     pipeline_info.vertex_input_state.num_vertex_buffers = 1;
 
-    starshipPipeline = SDL_CreateGPUGraphicsPipeline(gpu, &pipeline_info);
+    starshipPipeline = SDL_CreateGPUGraphicsPipeline(m_gpu, &pipeline_info);
     if (!starshipPipeline)
         std::cerr << "Starship pipeline creation failed: " << SDL_GetError() << std::endl;
-    SDL_ReleaseGPUShader(gpu, vert_shader);
-    SDL_ReleaseGPUShader(gpu, frag_shader);
+    SDL_ReleaseGPUShader(m_gpu, vert_shader);
+    SDL_ReleaseGPUShader(m_gpu, frag_shader);
 }
 
 void RenderSystem::buildVelocityVectorGeometry(DynamoEngine::Vector2D lineStart, DynamoEngine::Vector2D lineEnd)
@@ -1260,9 +1260,9 @@ void RenderSystem::uploadVelocityVectorVertices(SDL_GPUCommandBuffer* cmdbuf)
         velocityVectorVertices.resize(MAX_VELOCITY_VECTOR_VERTICES);
     }
 
-    void* map = SDL_MapGPUTransferBuffer(gpu, velocityVectorTransferBuffer, true);
+    void* map = SDL_MapGPUTransferBuffer(m_gpu, velocityVectorTransferBuffer, true);
     SDL_memcpy(map, velocityVectorVertices.data(), velocityVectorVertices.size() * sizeof(VelocityVectorVertex));
-    SDL_UnmapGPUTransferBuffer(gpu, velocityVectorTransferBuffer);
+    SDL_UnmapGPUTransferBuffer(m_gpu, velocityVectorTransferBuffer);
 
     SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdbuf);
     SDL_GPUTransferBufferLocation src = {.transfer_buffer = velocityVectorTransferBuffer, .offset = 0};
@@ -1293,14 +1293,14 @@ void RenderSystem::createDebugLineGPUBufferAndPipeline()
 {
     SDL_GPUBufferCreateInfo vb_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX,
                                        .size = MAX_DEBUG_LINE_VERTICES * sizeof(DebugLineVertex)};
-    m_debug_line_vertex_buffer = SDL_CreateGPUBuffer(gpu, &vb_info);
+    m_debug_line_vertex_buffer = SDL_CreateGPUBuffer(m_gpu, &vb_info);
 
     SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
                                                .size = MAX_DEBUG_LINE_VERTICES * sizeof(DebugLineVertex)};
-    m_debug_line_transfer_buffer = SDL_CreateGPUTransferBuffer(gpu, &tb_info);
+    m_debug_line_transfer_buffer = SDL_CreateGPUTransferBuffer(m_gpu, &tb_info);
 
-    SDL_GPUShader* vert_shader = LoadShader(gpu, "Shaders/DebugLine.vert", 0, 1);
-    SDL_GPUShader* frag_shader = LoadShader(gpu, "Shaders/DebugLine.frag", 0, 0);
+    SDL_GPUShader* vert_shader = LoadShader(m_gpu, "Shaders/DebugLine.vert", 0, 1);
+    SDL_GPUShader* frag_shader = LoadShader(m_gpu, "Shaders/DebugLine.frag", 0, 0);
 
     // The three fields of DebugLineVertex, in the order the vertex shader lists its inputs
     SDL_GPUVertexAttribute vertex_attributes[3];
@@ -1324,7 +1324,7 @@ void RenderSystem::createDebugLineGPUBufferAndPipeline()
     vertex_attributes[2].buffer_slot = 0;
 
     SDL_GPUColorTargetDescription color_target = {};
-    color_target.format = SDL_GetGPUSwapchainTextureFormat(gpu, window);
+    color_target.format = SDL_GetGPUSwapchainTextureFormat(m_gpu, m_window);
     color_target.blend_state.enable_blend = true;
     color_target.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
     color_target.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
@@ -1347,11 +1347,11 @@ void RenderSystem::createDebugLineGPUBufferAndPipeline()
     pipeline_info.vertex_input_state.vertex_buffer_descriptions = &vbo_desc;
     pipeline_info.vertex_input_state.num_vertex_buffers = 1;
 
-    m_debug_line_pipeline = SDL_CreateGPUGraphicsPipeline(gpu, &pipeline_info);
+    m_debug_line_pipeline = SDL_CreateGPUGraphicsPipeline(m_gpu, &pipeline_info);
     if (!m_debug_line_pipeline)
         std::cerr << "Debug line pipeline creation failed: " << SDL_GetError() << std::endl;
-    SDL_ReleaseGPUShader(gpu, vert_shader);
-    SDL_ReleaseGPUShader(gpu, frag_shader);
+    SDL_ReleaseGPUShader(m_gpu, vert_shader);
+    SDL_ReleaseGPUShader(m_gpu, frag_shader);
 }
 
 void RenderSystem::buildDebugLines(const GameState& game_state, UIState& ui_state)
@@ -1364,7 +1364,7 @@ void RenderSystem::buildDebugLines(const GameState& game_state, UIState& ui_stat
 
     // Planets: their collision circle is simply their radius (yellow)
     const SDL_FColor PLANET_COLOR = {1.0f, 0.9f, 0.1f, 1.0f};
-    for (const GravitationalBody& body : game_state.getMacroBodies())
+    for (const GravitationalBody& body : game_state.getUniverseState().macro_bodies)
     {
         addDebugCircle(body.position, body.previousPosition, body.radius, PLANET_COLOR);
     }
@@ -1372,7 +1372,7 @@ void RenderSystem::buildDebugLines(const GameState& game_state, UIState& ui_stat
     // The ship: its hitbox polygon (green). One tick ago it was the same shape moved back by this tick's movement
     // (the rotation isn't interpolated, exactly like the sprite)
     const SDL_FColor SHIP_COLOR = {0.2f, 1.0f, 0.3f, 1.0f};
-    const Starship& ship = game_state.getPlayer().starship;
+    const Starship& ship = game_state.getUniverseState().ship;
     std::vector<DynamoEngine::Vector2D> corners = ship.collisionPolygon();
     DynamoEngine::Vector2D movement = ship.movementThisTick();
     for (size_t i = 0; i < corners.size(); ++i)
@@ -1422,9 +1422,9 @@ void RenderSystem::uploadDebugLines(SDL_GPUCommandBuffer* cmdbuf)
     }
 
     // cycle = true: last frame's commands may still be reading these buffers; SDL hands us a free copy instead
-    void* map = SDL_MapGPUTransferBuffer(gpu, m_debug_line_transfer_buffer, true);
+    void* map = SDL_MapGPUTransferBuffer(m_gpu, m_debug_line_transfer_buffer, true);
     SDL_memcpy(map, m_debug_line_vertices.data(), m_debug_line_vertices.size() * sizeof(DebugLineVertex));
-    SDL_UnmapGPUTransferBuffer(gpu, m_debug_line_transfer_buffer);
+    SDL_UnmapGPUTransferBuffer(m_gpu, m_debug_line_transfer_buffer);
 
     SDL_GPUCopyPass* copy_pass = SDL_BeginGPUCopyPass(cmdbuf);
     SDL_GPUTransferBufferLocation src = {.transfer_buffer = m_debug_line_transfer_buffer, .offset = 0};

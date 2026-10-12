@@ -42,9 +42,9 @@ void Game::StartGame()
 void Game::EndGame()
 {
     inputSystem.cleanUp();
-    audioSystem.CleanUp();
-    physicsSystem.CleanUp();
-    renderSystem.CleanUp();
+    audioSystem.cleanUp();
+    physicsSystem.cleanUp();
+    renderSystem.cleanUp();
 }
 void Game::Run()
 {
@@ -136,8 +136,8 @@ void Game::Run()
         float physics_time = (float)((phys_total_end - phys_total_start) * 1000) / perf_freq;
         float rendering_time = (float)((render_end - render_start) * 1000) / perf_freq;
 
-        // printf("N=%zu | Rend: %.3f | Phys: %.3f\n", game_state.getParticles().size() +
-        // game_state.getMacroBodies().size(),
+        // printf("N=%zu | Rend: %.3f | Phys: %.3f\n", game_state.getUniverseState().particles.size() +
+        // game_state.getUniverseState().macro_bodies.size(),
         //        rendering_time, physics_time);
         // printf("Profile Time [ms] | Input: %.3f | Inst: %.3f | Audio: %.3f | Phys: %.3f | Rend: %.3f\n", input_time,
         //        instantiation_time, audio_playback_time, physics_time, rendering_time);
@@ -155,14 +155,14 @@ void Game::ProcessInput(float frame_seconds)
 void Game::IntegratePhysicsFrame()
 {
     // Dispatch to Physics System
-    physicsSystem.UpdateSystemFrame(game_state, ui_state);
+    physicsSystem.advanceUniverseState(game_state.getUniverseStateMutable(), ui_state);
 }
 
-void Game::UpdateInstantiations() { physicsSystem.UpdateGravBodyInstantiations(game_state, ui_state); }
+void Game::UpdateInstantiations() { physicsSystem.updateGravBodyInstantiations(game_state, ui_state); }
 void Game::RenderFrame()
 {
     // Dispatch to Render System -- renders the current scene's UI as well.
-    renderSystem.RenderFullFrame(game_state, ui_state, scenes.currentScene());
+    renderSystem.renderFullFrame(game_state, ui_state, scenes.currentScene());
 }
 
 void Game::PlayAudio() { audioSystem.ProcessSystemAudioFrame(game_state, ui_state); }

@@ -3,13 +3,16 @@
 #pragma once
 
 // Custom Imports
+#include "Core/DEPRECATED_InputState.hpp"
 #include "Core/GameState.hpp"
 #include "Core/SpawnSettings.hpp"
 #include "Core/UIState.hpp"
+#include "Core/UniverseState.hpp"
 #include "DynamoEngine/Math/Vector2.hpp"
 #include "DynamoEngine/Physics/Collision2D.hpp"
 #include "Entities/Physics/GravitationalBody.hpp"
 #include "Entities/Physics/GravitationalBodyPair.hpp"
+#include "Systems/Physics/VelocityVerletIntegration.hpp"
 #include "Utilities/Constants/EngineConstants.hpp"
 #include "Utilities/Constants/GameSystemConstants.hpp"
 #include "Utilities/Constants/PhysicsConstants.hpp"
@@ -44,86 +47,77 @@ class PhysicsSystem
 
     // Method to update Physics System. Handles all physics interactions and
     // body instantiations for one physics frame
-    void UpdateSystemFrame(GameState& game_state, UIState& uiState);
+    void advanceUniverseState(UniverseState& universe_state, UIState& ui_state);
     // Helper method called in the destructor to clear up physics-related
     // contents
-    void CleanUp();
-    void UpdateGravBodyInstantiations(GameState& game_state, UIState& uiState);
+    void cleanUp();
+    void updateGravBodyInstantiations(GameState& game_state, UIState& ui_state);
 
   private:
+    void integrateUniversePhysics(UniverseState& universe_state);
     // Removes the most recently spawned planet or cluster that still exists, with all of its debris (plain Delete)
-    void removeNewestSpawn(GameState& game_state);
+    void removeNewestSpawn(UniverseState& universe_state);
 
     // --- Collision Handling ---
     // Top-level collision handler. Makes decisions about the kinds of
     // collisions encountered and dispatches to the subhandlers
-    void handleCollisions(GameState& game_state);
-    void handleMacroMacroCollisions(GameState& game_state);
-    void handleMacroParticleCollisions(GameState& game_state);
-    void handleParticleParticleCollisions(GameState& game_state);
+    void handleCollisionEvents(UniverseState& universe_state);
+    void handleMacroMacroCollisions(UniverseState& universe_state);
+    void handleMacroParticleCollisions(UniverseState& universe_state);
+    void handleParticleParticleCollisions(UniverseState& universe_state);
     // The player's ship against planets and debris: never overlapping, bouncing with SHIP_RESTITUTION
-    void handleShipCollisions(GameState& game_state);
+    void handleShipCollisions(UniverseState& universe_state);
     // Pushes the ship and one body apart along the contact normal, then bounces them if they're still closing.
     // Returns the kinetic energy the bounce absorbed (0 if they weren't closing).
     double resolveShipContact(Starship& ship, GravitationalBody& body, const DynamoEngine::CircleContact& contact);
 
     void handleDynamicCollision(GravitationalBodyPair& grav_body_pair, const CollisionInfo& collisionInfo,
-                                GameState& game_state);
+                                UniverseState& universe_state);
     // Handles a 'bouncy' (elastic) collision between two bodies, when the collision
     // satisfies Engine-Constant-defined constraints
     void handleElasticCollisions(GravitationalBody& smallerBody, GravitationalBody& largerBody);
     void handleAccretion(GravitationalBodyPair& grav_body_pair);
-    void promoteOversizedParticles(GameState& game_state); // TODO: Prune? currently uncalled, see UpdateSystemFrame
+    // TODO: Prune? currently uncalled, see updateSystemFrame
+    void promoteOversizedParticles(UniverseState& universe_state);
     // Both append the new fragments to `fragments_out`. During collisions that is m_pending_fragments, never the
     // particles vector itself: the collision loops are still walking over (and holding references into) particles.
     void substituteWithParticles(GravitationalBody& original_body, std::vector<GravitationalBody>& fragments_out,
-                                 uint32_t targetFragmentCount);
+                                 uint32_t target_fragment_count);
     void substituteWithParticlesFromImpact(GravitationalBody& original_body,
-                                           std::vector<GravitationalBody>& fragments_out, uint32_t targetFragmentCount,
-                                           const DynamoEngine::Vector2D& impactPoint);
+                                           std::vector<GravitationalBody>& fragments_out,
+                                           uint32_t target_fragment_count, const DynamoEngine::Vector2D& impactPoint);
     // Particles alive now plus fragments waiting to join them (what MAX_LIVE_PARTICLES limits)
-    size_t liveParticleCount(const GameState& game_state) const;
+    size_t liveParticleCount(const UniverseState& universe_state) const;
     // Live particles plus the worst case still to come: every macro body shattering into DEFAULT_FRAGMENT_COUNT
-    size_t potentialParticleCount(const GameState& game_state) const;
+    size_t potentialParticleCount(const UniverseState& universe_state) const;
     // Checks if there is room for a given number of new particles within the MAX_LIVE_PARTICLES limit
-    bool hasRoomForParticles(const GameState& game_state, size_t new_particle_count) const;
+    bool hasRoomForParticles(const UniverseState& universe_state, size_t new_particle_count) const;
 
     // --- Gravity ---
-    void updateAllForces(GameState& game_state); // Gravity calculation dispatch helper
-    void updateGravityForSystem(GameState& game_state);
-    void calculateGravity(GravitationalBody& firstBody,
-                          GravitationalBody& secondBody); // Calculate and apply gravity between two
-                                                          // gravitational bodies
+    void recomputeAllForces(UniverseState& universe_state); // Gravity calculation dispatch helper
+    void addGravityBetweenGravBodies(UniverseState& universe_state);
+    void addGravityBetweenGravBodyPair(GravitationalBody& firstBody,
+                                       GravitationalBody& secondBody); // Calculate and apply gravity between two
+                                                                       // gravitational bodies
     // Gravity between the player's ship and every planet, both ways (the ship pulls the gravitational bodies too)
-    void updateShipGravity(GameState& game_state);
-
-    // --- Integration (Velocity Verlet) ---
-    void integrateForwardsVelocityVerletPhase1(GameState& game_state);
-    void applyVelocityVerletPhase1(GravitationalBody& grav_body);
-    void integrateForwardsVelocityVerletPhase2(GameState& game_state);
-    void applyVelocityVerletPhase2(GravitationalBody& grav_body);
+    void addGravityBetweenShipAndBodies(UniverseState& universe_state);
 
     // --- Gravitational Body Creation Mechanisms ---
-    void createMacroBody(GameState& game_state, DEPRECATED_InputState& input_state,
+    void createMacroBody(UniverseState& universe_state, const CameraState& camera_state,
+                         DEPRECATED_InputState& input_state,
                          const SpawnSettings& spawn_settings); // Creates a Macro Gravitational Body
                                                                // with the user-defined attributes
-    void createParticle(GameState& game_state,
-                        DEPRECATED_InputState& input_state); // TODO: Prune? declared, never defined or called
-    void createParticleCluster(GameState& game_state, DEPRECATED_InputState& input_state,
-                               const SpawnSettings& spawn_settings); // TODO: Prune? declared, never defined or called
-
-    // --- Utility ---
-    void calculateTotalEnergy(GameState& game_state); // TODO: Prune? currently uncalled, see UpdateSystemFrame
-                                                      //  Calculates total energy of all Macro Bodies and
-                                                      //  Particles on screen.
+    void createParticleCluster(UniverseState& universe_state, const CameraState& camera_state,
+                               DEPRECATED_InputState& input_state, const SpawnSettings& spawn_settings);
 
     // --- Player Physics ---
-    void updatePlayerPhysics(GameState& game_state, UIState& uiState);
+    void applyShipInputPhysics(UniverseState& universe_state, UIState& ui_state);
     // --- Cleanup ---
-    void cleanupParticles(GameState& game_state);   // Clears any Particles from the screen flagged
-                                                    // as marked for deletion
-    void cleanupMacroBodies(GameState& game_state); // Clears any Macro Bodies from the screen
-                                                    // flagged as marked for deletion
+    void cleanupGravBodies(UniverseState& universe_state);  // calls the subcleaners in succession
+    void cleanupParticles(UniverseState& universe_state);   // Clears any Particles from the screen flagged
+                                                            // as marked for deletion
+    void cleanupMacroBodies(UniverseState& universe_state); // Clears any Macro Bodies from the screen
+                                                            // flagged as marked for deletion
     // --- Data Members ---
     UniformParticleGrid particleGrid;
 

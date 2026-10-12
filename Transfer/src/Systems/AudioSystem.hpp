@@ -43,7 +43,7 @@ class AudioSystem
     void cleanupFinishedSFX();
 
     // Clean up helper
-    void CleanUp();
+    void cleanUp();
 
   private:
     std::mt19937 rng{std::random_device{}()};

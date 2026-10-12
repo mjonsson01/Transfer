@@ -10,54 +10,48 @@ PhysicsSystem::PhysicsSystem()
 
 PhysicsSystem::~PhysicsSystem() {}
 
-void PhysicsSystem::UpdateSystemFrame(GameState& game_state, UIState& ui_state)
+void PhysicsSystem::advanceUniverseState(UniverseState& universe_state, UIState& ui_state)
 {
-    // Mental Model of System
-
-    // Game updates gravitational body instantiations outside of Physics loop because the instantiations should be
-    // rendered immediately (even with stopped time)
-
     // First, handle collisions, then integrate, then update forces, then integrate again, then finally cleanup
+    handleCollisionEvents(universe_state);
 
-    handleCollisions(game_state);
+    applyShipInputPhysics(universe_state, ui_state);
 
-    updatePlayerPhysics(game_state, ui_state);
+    integrateUniversePhysics(universe_state);
 
-    // promoteOversizedParticles(game_state); //TODO: Review?
-
-    // Update forces (grav, later will add electromagnetic)
-    integrateForwardsVelocityVerletPhase1(game_state);
-    updateAllForces(game_state);
-    integrateForwardsVelocityVerletPhase2(game_state);
-
-    cleanupMacroBodies(game_state);
-    cleanupParticles(game_state);
-
-    // Verify calculation doesn't cook us
-    // calculateTotalEnergy(game_state); //TODO: Review?
+    cleanupGravBodies(universe_state);
 }
 
-void PhysicsSystem::CleanUp()
+void PhysicsSystem::integrateUniversePhysics(UniverseState& universe_state)
+{
+    // Update forces (grav, later will add electromagnetic)
+    integrateVelocityVerletFirstHalfStep(universe_state);
+    recomputeAllForces(universe_state);
+    integrateVelocityVerletSecondHalfStep(universe_state);
+}
+
+void PhysicsSystem::cleanUp()
 {
     // Any necessary cleanup code for the physics system
 }
 
-void PhysicsSystem::UpdateGravBodyInstantiations(GameState& game_state, UIState& ui_state)
+void PhysicsSystem::updateGravBodyInstantiations(GameState& game_state, UIState& ui_state)
 {
     DEPRECATED_InputState& input_state = ui_state.getMutableDEPRECATED_InputState();
+    UniverseState& universe_state = game_state.getUniverseStateMutable();
     if (!input_state.UIInputConsumed)
     {
         if (input_state.isCreatingMacro)
         {
             createMacroBody(
-                game_state, input_state,
+                universe_state, game_state.getCameraState(), input_state,
                 ui_state.spawnSettings()); // can inline replace with other create* methods for test. isCreatingMacro
                                            // should eventually be unique to just creating planets, etc.
             input_state.resetTransientFlags();
         }
         else if (input_state.isCreatingParticleCluster)
         {
-            createParticleCluster(game_state, input_state, ui_state.spawnSettings());
+            createParticleCluster(universe_state, game_state.getCameraState(), input_state, ui_state.spawnSettings());
             input_state.resetTransientFlags();
         }
     }
@@ -68,21 +62,21 @@ void PhysicsSystem::UpdateGravBodyInstantiations(GameState& game_state, UIState&
     // Undo the newest spawn (plain Delete)
     if (input_state.removeNewestSpawn)
     {
-        removeNewestSpawn(game_state);
+        removeNewestSpawn(universe_state);
         input_state.removeNewestSpawn = false;
     }
     // Check if all Gravitational Bodies are supposed to be wiped
     if (input_state.clearAll)
     {
-        game_state.getMacroBodiesMutable().clear();
-        game_state.getParticlesMutable().clear();
+        universe_state.macro_bodies.clear();
+        universe_state.particles.clear();
         input_state.clearAll = false;
     }
 }
-void PhysicsSystem::removeNewestSpawn(GameState& game_state)
+void PhysicsSystem::removeNewestSpawn(UniverseState& universe_state)
 {
-    std::vector<GravitationalBody>& macro_bodies = game_state.getMacroBodiesMutable();
-    std::vector<GravitationalBody>& particles = game_state.getParticlesMutable();
+    std::vector<GravitationalBody>& macro_bodies = universe_state.macro_bodies;
+    std::vector<GravitationalBody>& particles = universe_state.particles;
 
     // Every spawn gets the next ID and its debris inherits it, so the newest spawn still in the scene is simply the
     // highest ID any body still carries. (A spawn that merged into another body no longer exists, so it's skipped.)
@@ -135,29 +129,29 @@ static inline GravitationalBodyPair pickMassPair(GravitationalBody& a, Gravitati
     return {&b, &a, abs(b.mass / a.mass), false};
 }
 
-void PhysicsSystem::handleCollisions(GameState& game_state)
+void PhysicsSystem::handleCollisionEvents(UniverseState& universe_state)
 {
     // Shatters during these passes put their fragments in m_pending_fragments, not in particles
-    handleMacroMacroCollisions(game_state);
-    handleMacroParticleCollisions(game_state);
-    handleParticleParticleCollisions(game_state);
-    handleShipCollisions(game_state);
-    handleParticleParticleCollisions(game_state);
+    handleMacroMacroCollisions(universe_state);
+    handleMacroParticleCollisions(universe_state);
+    handleParticleParticleCollisions(universe_state);
+    handleShipCollisions(universe_state);
+    handleParticleParticleCollisions(universe_state);
 
     // All loops over particles are finished: now it's safe to grow the vector
-    std::vector<GravitationalBody>& particles = game_state.getParticlesMutable();
+    std::vector<GravitationalBody>& particles = universe_state.particles;
     particles.insert(particles.end(), m_pending_fragments.begin(), m_pending_fragments.end());
     m_pending_fragments.clear(); // clear() keeps the memory, so next tick's shatters don't allocate again
 }
 
-size_t PhysicsSystem::liveParticleCount(const GameState& game_state) const
+size_t PhysicsSystem::liveParticleCount(const UniverseState& universe_state) const
 {
-    return game_state.getParticles().size() + m_pending_fragments.size();
+    return universe_state.particles.size() + m_pending_fragments.size();
 }
 
-void PhysicsSystem::handleMacroMacroCollisions(GameState& game_state)
+void PhysicsSystem::handleMacroMacroCollisions(UniverseState& universe_state)
 {
-    std::vector<GravitationalBody>& macro_body_list = game_state.getMacroBodiesMutable();
+    std::vector<GravitationalBody>& macro_body_list = universe_state.macro_bodies;
     size_t num_macro_bodies = macro_body_list.size();
 
     for (size_t i = 0; i < num_macro_bodies; ++i)
@@ -184,7 +178,7 @@ void PhysicsSystem::handleMacroMacroCollisions(GameState& game_state)
             }
 
             GravitationalBodyPair grav_body_pair = pickMassPair(first_body, second_body);
-            handleDynamicCollision(grav_body_pair, collision_info, game_state);
+            handleDynamicCollision(grav_body_pair, collision_info, universe_state);
             // first_body may have just shattered or been absorbed: it's gone, so it can't hit anything else this tick
             if (first_body.isMarkedForDeletion)
             {
@@ -194,10 +188,10 @@ void PhysicsSystem::handleMacroMacroCollisions(GameState& game_state)
     }
 }
 
-void PhysicsSystem::handleMacroParticleCollisions(GameState& game_state)
+void PhysicsSystem::handleMacroParticleCollisions(UniverseState& universe_state)
 {
-    std::vector<GravitationalBody>& particles = game_state.getParticlesMutable();
-    std::vector<GravitationalBody>& macro_bodies = game_state.getMacroBodiesMutable();
+    std::vector<GravitationalBody>& particles = universe_state.particles;
+    std::vector<GravitationalBody>& macro_bodies = universe_state.macro_bodies;
 
     for (auto& particle : particles)
     {
@@ -220,7 +214,7 @@ void PhysicsSystem::handleMacroParticleCollisions(GameState& game_state)
             }
 
             GravitationalBodyPair grav_body_pair = pickMassPair(particle, macro_body);
-            handleDynamicCollision(grav_body_pair, collision_info, game_state);
+            handleDynamicCollision(grav_body_pair, collision_info, universe_state);
             // The particle may have just been absorbed: it's gone, so it can't hit anything else this tick
             if (particle.isMarkedForDeletion)
             {
@@ -230,9 +224,9 @@ void PhysicsSystem::handleMacroParticleCollisions(GameState& game_state)
     }
 }
 
-void PhysicsSystem::handleParticleParticleCollisions(GameState& game_state)
+void PhysicsSystem::handleParticleParticleCollisions(UniverseState& universe_state)
 {
-    std::vector<GravitationalBody>& particles = game_state.getParticlesMutable();
+    std::vector<GravitationalBody>& particles = universe_state.particles;
 
     particleGrid.build(particles);
 
@@ -261,7 +255,7 @@ void PhysicsSystem::handleParticleParticleCollisions(GameState& game_state)
             }
 
             GravitationalBodyPair grav_body_pair = pickMassPair(particles[i], particles[j]);
-            handleDynamicCollision(grav_body_pair, collision_info, game_state);
+            handleDynamicCollision(grav_body_pair, collision_info, universe_state);
             // particles[i] may have just been absorbed: it's gone, so it can't hit anything else this tick
             if (particles[i].isMarkedForDeletion)
             {
@@ -270,13 +264,13 @@ void PhysicsSystem::handleParticleParticleCollisions(GameState& game_state)
         }
     }
 }
-void PhysicsSystem::handleShipCollisions(GameState& game_state)
+void PhysicsSystem::handleShipCollisions(UniverseState& universe_state)
 {
-    Starship& ship = game_state.getPlayerMutable().starship;
+    Starship& ship = universe_state.ship;
     double impact_energy_this_tick = 0.0;
 
     // Planets
-    for (GravitationalBody& body : game_state.getMacroBodiesMutable())
+    for (GravitationalBody& body : universe_state.macro_bodies)
     {
         if (!body.isCollidable || body.isMacroGhost || body.isMarkedForDeletion)
         {
@@ -293,7 +287,7 @@ void PhysicsSystem::handleShipCollisions(GameState& game_state)
     // Debris: a cheap distance check against the ship's bounding radius first, so only the few particles near the
     // ship get the full polygon test
     double ship_reach = ship.boundingRadius();
-    for (GravitationalBody& particle : game_state.getParticlesMutable())
+    for (GravitationalBody& particle : universe_state.particles)
     {
         if (!particle.isCollidable || particle.isMarkedForDeletion)
         {
@@ -352,7 +346,7 @@ double PhysicsSystem::resolveShipContact(Starship& ship, GravitationalBody& body
     return 0.5 * reduced_mass * normal_speed * normal_speed * (1.0 - SHIP_RESTITUTION * SHIP_RESTITUTION);
 }
 void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& grav_body_pair, const CollisionInfo& collisionInfo,
-                                           GameState& game_state)
+                                           UniverseState& universe_state)
 {
     GravitationalBody& heavier = *grav_body_pair.heavierBody;
     GravitationalBody& lighter = *grav_body_pair.lighterBody;
@@ -607,11 +601,11 @@ void PhysicsSystem::handleAccretion(GravitationalBodyPair& grav_body_pair)
     lighter.isMarkedForDeletion = true;
 }
 
-// TODO: Prune? currently uncalled, see commented invocation in UpdateSystemFrame
-void PhysicsSystem::promoteOversizedParticles(GameState& game_state)
+// TODO: Prune? currently uncalled, see commented invocation in updateSystemFrame
+void PhysicsSystem::promoteOversizedParticles(UniverseState& universe_state)
 {
-    auto& particles = game_state.getParticlesMutable();
-    auto& macro_bodies = game_state.getMacroBodiesMutable();
+    auto& particles = universe_state.particles;
+    auto& macro_bodies = universe_state.macro_bodies;
 
     for (auto& particle : particles)
     {
@@ -620,7 +614,7 @@ void PhysicsSystem::promoteOversizedParticles(GameState& game_state)
             continue;
         }
 
-        game_state.incrementMaxIDInstantiated();
+        universe_state.newest_spawn_id++;
 
         GravitationalBody promoted;
         promoted.position = particle.position;
@@ -631,7 +625,7 @@ void PhysicsSystem::promoteOversizedParticles(GameState& game_state)
         promoted.mass = particle.mass;
         promoted.invMass = particle.invMass;
         promoted.radius = particle.radius;
-        promoted.macroIdentifier = game_state.getMaxIDInstantiated();
+        promoted.macroIdentifier = universe_state.newest_spawn_id;
 
         promoted.isMacro = true;
         promoted.isAccretable = true;
@@ -648,10 +642,11 @@ void PhysicsSystem::promoteOversizedParticles(GameState& game_state)
 }
 
 void PhysicsSystem::substituteWithParticles(GravitationalBody& original_body,
-                                            std::vector<GravitationalBody>& fragments_out, uint32_t targetFragmentCount)
+                                            std::vector<GravitationalBody>& fragments_out,
+                                            uint32_t target_fragment_count)
 {
     size_t first_new_fragment = fragments_out.size();
-    layOutFragments(original_body, targetFragmentCount, fragments_out);
+    layOutFragments(original_body, target_fragment_count, fragments_out);
 
     // Each fragment keeps roughly the original's velocity, randomly scaled so the pieces spread out
     for (size_t i = first_new_fragment; i < fragments_out.size(); ++i)
@@ -664,7 +659,7 @@ void PhysicsSystem::substituteWithParticles(GravitationalBody& original_body,
 
 void PhysicsSystem::substituteWithParticlesFromImpact(GravitationalBody& original_body,
                                                       std::vector<GravitationalBody>& fragments_out,
-                                                      uint32_t targetFragmentCount,
+                                                      uint32_t target_fragment_count,
                                                       const DynamoEngine::Vector2D& impactPoint)
 {
     const double R = original_body.radius;
@@ -672,7 +667,7 @@ void PhysicsSystem::substituteWithParticlesFromImpact(GravitationalBody& origina
 
     size_t start_index = fragments_out.size(); // this body's fragments are the ones added after this point
 
-    substituteWithParticles(original_body, fragments_out, targetFragmentCount);
+    substituteWithParticles(original_body, fragments_out, target_fragment_count);
 
     // Grow radius with distance from the impact point: near-impact fragments stay small and
     // pulverized, far-side fragments stay large and coherent -- keyed off the actual contact
@@ -700,17 +695,17 @@ void PhysicsSystem::substituteWithParticlesFromImpact(GravitationalBody& origina
 
 // --------- GRAVITY --------- //
 
-void PhysicsSystem::updateAllForces(GameState& game_state)
+void PhysicsSystem::recomputeAllForces(UniverseState& universe_state)
 {
-    updateGravityForSystem(game_state);
-    updateShipGravity(game_state);
+    addGravityBetweenGravBodies(universe_state);
+    addGravityBetweenShipAndBodies(universe_state);
     // Update other forces
 }
 
-void PhysicsSystem::updateGravityForSystem(GameState& game_state)
+void PhysicsSystem::addGravityBetweenGravBodies(UniverseState& universe_state)
 {
-    std::vector<GravitationalBody>& macro_bodies = game_state.getMacroBodiesMutable();
-    std::vector<GravitationalBody>& particles = game_state.getParticlesMutable();
+    std::vector<GravitationalBody>& macro_bodies = universe_state.macro_bodies;
+    std::vector<GravitationalBody>& particles = universe_state.particles;
     size_t num_macro_bodies = macro_bodies.size();
     size_t num_particles = particles.size();
 
@@ -719,7 +714,7 @@ void PhysicsSystem::updateGravityForSystem(GameState& game_state)
     {
         for (size_t j = i + 1; j < num_macro_bodies; ++j)
         {
-            calculateGravity(macro_bodies[i], macro_bodies[j]);
+            addGravityBetweenGravBodyPair(macro_bodies[i], macro_bodies[j]);
         }
     }
 
@@ -729,7 +724,7 @@ void PhysicsSystem::updateGravityForSystem(GameState& game_state)
     {
         for (size_t j = 0; j < num_macro_bodies; ++j)
         {
-            calculateGravity(particles[i], macro_bodies[j]);
+            addGravityBetweenGravBodyPair(particles[i], macro_bodies[j]);
         }
     }
 
@@ -738,26 +733,26 @@ void PhysicsSystem::updateGravityForSystem(GameState& game_state)
     // {
     //     for (size_t j = i + 1; j < num_particles; ++j)
     //     {
-    //         calculateGravity(particles[i], particles[j]);
+    //         addGravityBetweenGravBodyPair(particles[i], particles[j]);
     //     }
     // }
 }
-void PhysicsSystem::updateShipGravity(GameState& game_state)
+void PhysicsSystem::addGravityBetweenShipAndBodies(UniverseState& universe_state)
 {
     // Two-way gravity between the ship and every planet (Newton's third law): the same pull acts on both, in
     // opposite directions. The ship is so much lighter than any planet that planets barely notice it.
-    Starship& ship = game_state.getPlayerMutable().starship;
+    Starship& ship = universe_state.ship;
     DynamoEngine::Vector2D ship_center = ship.center();
     DynamoEngine::Vector2D total_force_on_ship = {0.0, 0.0};
 
-    for (GravitationalBody& body : game_state.getMacroBodiesMutable())
+    for (GravitationalBody& body : universe_state.macro_bodies)
     {
         if (firstWithinEpsilonOfSecond(body.mass, 0.0))
         {
             continue;
         }
 
-        // Same softening rule as calculateGravity (half the two sizes), so the pull stays finite up close
+        // Same softening rule as addGravityBetweenGravBodyPair (half the two sizes), so the pull stays finite up close
         double softening = (ship.halfSize() + body.radius) / 2.0;
         DynamoEngine::Vector2D direction = body.position - ship_center;
         double softened_distance = std::sqrt(direction.squareMagnitude() + softening * softening);
@@ -776,7 +771,7 @@ void PhysicsSystem::updateShipGravity(GameState& game_state)
     ship.setGravityForce(total_force_on_ship);
 }
 
-void PhysicsSystem::calculateGravity(GravitationalBody& firstBody, GravitationalBody& secondBody)
+void PhysicsSystem::addGravityBetweenGravBodyPair(GravitationalBody& firstBody, GravitationalBody& secondBody)
 {
     if (firstWithinEpsilonOfSecond(firstBody.mass, 0.0) || firstWithinEpsilonOfSecond(secondBody.mass, 0.0))
     {
@@ -817,80 +812,10 @@ void PhysicsSystem::calculateGravity(GravitationalBody& firstBody, Gravitational
         secondBody.netForce -= force;
 }
 
-// --------- INTEGRATION (VELOCITY VERLET) --------- //
-// Position integration from previous frame force.
-
-// Honestly check if we need the velocity integration calculation at all. Are we not updated that at end of
-// integration phase 2 of prev frame?
-
-void PhysicsSystem::integrateForwardsVelocityVerletPhase1(GameState& game_state)
-{
-    std::vector<GravitationalBody>& particles = game_state.getParticlesMutable();
-    std::vector<GravitationalBody>& macro_bodies = game_state.getMacroBodiesMutable();
-
-    for (auto& particle : particles)
-    {
-        applyVelocityVerletPhase1(particle);
-    }
-    for (auto& macro_body : macro_bodies)
-    {
-        applyVelocityVerletPhase1(macro_body);
-    }
-    game_state.getPlayerMutable().starship.applyVelocityVerletPhase1();
-}
-
-void PhysicsSystem::applyVelocityVerletPhase1(GravitationalBody& grav_body)
-{
-    grav_body.previousPosition = grav_body.position;
-    grav_body.prevForce = grav_body.netForce;
-    bool has_mass = !(firstWithinEpsilonOfSecond(grav_body.mass, 0.0));
-    if (has_mass && !grav_body.isForceStatic)
-    {
-        // Calculate the acceleration from the previous frame's final force
-        DynamoEngine::Vector2D acceleration = grav_body.netForce * grav_body.invMass;
-        grav_body.velocity += acceleration * (PHYSICS_TIME_STEP / 2); // Half of a full integrated step
-    }
-    // Step the position
-    grav_body.position += grav_body.velocity * PHYSICS_TIME_STEP;
-    // Reset to force 0 for next frame
-    grav_body.netForce = DynamoEngine::Vector2D(0.0, 0.0);
-}
-
-void PhysicsSystem::integrateForwardsVelocityVerletPhase2(GameState& game_state)
-{
-    std::vector<GravitationalBody>& particles = game_state.getParticlesMutable();
-    std::vector<GravitationalBody>& macro_bodies = game_state.getMacroBodiesMutable();
-
-    for (auto& particle : particles)
-    {
-        applyVelocityVerletPhase2(particle);
-    }
-    for (auto& macro_body : macro_bodies)
-    {
-        applyVelocityVerletPhase2(macro_body);
-    }
-    game_state.getPlayerMutable().starship.applyVelocityVerletPhase2();
-}
-
-void PhysicsSystem::applyVelocityVerletPhase2(GravitationalBody& grav_body)
-{
-    bool has_mass = !(firstWithinEpsilonOfSecond(grav_body.mass, 0.0));
-
-    if (!has_mass || grav_body.isForceStatic)
-    {
-        return;
-    }
-    else
-    {
-        DynamoEngine::Vector2D acceleration = grav_body.netForce * grav_body.invMass;
-        grav_body.velocity += acceleration * (PHYSICS_TIME_STEP / 2.0); // Other half of full integrated step
-    }
-}
-
 // --------- GRAVITATIONAL BODY CREATION --------- //
 
 static inline void populateGravBodyPropertiesFromDEPRECATED_InputState(GravitationalBody& grav_body,
-                                                                       GameState& game_state,
+                                                                       const CameraState& camera_state,
                                                                        DEPRECATED_InputState& input_state,
                                                                        const SpawnSettings& spawn_settings)
 {
@@ -898,7 +823,7 @@ static inline void populateGravBodyPropertiesFromDEPRECATED_InputState(Gravitati
     grav_body.mass = input_state.selectedMass;
     grav_body.invMass = 1 / grav_body.mass;
     grav_body.radius = input_state.selectedRadius;
-    grav_body.position = ScreenToWorldCoordinates(input_state.mouseCurrPosition, game_state.getCameraState());
+    grav_body.position = ScreenToWorldCoordinates(input_state.mouseCurrPosition, camera_state);
     grav_body.previousPosition = grav_body.position;
 
     // Flags (will be moved to control from within the input_state)
@@ -925,17 +850,16 @@ static inline void populateGravBodyPropertiesFromDEPRECATED_InputState(Gravitati
 
     if (input_state.isCreatingWithInitialVelocity)
     {
-        grav_body.position = ScreenToWorldCoordinates(input_state.mouseDragStartPosition, game_state.getCameraState());
+        grav_body.position = ScreenToWorldCoordinates(input_state.mouseDragStartPosition, camera_state);
         grav_body.previousPosition = grav_body.position;
-        grav_body.velocity =
-            (input_state.mouseCurrPosition - input_state.mouseDragStartPosition) / game_state.getCameraState().zoom;
+        grav_body.velocity = (input_state.mouseCurrPosition - input_state.mouseDragStartPosition) / camera_state.zoom;
     }
 }
 
-void PhysicsSystem::createMacroBody(GameState& game_state, DEPRECATED_InputState& input_state,
-                                    const SpawnSettings& spawn_settings)
+void PhysicsSystem::createMacroBody(UniverseState& universe_state, const CameraState& camera_state,
+                                    DEPRECATED_InputState& input_state, const SpawnSettings& spawn_settings)
 {
-    std::vector<GravitationalBody>& macro_bodies = game_state.getMacroBodiesMutable();
+    std::vector<GravitationalBody>& macro_bodies = universe_state.macro_bodies;
     if (input_state.selectedRadius <= 1.0)
     {
         return;
@@ -945,27 +869,27 @@ void PhysicsSystem::createMacroBody(GameState& game_state, DEPRECATED_InputState
         return;
     }
     // Budget: a new macro body might shatter later, so it needs room for all of its fragments up front
-    if (!hasRoomForParticles(game_state, DEFAULT_FRAGMENT_COUNT))
+    if (!hasRoomForParticles(universe_state, DEFAULT_FRAGMENT_COUNT))
     {
         return;
     }
-    game_state.incrementMaxIDInstantiated();
-    int new_macro_body_id = game_state.getMaxIDInstantiated();
+    universe_state.newest_spawn_id++;
+    int new_macro_body_id = universe_state.newest_spawn_id;
 
     GravitationalBody macro_body;
     macro_body.macroIdentifier = new_macro_body_id;
 
     // Pass flags from input_state as possible.
-    populateGravBodyPropertiesFromDEPRECATED_InputState(macro_body, game_state, input_state, spawn_settings);
+    populateGravBodyPropertiesFromDEPRECATED_InputState(macro_body, camera_state, input_state, spawn_settings);
 
     // Now with populated flags, nudge particles out?
     macro_bodies.push_back(macro_body);
 }
 
-void PhysicsSystem::createParticleCluster(GameState& game_state, DEPRECATED_InputState& input_state,
-                                          const SpawnSettings& spawn_settings)
+void PhysicsSystem::createParticleCluster(UniverseState& universe_state, const CameraState& camera_state,
+                                          DEPRECATED_InputState& input_state, const SpawnSettings& spawn_settings)
 {
-    std::vector<GravitationalBody>& particles = game_state.getParticlesMutable();
+    std::vector<GravitationalBody>& particles = universe_state.particles;
     if (input_state.selectedRadius <= 1.0)
     {
         return;
@@ -978,17 +902,17 @@ void PhysicsSystem::createParticleCluster(GameState& game_state, DEPRECATED_Inpu
     GravitationalBody macro_body;
 
     // Pass flags from input_state as possible.
-    populateGravBodyPropertiesFromDEPRECATED_InputState(macro_body, game_state, input_state, spawn_settings);
+    populateGravBodyPropertiesFromDEPRECATED_InputState(macro_body, camera_state, input_state, spawn_settings);
 
     // Load limit: refuse the whole cluster rather than add part of it (needs the radius, so it comes after populate)
-    if (!hasRoomForParticles(game_state, survivableFragmentCount(macro_body, DEFAULT_FRAGMENT_COUNT)))
+    if (!hasRoomForParticles(universe_state, survivableFragmentCount(macro_body, DEFAULT_FRAGMENT_COUNT)))
     {
         return;
     }
     // A spawn ID like a planet's: its particles inherit it, so Delete can undo the whole cluster at once
     // (and each cluster gets its own shader seed)
-    game_state.incrementMaxIDInstantiated();
-    macro_body.macroIdentifier = game_state.getMaxIDInstantiated();
+    universe_state.newest_spawn_id++;
+    macro_body.macroIdentifier = universe_state.newest_spawn_id;
     size_t first_new_particle = particles.size();
     substituteWithParticles(macro_body, particles, DEFAULT_FRAGMENT_COUNT); // no loop is running: add them directly
     for (size_t i = first_new_particle; i < particles.size(); ++i)
@@ -998,50 +922,11 @@ void PhysicsSystem::createParticleCluster(GameState& game_state, DEPRECATED_Inpu
     }
 }
 
-// --------- UTILITY --------- //
-
-// TODO: Prune?
-void PhysicsSystem::calculateTotalEnergy(GameState& game_state)
-{
-    auto& macro_bodies = game_state.getMacroBodies();
-    size_t num_macro_bodies = macro_bodies.size();
-
-    double total_energy = 0.0;
-    for (int i = 0; i < num_macro_bodies; ++i)
-    {
-        total_energy += macro_bodies[i].mass * macro_bodies[i].velocity.squareMagnitude() / 2.0;
-    }
-
-    for (size_t i = 0; i < num_macro_bodies; i++)
-    {
-        for (size_t j = i + 1; j < num_macro_bodies; j++)
-        {
-            double epsilon = (macro_bodies[i].radius + macro_bodies[j].radius) / 2.0; // Simple average radius
-            double epsilon_sq = epsilon * epsilon;
-
-            // 1. Calculate Distance Vector
-            DynamoEngine::Vector2D distance = macro_bodies[i].position - macro_bodies[j].position;
-
-            // 2. Calculate Distance Squared (r^2)
-            double r_sq = distance.squareMagnitude();
-
-            // 3. Calculate the Denominator Term (r^2 + epsilon^2)^(3/2)
-            // The term inside the parenthesis: rSq + epsilonSq
-            // The final term in the denominator: pow(rSq +
-            // epsilonSq, 1.5)
-            double denominator = sqrt(r_sq);
-
-            total_energy -= GRAVITATIONAL_CONSTANT * macro_bodies[i].mass * macro_bodies[j].mass / denominator;
-        }
-    }
-    std::cout << "Total E: " << total_energy << std::endl;
-}
-
 // --------- CLEANUP --------- //
 
-void PhysicsSystem::cleanupParticles(GameState& game_state)
+void PhysicsSystem::cleanupParticles(UniverseState& universe_state)
 {
-    auto& particles = game_state.getParticlesMutable();
+    auto& particles = universe_state.particles;
 
     // 1. Use std::remove_if to move all elements marked for deletion
     //    to the end of the vector. It returns an iterator to the new
@@ -1056,9 +941,9 @@ void PhysicsSystem::cleanupParticles(GameState& game_state)
     particles.erase(new_end, particles.end());
 }
 
-void PhysicsSystem::cleanupMacroBodies(GameState& game_state)
+void PhysicsSystem::cleanupMacroBodies(UniverseState& universe_state)
 {
-    auto& particles = game_state.getMacroBodiesMutable();
+    auto& particles = universe_state.macro_bodies;
 
     // 1. Use std::remove_if to move all elements marked for deletion
     //    to the end of the vector. It returns an iterator to the new
@@ -1072,21 +957,27 @@ void PhysicsSystem::cleanupMacroBodies(GameState& game_state)
     particles.erase(new_end, particles.end());
 }
 
-void PhysicsSystem::updatePlayerPhysics(GameState& game_state, UIState& ui_state)
+void PhysicsSystem::applyShipInputPhysics(UniverseState& universe_state, UIState& ui_state)
 {
-    game_state.getPlayerMutable().starship.applyRotation(ui_state);
-    game_state.getPlayerMutable().starship.applyThrust(ui_state);
+    universe_state.ship.applyRotation(ui_state);
+    universe_state.ship.applyThrust(ui_state);
 }
 
-bool PhysicsSystem::hasRoomForParticles(const GameState& game_state, size_t new_particle_count) const
+bool PhysicsSystem::hasRoomForParticles(const UniverseState& universe_state, size_t new_particle_count) const
 {
-    size_t potential_particles = potentialParticleCount(game_state);
+    size_t potential_particles = potentialParticleCount(universe_state);
     return (potential_particles + new_particle_count) <= MAX_LIVE_PARTICLES;
 }
 
-size_t PhysicsSystem::potentialParticleCount(const GameState& game_state) const
+size_t PhysicsSystem::potentialParticleCount(const UniverseState& universe_state) const
 {
     // A flat DEFAULT_FRAGMENT_COUNT per macro, not survivableFragmentCount: a macro that grows by accretion would
     // raise its exact count after it was budgeted, but it can never raise the flat one
-    return liveParticleCount(game_state) + game_state.getMacroBodies().size() * DEFAULT_FRAGMENT_COUNT;
+    return liveParticleCount(universe_state) + universe_state.macro_bodies.size() * DEFAULT_FRAGMENT_COUNT;
+}
+
+void PhysicsSystem::cleanupGravBodies(UniverseState& universe_state)
+{
+    cleanupMacroBodies(universe_state);
+    cleanupParticles(universe_state);
 }
