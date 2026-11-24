@@ -36,6 +36,18 @@ struct VelocityVectorVertex
     float r, g, b, a;
 };
 
+// One end of a planning-mode trajectory line segment, in world space (TrajectoryLine shaders). Written once and never
+// changed: the fade-in is computed in the vertex shader from drawn_at and the trace clock, so each frame only the
+// new segments need uploading.
+struct TrajectoryLineVertex
+{
+    float x, y;
+    float prevX, prevY; // only differs from x, y on a line's first point: it follows the body as drawn
+    float r, g, b, a;   // a = the settled alpha
+    float drawn_at;     // Trajectories::clock when the point was recorded
+    float fades_in;     // 1 = fades in from drawn_at, 0 = always alpha a (the bright tips, the placement preview)
+};
+
 // One end of a debug-overlay line, in world space. Like the ship sprite it also carries its previous-tick position,
 // so the overlay is interpolated exactly like the things it outlines and sits right on top of them.
 struct DebugLineVertex

@@ -11,6 +11,7 @@
 #include "Core/DEPRECATED_InputState.hpp"
 #include "Core/GameState.hpp"
 #include "Core/UIState.hpp"
+#include "DynamoEngine/Debug/FrameProfiler.hpp"
 #include "DynamoEngine/Scenes/SceneManager.hpp"
 #include "Entities/Sound/MusicModeEnum.hpp"
 #include "Scenes/TransferScenes.hpp"
@@ -54,6 +55,8 @@ class Game
     //                     Uint32 renderEnd); // Soft Clamps frame rate based on
     //                                        // static Game System Constant value
     void limitFrameRate(Uint64 renderStart, Uint64 renderEnd, Uint64 perfFreq);
+    // Turns the profiler's latest report into the F4 overlay's lines (and prints them while the overlay is shown)
+    void publishProfilerReport();
 
   private:
     // Systems and State
@@ -66,4 +69,19 @@ class Game
 
     // Every scene (and its UI), and which one is active
     DynamoEngine::SceneManager scenes;
+
+    // F4 profiler: how long each part of the frame takes. The section numbers come from m_profiler.addSection.
+    DynamoEngine::FrameProfiler m_profiler;
+    struct ProfilerSections
+    {
+        int input = 0;
+        int spawns = 0;
+        int audio = 0;
+        int physics = 0;      // every physics tick this frame, summed
+        int trajectories = 0; // planning mode's prediction
+        int render = 0;       // CPU side only: building and submitting the frame (the GPU works on it afterwards)
+        int frame_work = 0;   // everything above, before the frame limiter waits
+        int frame_total = 0;  // the whole frame, including the wait (about 16.7 ms at 60 FPS)
+    };
+    ProfilerSections m_profile;
 };

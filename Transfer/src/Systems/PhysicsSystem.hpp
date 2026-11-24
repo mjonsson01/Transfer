@@ -55,8 +55,9 @@ class PhysicsSystem
     void updateGravBodyInstantiations(GameState& game_state, UIState& ui_state);
     // Once per FRAME (not per tick). Planning mode: handles the I request, wipes the lines when the universe was
     // edited, and grows them. Outside planning mode: clears them. Defined in Systems/Physics/TrajectoryPrediction.cpp
-    void updateTrajectories(float frame_seconds, const UniverseState& universe_state, Trajectories& trajectories,
-                            UIState& ui_state);
+    // The camera is for the placement preview (it turns the mouse position into a world position)
+    void updateTrajectories(float frame_seconds, const UniverseState& universe_state, const CameraState& camera_state,
+                            Trajectories& trajectories, UIState& ui_state);
 
   private:
     void integrateUniversePhysics(UniverseState& universe_state);
@@ -134,6 +135,17 @@ class PhysicsSystem
     void advanceIntegratedTrajectories(float frame_seconds, Trajectories& trajectories);
     // Appends the prediction's current positions to every path
     void recordTrajectoryPoints(Trajectories& trajectories);
+    // While a planet is being placed (left button held on the world): predicts where it would go. Restarts whenever
+    // the planet changes (the mouse moved), then grows as fast as MAX_PREVIEW_MILLISECONDS_PER_FRAME allows.
+    // The preview universe has NO debris (it would make every restart slow): it ignores particle clouds, the traced
+    // lines don't.
+    void updateSpawnPreviewTrajectory(const UniverseState& universe_state, const CameraState& camera_state,
+                                      Trajectories& trajectories, UIState& ui_state);
+    void clearSpawnPreviewTrajectory(Trajectories& trajectories);
+    // The planet a left-button release would spawn right now (defined in PhysicsSystem.cpp next to createMacroBody,
+    // built by the same function, so the preview can never disagree with the real spawn). False if none would spawn.
+    bool makeSpawnPreviewBody(const CameraState& camera_state, const DEPRECATED_InputState& input_state,
+                              const SpawnSettings& spawn_settings, GravitationalBody& body_out) const;
 
     // --- Data Members ---
     UniformParticleGrid particleGrid;
@@ -147,4 +159,10 @@ class PhysicsSystem
     UniverseState m_trace_start_universe_state; // the real universe when the trace started, to notice edits
     float m_trace_time_accumulator = 0.0f;      // game seconds the prediction still owes (same idea as Game::Run's)
     int m_trace_ticks_done = 0;                 // tracing stops at the horizon
+
+    // Placement preview (its own little prediction, restarted whenever the planet being placed changes)
+    UniverseState m_preview_universe_state; // the planets + ship + the planet being placed (always the last body)
+    GravitationalBody m_preview_spawn_body; // the planet the preview was started for, to notice when it changes
+    int m_preview_ticks_done = 0;
+    bool m_has_spawn_preview = false;
 };

@@ -98,10 +98,22 @@ class RenderSystem
     SDL_GPUTransferBuffer* m_debug_line_transfer_buffer = nullptr;
     SDL_GPUGraphicsPipeline* m_debug_line_pipeline = nullptr;
 
-    // Planning mode's trajectory lines. Same vertex layout as the debug lines, so they share m_debug_line_pipeline
-    std::vector<DebugLineVertex> m_trajectory_line_vertices;
+    // Planning mode's trajectory lines (TrajectoryLine shaders; the fade-in happens in the shader).
+    // Traced lines are append-only: each frame uploads only the segments added since the last frame.
+    SDL_GPUGraphicsPipeline* m_trajectory_line_pipeline = nullptr;
     SDL_GPUBuffer* m_trajectory_line_vertex_buffer = nullptr;
     SDL_GPUTransferBuffer* m_trajectory_line_transfer_buffer = nullptr;
+    std::vector<TrajectoryLineVertex> m_trajectory_new_vertices; // this frame's new traced segments, to upload
+    uint32_t m_trajectory_uploaded_vertex_count = 0;             // traced-line vertices already in the GPU buffer
+    bool m_trajectory_restart_upload = false; // the next upload starts the buffer over (a new trace began)
+    uint32_t m_trajectory_trace_id_uploaded = 0; // which trace (Trajectories::trace_id) the buffer holds
+    // Per traced path (the macro bodies in order, then the ship): how many points already have their segment uploaded
+    std::vector<size_t> m_trajectory_points_uploaded;
+    // Everything that changes every frame (the placement preview, the time marks, the bright tips): rebuilt and
+    // uploaded whole each frame. Small next to the traced lines.
+    SDL_GPUBuffer* m_trajectory_frame_vertex_buffer = nullptr;
+    SDL_GPUTransferBuffer* m_trajectory_frame_transfer_buffer = nullptr;
+    std::vector<TrajectoryLineVertex> m_trajectory_frame_vertices;
 
     // Text Rendering Components
     SDL_GPUTexture* fontAtlasTexture = nullptr;
@@ -147,15 +159,29 @@ class RenderSystem
                         SDL_FColor color);
     void uploadDebugLines(SDL_GPUCommandBuffer* cmdbuf);
     void renderDebugLines(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf, const CameraState& camera_state);
-    // Trajectory lines (planning mode): built from game_state's Trajectories every frame (empty when there are none)
-    void createTrajectoryLineBuffers();
-    void buildTrajectoryLines(const GameState& game_state);
-    // One body's path as line segments. `start_previous` is where the first point was one tick earlier, so the line
-    // starts exactly at the body as drawn (bodies are drawn interpolated between ticks, even while time is stopped)
-    void addTrajectoryPath(const TracedPath& path, const DynamoEngine::Vector2D& start_previous, SDL_FColor color,
-                           float clock, bool is_tracing);
+    // Trajectory lines (planning mode)
+    void createTrajectoryLineBuffersAndPipeline();
+    // Collects this frame's NEW traced segments, and rebuilds the per-frame lines (preview, time marks, tips)
+    void buildTrajectoryLines(const GameState& game_state, const UIState& ui_state);
+    // How a path is drawn: its colour, and whether new pieces fade in (traced lines) or not (the live preview)
+    struct TrajectoryStyle
+    {
+        SDL_FColor color;
+        bool fades_in;
+    };
+    // Appends the segments ending at points first_point .. the last point. `start_previous` is where the first point
+    // was one tick earlier, so the line starts exactly at the body as drawn (bodies are drawn interpolated between
+    // ticks, even while time is stopped).
+    void appendTrajectorySegments(const TracedPath& path, size_t first_point, const DynamoEngine::Vector2D& start_previous,
+                                  const TrajectoryStyle& style, std::vector<TrajectoryLineVertex>& vertices_out);
+    // A short line across the path every TRAJECTORY_TIME_MARK_SECONDS; `zoom` keeps them the same size on screen
+    void appendTrajectoryTimeMarks(const TracedPath& path, const TrajectoryStyle& style, float zoom,
+                                   std::vector<TrajectoryLineVertex>& vertices_out);
+    // The bright front of a line that is still being traced: its newest segments, brightest at the tip
+    void appendTrajectoryTip(const TracedPath& path, std::vector<TrajectoryLineVertex>& vertices_out);
     void uploadTrajectoryLines(SDL_GPUCommandBuffer* cmdbuf);
-    void renderTrajectoryLines(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf, const CameraState& camera_state);
+    void renderTrajectoryLines(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf, const CameraState& camera_state,
+                               float clock);
     void createFontAtlasSampler();
     // Loads a PNG (path relative to Assets/) into a GPU texture: alpha premultiplied, full mipmap chain.
     // Returns nullptr and logs why if it fails. The caller owns the texture and must SDL_ReleaseGPUTexture it.

@@ -264,6 +264,11 @@ void InputSystem::translateGameInputs(GameState& game_state, UIState& ui_state, 
     {
         ui_state.setRenderDebug(!ui_state.getRenderDebug());
     }
+    // F4: show or hide the profiler (how long each system takes: average and 1% low)
+    if (m_input.wasKeyPressed(SDL_SCANCODE_F4))
+    {
+        ui_state.setShowProfiler(!ui_state.getShowProfiler());
+    }
     // P: planning mode on/off (time stops; leaving it resumes at the speed slider's value)
     if (m_input.wasKeyPressed(SDL_SCANCODE_P))
     {

@@ -530,6 +530,69 @@ step = walkthrough, starting with the tracer class header.**
     integrate' / 'PLANNING: Integrating...' / 'PLANNING').
   - Verified: trajectory_harness (9005 points vs the real game: 0 differ; behaviour checks all as expected),
     universe_refactor IDENTICAL, CMake Release build 0 warnings. NOT yet seen on screen by anyone: Marco to try it.
+  - Round 2 (2026-11-24, after Marco tried it: 'solid'): static bodies' lines AMBER (TRAJECTORY_STATIC_COLOR);
+    Marco REJECTED drawing relative to a reference body (keep world space). PLACEMENT PREVIEW: while the left button is
+    held on the world in planning mode, updateSpawnPreviewTrajectory predicts the planet being placed
+    (makeSpawnPreviewBody in PhysicsSystem.cpp = populateGravBodyProperties... with the preview velocity flag, so it IS
+    the spawned body); preview universe = planets + ship + that planet, NO debris; restarts when the planet changes;
+    no speed limit, MAX_PREVIEW_MILLISECONDS_PER_FRAME 4; drawn white (amber if the spawn will be static), no fade, no
+    tip; Trajectories::spawn_preview_path. TIME MARKS every TRAJECTORY_TIME_MARK_SECONDS (5 game s), 5 px across the
+    line at any zoom, toggled by UIState::getShowTrajectoryTimeMarks (default on, no key yet: will be a setting).
+    Horizon 60 -> 180 s, TRACE_SPEED 10 -> 30, tick cap 32 -> 64. MAX_TRAJECTORY_LINE_VERTICES 327680 with a
+    static_assert in PhysicsConstants (worst case 27 lines) so tuning can't silently cut lines. Render rebuilds and
+    re-uploads all line vertices every frame: worst case ~9 MB/frame (fine for now; append-only upload if it shows).
+    updateTrajectories now also takes const CameraState&. Harness: 27005 trace points + 5401 preview points vs the
+    real game, 0 differ.
+  - Round 3 (2026-11-24): TRACE_SPEED 30 -> 15 (Marco). APPEND-ONLY UPLOAD: new TrajectoryLine.vert/.frag shaders (added
+    to BOTH MakeTransfer scripts; the .msl/.spv only exist after MakeTransfer) compute the fade-in from a per-vertex
+    drawn_at + a clock uniform (vertex uniform slot 1, TrajectoryShaderConstants must match the HLSL cbuffer), so a
+    traced segment never changes once uploaded. TrajectoryLineVertex {x,y,prevX,prevY,r,g,b,a,drawn_at,fades_in} in
+    GPUTypes.hpp. Traced segments: m_trajectory_line_vertex_buffer, each frame uploads only new segments at offset
+    uploaded_count with cycle=false (safe: only writes past what earlier frames draw); a new trace (Trajectories::
+    trace_id changed) restarts at offset 0 with cycle=true. Per-frame buffer (preview, time marks (zoom-sized), tips)
+    rebuilt + uploaded whole. MAX_TRAJECTORY_LINE_VERTICES 294912, MAX_TRAJECTORY_FRAME_VERTICES 16384, both
+    static_asserted in PhysicsConstants. Debug lines still use DebugLine shaders. Harness still 0 differ; the GPU
+    upload path itself can only be checked on screen.
+- **F4 PROFILER (2026-11-24, implemented by Claude at Marco's request, uncommitted):** engine class
+  DynamoEngine/Debug/FrameProfiler (addSection -> id, record(id, ms) adds up within a frame, endFrame; every
+  PROFILER_WINDOW_FRAMES (300, GameSystemConstants) builds a report: average, '1% low' = average of the slowest 1% of
+  frames (at least the slowest one), worst; takeNewReport() true once; millisecondsBetween(perf counters)). 9 googletests
+  in Tests/DynamoEngine/Debug/Test_FrameProfiler.cpp (148/148 pass, TidyEngine 40 files clean). Game owns m_profiler +
+  ProfilerSections ids: Input, Spawns, Audio, Physics (all ticks summed), Trajectories, Render (CPU side only: the GPU
+  runs async), Frame work (before the limiter), Frame total. Game::publishProfilerReport formats lines (monospace
+  columns) into UIState::setProfilerLines and printf's them while the overlay is on. F4 toggles
+  UIState::getShowProfiler; TransferScenes adds MAX_PROFILER_LINES (12) labels under the FPS/planning readouts.
+  The old unused input_time/... locals and commented printf in Game::Run are gone.
+- **GHOST CHECKBOX (2026-11-24, Claude):** SpawnSettings::is_ghost -> isCollidable = false (populate... for planets,
+  the cluster loop for every particle). Third checkbox in 'Global Instantiation Properties' (that section is now 624
+  wide; panel ~1076 of 1280). Ghost = passes through everything incl. the ship, keeps gravity. Built on isCollidable
+  because isMacroGhost is NOT checked for particles in handleMacroParticleCollisions (only for the macro side): a
+  'ghost to planets only' variant would need that check first. Harness ghost_spawn_. Marco asked whether debris
+  alters trajectories: yes for planets in the main trace (it pulls them; no collisions in the prediction), never the
+  ship directly (ship gravity loops planets only), not at all in the placement preview.
+- **PLANET GHOST (macro ghost) FINISHED (2026-11-24, Marco: 'finish it'):** isMacroGhost was never set before (dead
+  since 14827cf). Now SpawnSettings::is_macro_ghost -> isMacroGhost (planets via populate..., every cluster particle).
+  Meaning: passes through planets AND the ship (the ship counts as a big body; planets already skipped macro-ghost
+  planets vs the ship), still collides with debris; gravity unchanged. Added the missing particle-side check in
+  handleMacroParticleCollisions (outer loop skip) and in handleShipCollisions' particle loop. Spawn panel: 'Global'
+  section is now TWO rows (Accretable, Bounce / Ghost, Planet Ghost): 4 in a row + the macro section was ~1288 > 1280.
+  makeSpawnSection takes unique_ptr<UIElement> (a row or a column of rows); SPAWN_PANEL_CHECKBOX_ROWS = 2 feeds
+  SPAWN_PANEL_HEIGHT, so the slider row moved up with it. Both ghost kinds render at 70% alpha (shader, existing).
+  Harness ghost_spawn_ covers ghost / planet ghost vs planet, debris and ship.
+- **PREVIEW NOW INCLUDES DEBRIS (2026-11-24):** Marco noticed the drag preview ignored particle clouds (it copied only
+  planets + ship). Now m_preview_universe_state = the whole universe + the planet being placed: the preview equals the
+  I trace of that planet point for point (harness case 5: 0 / 5401 differ; a 2e8 cloud moves its end by 27167 px).
+  COST (measured, 4 ms budget): 5 planets 0 particles = full 180 s instantly; 10 + 2400 = 34 s of path per second held
+  still, 0.6 s while the mouse moves; 25 + 20000 = 2 s per second held still, ~0 while moving (each move restarts it).
+  Options offered to Marco: (a) aggregate debris into <= N clumps above a threshold (exact below), (b) keep showing
+  the previous preview while the new one regrows, (c) thread the particle x planet gravity (also speeds up the real
+  sim; fits his CPU-threads-then-GPU particle goal).
+  -> Marco's DECISION (same day): keep the preview CHEAP, NO debris (reverted to planets + ship + the new planet).
+  Harness case 5 now documents it: the cloud moves the preview by 0 px, the I trace by ~27000 px.
+- **PREDICTION TIMERS (2026-11-24):** Trajectories::predicted_seconds (= trace ticks done x PHYSICS_TIME_STEP, set in
+  advanceIntegratedTrajectories, 0 on start/clear) and preview_predicted_seconds (placement preview, 0 when cleared).
+  Readout: 'PLANNING: Integrating... 42.0 / 180 s', 'PLANNING: 180 s predicted' when finished, and a new line under it
+  while placing a planet: 'PREVIEW: 12.3 / 180 s' (previewReadout in TransferScenes).
 - HARNESSES cleaned 2026-10-12 (Marco asked): 12 kept + updated to the UniverseState API, all print the same as on
   d41ec3d (shatter_order varies run to run anyway: random debris); 7 obsolete files deleted; Notes/drafts/Harnesses/
   README.md = build recipe + what each checks. GOTCHA: .gitignore line 14 ignores Notes/drafts/ -> only 8 harness files
@@ -538,6 +601,21 @@ step = walkthrough, starting with the tracer class header.**
   prediction must cut thrust (coast), or it thrusts forever.
 
 **Next candidates** (let Marco pick):
+- **FUTURE FEATURES requested by Marco 2026-11-24 (after the planning-mode PR):**
+  - **CAMERA (Marco: 'really need to fix the game camera'):** C = recenter the camera on the player's ship, and toggle
+    between FREE camera (today's behaviour: middle-mouse pan, wheel zoom) and SOFT-CENTERED camera (follows the ship
+    smoothly, e.g. ease toward it each frame instead of snapping). Today the camera is CameraState (offset, zoom,
+    render_alpha) moved by InputSystem::updateCamera (zoomAroundCursor, panCamera, clampCameraToStarField). Things to
+    decide: does panning in soft mode drop back to free? follow the ship's INTERPOLATED (drawn) position, or jitter;
+    how the star-field clamp interacts with following; zoom around the ship vs the cursor while following.
+  - **SPAWN PRESETS:** two quick-swap slots for the instantiation settings. Press-and-HOLD 1 = save the current settings
+    into slot 1, hold 2 = save into slot 2; a short TAP of 1/2 = load that slot, so you flip between two setups
+    instantly. What a preset holds: SpawnSettings (Static, Shatterable, Accretable, Bounce, Ghost, Planet Ghost) and
+    probably the radius + mass sliders (selectedRadius / selectedMass in DEPRECATED_InputState) -- Marco to confirm.
+    Needs: hold-vs-tap detection (InputState has edges + levels; time a key held, e.g. > 0.5 s = save), sliders must
+    SHOW loaded values (UISlider has setValue but no value source; the checkboxes already pull their SpawnSettings
+    field every frame), some feedback that a save happened (sound / readout). Number keys must not clash with E
+    (rebinding) later.
 - Build/scripts follow-ups (the rework itself is DONE, see the done list): the [BUG]/[REFACTOR] items in REWORK's BUILD / TOOLING
   section (Windows setup: silent rmdir failure, unchecked submodules, implicit job count; Mac arch / minimum macOS version;
   Windows VC++ runtime).
@@ -563,8 +641,8 @@ step = walkthrough, starting with the tracer class header.**
     RCS rotation would mean real angular physics (reverses 'player-only rotation').
   - Shatter threshold relative to mutual escape speed (heavy planets that touch shatter from gravity alone; Marco accepted
     that for now), resting contact that never settles (ELASTIC_LOSS_FACTOR 0.994).
-  - More spawn-panel checkboxes (Collidable, Ghost...): one SpawnSettings field + one addSpawnCheckbox line each; a 3rd
-    section or 2 rows once >2 per section (each section is 412 wide for 2 checkboxes).
+  - More spawn-panel checkboxes: Ghost + Planet Ghost DONE 2026-11-24 ('Global' is now 2 rows). Next one: one SpawnSettings
+    field + one addSpawnCheckbox line; the Macro section still has room for a second row.
   - Despawn far-away debris to return particle budget (idea, Marco's call).
   - Small tidy-ups: UIColumn into its own file; StarshipVertex's unused square_size/color; isPreviewingMacro naming (dies with E).
 - **GPU PARTICLES (goal stated by Marco 2026-10-12, not started):** he wants HUNDREDS OF THOUSANDS of particles AND

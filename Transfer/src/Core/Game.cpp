@@ -3,10 +3,25 @@
 // Custom Imports
 #include "Core/Game.hpp"
 
+// Standard Library Imports
+#include <cstdio>
+#include <string>
+#include <vector>
+
 Game::Game()
-    : game_state(), ui_state(), inputSystem(), physicsSystem(), renderSystem(game_state), audioSystem(), scenes()
+    : game_state(), ui_state(), inputSystem(), physicsSystem(), renderSystem(game_state), audioSystem(), scenes(),
+      m_profiler(PROFILER_WINDOW_FRAMES)
 {
     addTransferScenes(scenes, ui_state, game_state);
+
+    m_profile.input = m_profiler.addSection("Input");
+    m_profile.spawns = m_profiler.addSection("Spawns");
+    m_profile.audio = m_profiler.addSection("Audio");
+    m_profile.physics = m_profiler.addSection("Physics");
+    m_profile.trajectories = m_profiler.addSection("Trajectories");
+    m_profile.render = m_profiler.addSection("Render (CPU)");
+    m_profile.frame_work = m_profiler.addSection("Frame work");
+    m_profile.frame_total = m_profiler.addSection("Frame total");
 }
 
 // Handle destruction of any new allocations. None for now, just default.
@@ -67,22 +82,25 @@ void Game::Run()
         Game::updateFPS(frame_start, last_frame_start_tick, fps_time_accumulator, current_fps);
         last_frame_start_tick = frame_start;
 
-        // 1. Profile Input
+        // 1. Input
         Uint64 input_start = SDL_GetPerformanceCounter();
         Game::ProcessInput(frame_seconds);
         if (!game_state.IsPlaying())
             break;
         Uint64 input_end = SDL_GetPerformanceCounter();
+        m_profiler.record(m_profile.input, DynamoEngine::FrameProfiler::millisecondsBetween(input_start, input_end));
 
-        // 2. Profile Instantiations
+        // 2. Spawns (instantiations)
         Uint64 inst_start = SDL_GetPerformanceCounter();
         Game::UpdateInstantiations();
         Uint64 inst_end = SDL_GetPerformanceCounter();
+        m_profiler.record(m_profile.spawns, DynamoEngine::FrameProfiler::millisecondsBetween(inst_start, inst_end));
 
-        // 3. Profile Audio
+        // 3. Audio
         Uint64 audio_start = SDL_GetPerformanceCounter();
         Game::PlayAudio();
         Uint64 audio_end = SDL_GetPerformanceCounter();
+        m_profiler.record(m_profile.audio, DynamoEngine::FrameProfiler::millisecondsBetween(audio_start, audio_end));
 
         // Timekeeping for Physics Logic
         Uint64 now_tick = SDL_GetPerformanceCounter();
@@ -108,47 +126,77 @@ void Game::Run()
             physics_time_accumulator = 0.0f;
         }
 
-        // 4. Profile Physics Integration
-        Uint64 phys_total_start = SDL_GetPerformanceCounter();
+        // 4. Physics: every tick this frame
+        Uint64 physics_start = SDL_GetPerformanceCounter();
         while (physics_time_accumulator >= PHYSICS_TIME_STEP && runs_simulation)
         {
             Game::IntegratePhysicsFrame();
             physics_time_accumulator -= PHYSICS_TIME_STEP;
         }
-        // Planning mode's trajectory lines: once per frame in REAL time (they grow while the simulation is stopped)
+        Uint64 physics_end = SDL_GetPerformanceCounter();
+        m_profiler.record(m_profile.physics, DynamoEngine::FrameProfiler::millisecondsBetween(physics_start, physics_end));
+
+        // 5. Planning mode's trajectory lines: once per frame in REAL time (they grow while the simulation is stopped)
+        Uint64 trajectories_start = SDL_GetPerformanceCounter();
         if (runs_simulation)
         {
-            physicsSystem.updateTrajectories(frame_seconds, game_state.getUniverseState(),
+            physicsSystem.updateTrajectories(frame_seconds, game_state.getUniverseState(), game_state.getCameraState(),
                                              game_state.getTrajectoriesMutable(), ui_state);
         }
-        Uint64 phys_total_end = SDL_GetPerformanceCounter();
+        Uint64 trajectories_end = SDL_GetPerformanceCounter();
+        m_profiler.record(m_profile.trajectories,
+                          DynamoEngine::FrameProfiler::millisecondsBetween(trajectories_start, trajectories_end));
 
-        // 5. Profile Rendering
+        // 6. Rendering
         game_state.setAlpha(physics_time_accumulator / PHYSICS_TIME_STEP);
 
         Uint64 render_start = SDL_GetPerformanceCounter();
         Game::RenderFrame();
         Uint64 render_end = SDL_GetPerformanceCounter();
+        m_profiler.record(m_profile.render, DynamoEngine::FrameProfiler::millisecondsBetween(render_start, render_end));
 
         // Scene switches requested this frame (buttons, Esc) happen here, once nothing is using the old scene
         scenes.applyPendingSwitch();
+        Uint64 work_end = SDL_GetPerformanceCounter();
+        m_profiler.record(m_profile.frame_work, DynamoEngine::FrameProfiler::millisecondsBetween(frame_start, work_end));
 
         // --- FRAME LIMITING ---
         // We limit based on how much work we did since frame_start
         Game::limitFrameRate(frame_start, render_end, perf_freq);
 
-        // Calculate metrics in milliseconds
-        float input_time = (float)((input_end - input_start) * 1000) / perf_freq;
-        float instantiation_time = (float)((inst_end - inst_start) * 1000) / perf_freq;
-        float audio_playback_time = (float)((audio_end - audio_start) * 1000) / perf_freq;
-        float physics_time = (float)((phys_total_end - phys_total_start) * 1000) / perf_freq;
-        float rendering_time = (float)((render_end - render_start) * 1000) / perf_freq;
+        Uint64 frame_end = SDL_GetPerformanceCounter();
+        m_profiler.record(m_profile.frame_total, DynamoEngine::FrameProfiler::millisecondsBetween(frame_start, frame_end));
+        m_profiler.endFrame();
+        if (m_profiler.takeNewReport())
+        {
+            Game::publishProfilerReport();
+        }
+    }
+}
 
-        // printf("N=%zu | Rend: %.3f | Phys: %.3f\n", game_state.getUniverseState().particles.size() +
-        // game_state.getUniverseState().macro_bodies.size(),
-        //        rendering_time, physics_time);
-        // printf("Profile Time [ms] | Input: %.3f | Inst: %.3f | Audio: %.3f | Phys: %.3f | Rend: %.3f\n", input_time,
-        //        instantiation_time, audio_playback_time, physics_time, rendering_time);
+void Game::publishProfilerReport()
+{
+    // One line per section, columns lined up for the monospaced UI font (SpaceMono)
+    std::vector<std::string> lines;
+    char line[128];
+    std::snprintf(line, sizeof(line), "%-13s %8s %8s %8s", "Profiler (ms)", "avg", "1% low", "worst");
+    lines.push_back(line);
+    for (const DynamoEngine::FrameProfiler::SectionReport& section : m_profiler.report())
+    {
+        std::snprintf(line, sizeof(line), "%-13s %8.3f %8.3f %8.3f", section.name.c_str(), section.average_ms,
+                      section.one_percent_low_ms, section.worst_ms);
+        lines.push_back(line);
+    }
+    ui_state.setProfilerLines(lines);
+
+    // Also to the console while the overlay is on, so numbers can be copied out
+    if (ui_state.getShowProfiler())
+    {
+        std::printf("--- %zu frames ---\n", m_profiler.windowFrames());
+        for (const std::string& text : lines)
+        {
+            std::printf("%s\n", text.c_str());
+        }
     }
 }
 

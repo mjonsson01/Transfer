@@ -15,8 +15,8 @@
 #include <chrono>
 #include <cmath>
 
-// How many prediction ticks reach the horizon (7200 at 60 s and 120 ticks per second). Rounded, not truncated:
-// in float, 60 / (1 / 120) is 7199.9994, which a plain cast would cut down to 7199
+// How many prediction ticks reach the horizon (21600 at 180 s and 120 ticks per second). Rounded, not truncated:
+// in float, seconds / (1 / 120) can land just under the whole number (60 s gave 7199.9994), and a cast cuts it down
 static const int TRAJECTORY_HORIZON_TICKS = static_cast<int>(std::lround(TRAJECTORY_HORIZON_SECONDS * INV_PHYSICS_TIME_STEP));
 
 // Exact comparison on purpose: while the game is paused for planning, nothing changes these numbers except an edit
@@ -26,7 +26,7 @@ static bool sameVector(const DynamoEngine::Vector2D& a, const DynamoEngine::Vect
 }
 
 void PhysicsSystem::updateTrajectories(float frame_seconds, const UniverseState& universe_state,
-                                       Trajectories& trajectories, UIState& ui_state)
+                                       const CameraState& camera_state, Trajectories& trajectories, UIState& ui_state)
 {
     DEPRECATED_InputState& input_state = ui_state.getMutableDEPRECATED_InputState();
 
@@ -37,9 +37,13 @@ void PhysicsSystem::updateTrajectories(float frame_seconds, const UniverseState&
         {
             clearTrajectories(trajectories);
         }
+        clearSpawnPreviewTrajectory(trajectories);
         input_state.toggleTrajectoriesRequested = false;
         return;
     }
+
+    // The placement preview runs on its own, with or without the traced lines
+    updateSpawnPreviewTrajectory(universe_state, camera_state, trajectories, ui_state);
 
     // I: start a trace from the universe as it is now, or clear the lines that are there
     if (input_state.toggleTrajectoriesRequested)
@@ -82,6 +86,8 @@ void PhysicsSystem::startTrajectories(const UniverseState& universe_state, Traje
 
     trajectories.status = TraceStatus::Tracing;
     trajectories.clock = 0.0f;
+    trajectories.predicted_seconds = 0.0f;
+    trajectories.trace_id += 1;
     trajectories.macro_body_paths.assign(universe_state.macro_bodies.size(), TracedPath());
     trajectories.ship_path.clear();
     recordTrajectoryPoints(trajectories); // every line starts where its body is now
@@ -91,6 +97,7 @@ void PhysicsSystem::clearTrajectories(Trajectories& trajectories)
 {
     trajectories.status = TraceStatus::Idle;
     trajectories.clock = 0.0f;
+    trajectories.predicted_seconds = 0.0f;
     trajectories.macro_body_paths.clear();
     trajectories.ship_path.clear();
 
@@ -157,6 +164,7 @@ void PhysicsSystem::advanceIntegratedTrajectories(float frame_seconds, Trajector
         }
     }
 
+    trajectories.predicted_seconds = m_trace_ticks_done * PHYSICS_TIME_STEP;
     if (m_trace_ticks_done >= TRAJECTORY_HORIZON_TICKS)
     {
         trajectories.status = TraceStatus::Finished;
@@ -172,4 +180,70 @@ void PhysicsSystem::recordTrajectoryPoints(Trajectories& trajectories)
         trajectories.macro_body_paths[i].push_back({macro_bodies[i].position, trajectories.clock});
     }
     trajectories.ship_path.push_back({m_prediction_universe_state.ship.center(), trajectories.clock});
+}
+
+void PhysicsSystem::updateSpawnPreviewTrajectory(const UniverseState& universe_state, const CameraState& camera_state,
+                                                 Trajectories& trajectories, UIState& ui_state)
+{
+    const DEPRECATED_InputState& input_state = ui_state.getDEPRECATED_InputState();
+    GravitationalBody body;
+    if (!input_state.isPreviewingMacro ||
+        !makeSpawnPreviewBody(camera_state, input_state, ui_state.spawnSettings(), body))
+    {
+        clearSpawnPreviewTrajectory(trajectories); // not placing a planet (or none would spawn)
+        return;
+    }
+
+    // A different planet than last frame (moved, new velocity, other size or mass...): start again from the beginning
+    const GravitationalBody& last = m_preview_spawn_body;
+    bool changed = !m_has_spawn_preview || !sameVector(body.position, last.position) ||
+                   !sameVector(body.velocity, last.velocity) || body.mass != last.mass || body.radius != last.radius ||
+                   body.isForceStatic != last.isForceStatic;
+    if (changed)
+    {
+        // The planets and the ship, plus the planet being placed. NO debris, on purpose: the preview restarts every
+        // time the mouse moves, and debris would make every restart slow (thousands of particles to copy and pull).
+        // So it ignores particle clouds; the traced lines (I) include them.
+        m_preview_universe_state.macro_bodies = universe_state.macro_bodies;
+        m_preview_universe_state.macro_bodies.push_back(body);
+        m_preview_universe_state.particles.clear();
+        m_preview_universe_state.ship = universe_state.ship;
+        m_preview_universe_state.ship.cutThrust();
+        m_preview_spawn_body = body;
+        m_preview_ticks_done = 0;
+        m_has_spawn_preview = true;
+        trajectories.spawn_preview_path.clear();
+        trajectories.spawn_preview_path.push_back({body.position, 0.0f});
+    }
+
+    // No speed limit, only the time budget: the line appears as fast as the frame allows
+    const std::chrono::steady_clock::time_point started = std::chrono::steady_clock::now();
+    while (m_preview_ticks_done < TRAJECTORY_HORIZON_TICKS)
+    {
+        integrateUniversePhysics(m_preview_universe_state);
+        m_preview_ticks_done += 1;
+        if (m_preview_ticks_done % TRAJECTORY_TICKS_PER_POINT == 0)
+        {
+            trajectories.spawn_preview_path.push_back({m_preview_universe_state.macro_bodies.back().position, 0.0f});
+        }
+
+        std::chrono::duration<double, std::milli> spent = std::chrono::steady_clock::now() - started;
+        if (spent.count() >= MAX_PREVIEW_MILLISECONDS_PER_FRAME)
+        {
+            break;
+        }
+    }
+    trajectories.preview_predicted_seconds = m_preview_ticks_done * PHYSICS_TIME_STEP;
+}
+
+void PhysicsSystem::clearSpawnPreviewTrajectory(Trajectories& trajectories)
+{
+    if (!m_has_spawn_preview)
+    {
+        return;
+    }
+    trajectories.spawn_preview_path.clear();
+    trajectories.preview_predicted_seconds = 0.0f;
+    m_preview_universe_state = UniverseState();
+    m_has_spawn_preview = false;
 }

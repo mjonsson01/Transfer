@@ -195,18 +195,19 @@ void PhysicsSystem::handleMacroParticleCollisions(UniverseState& universe_state)
 
     for (auto& particle : particles)
     {
-        if (!particle.isCollidable || particle.isMarkedForDeletion)
+        // A macro ghost ignores planets and the ship but still hits debris. So a macro-ghost PARTICLE skips this whole
+        // pass (it's all planets), while a macro-ghost PLANET still takes part (debris is what it collides with)
+        if (!particle.isCollidable || particle.isMacroGhost || particle.isMarkedForDeletion)
         {
             continue;
         }
 
         for (auto& macro_body : macro_bodies)
         {
-            if (!macro_body.isCollidable || macro_body.isMacroGhost || macro_body.isMarkedForDeletion)
+            if (!macro_body.isCollidable || macro_body.isMarkedForDeletion)
             {
                 continue;
             }
-
             CollisionInfo collision_info = getCollisionInfo(particle, macro_body);
             if (!collision_info.shouldCollide)
             {
@@ -289,7 +290,8 @@ void PhysicsSystem::handleShipCollisions(UniverseState& universe_state)
     double ship_reach = ship.boundingRadius();
     for (GravitationalBody& particle : universe_state.particles)
     {
-        if (!particle.isCollidable || particle.isMarkedForDeletion)
+        // The ship counts as a big body, like a planet: macro ghosts pass through it (as macro-ghost planets do above)
+        if (!particle.isCollidable || particle.isMacroGhost || particle.isMarkedForDeletion)
         {
             continue;
         }
@@ -833,10 +835,10 @@ static inline void populateGravBodyPropertiesFromDEPRECATED_InputState(Gravitati
     // Property Flags
     grav_body.isAccretable = spawn_settings.is_accretable;
     grav_body.isBounce = spawn_settings.is_bounce;
-    grav_body.isCollidable = true;
+    grav_body.isCollidable = !spawn_settings.is_ghost;
     grav_body.isForceStatic = spawn_settings.is_force_static;
     grav_body.isFragment = false; // not a child of a collision
-    grav_body.isMacroGhost = false;
+    grav_body.isMacroGhost = spawn_settings.is_macro_ghost;
     grav_body.isPreview = false;
     grav_body.isShatterable = spawn_settings.is_shatterable;
     grav_body.isTransient = false;
@@ -854,6 +856,24 @@ static inline void populateGravBodyPropertiesFromDEPRECATED_InputState(Gravitati
         grav_body.previousPosition = grav_body.position;
         grav_body.velocity = (input_state.mouseCurrPosition - input_state.mouseDragStartPosition) / camera_state.zoom;
     }
+}
+
+bool PhysicsSystem::makeSpawnPreviewBody(const CameraState& camera_state, const DEPRECATED_InputState& input_state,
+                                         const SpawnSettings& spawn_settings, GravitationalBody& body_out) const
+{
+    // Same refusals as createMacroBody (the particle budget aside: a refused spawn simply won't happen)
+    if (input_state.selectedRadius <= 1.0 || firstWithinEpsilonOfSecond(input_state.selectedMass, 0.0))
+    {
+        return false;
+    }
+    // While dragging, "with a velocity" is the preview flag; createMacroBody sees the same choice as the creating
+    // flag on release. A copy, so the real input state isn't touched.
+    DEPRECATED_InputState release_input = input_state;
+    release_input.isCreatingWithInitialVelocity = input_state.isPreviewingWithInitialVelocity;
+
+    body_out = GravitationalBody();
+    populateGravBodyPropertiesFromDEPRECATED_InputState(body_out, camera_state, release_input, spawn_settings);
+    return true;
 }
 
 void PhysicsSystem::createMacroBody(UniverseState& universe_state, const CameraState& camera_state,
@@ -919,6 +939,8 @@ void PhysicsSystem::createParticleCluster(UniverseState& universe_state, const C
     {
         particles[i].isAccretable = spawn_settings.is_accretable;
         particles[i].isBounce = spawn_settings.is_bounce;
+        particles[i].isCollidable = !spawn_settings.is_ghost;
+        particles[i].isMacroGhost = spawn_settings.is_macro_ghost;
     }
 }
 
