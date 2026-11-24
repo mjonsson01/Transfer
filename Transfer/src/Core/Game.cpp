@@ -93,7 +93,9 @@ void Game::Run()
         const bool runs_simulation = scenes.currentScene().settings().runs_simulation;
         if (runs_simulation)
         {
-            physics_time_accumulator += (frame_delta * ui_state.getTimeScaleFactor());
+            // Planning mode stops time; the slider keeps its value, so leaving planning resumes at that speed
+            const float time_scale = ui_state.getIsPlanning() ? 0.0f : ui_state.getTimeScaleFactor();
+            physics_time_accumulator += (frame_delta * time_scale);
             // Cap catchup to 8 steps maximum to prevent spiralling frozen frames
             const float max_physics_backlog = MAX_PHYSICS_STEPS_PER_FRAME * PHYSICS_TIME_STEP;
             if (physics_time_accumulator > max_physics_backlog)
@@ -112,6 +114,12 @@ void Game::Run()
         {
             Game::IntegratePhysicsFrame();
             physics_time_accumulator -= PHYSICS_TIME_STEP;
+        }
+        // Planning mode's trajectory lines: once per frame in REAL time (they grow while the simulation is stopped)
+        if (runs_simulation)
+        {
+            physicsSystem.updateTrajectories(frame_seconds, game_state.getUniverseState(),
+                                             game_state.getTrajectoriesMutable(), ui_state);
         }
         Uint64 phys_total_end = SDL_GetPerformanceCounter();
 

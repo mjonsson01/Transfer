@@ -10,6 +10,13 @@ constexpr float INV_PHYSICS_TIME_STEP = 120.0f;
 // Time beyond this is dropped (the simulation briefly runs slower) instead of piling up into a spiral of death.
 constexpr int MAX_PHYSICS_STEPS_PER_FRAME = 8;
 
+// --- Trajectory prediction (planning mode) ---
+constexpr float TRAJECTORY_TRACE_SPEED = 10.0f;     // game seconds predicted per real second: how fast the lines grow
+constexpr int MAX_TRACE_TICKS_PER_FRAME = 32;       // never more prediction ticks than this in one frame
+constexpr double MAX_TRACE_MILLISECONDS_PER_FRAME = 4.0; // ...nor more time: heavy scenes trace slower, not choppier
+constexpr int TRAJECTORY_TICKS_PER_POINT = 4;       // record a point every 4 ticks (30 points per game second)
+constexpr float TRAJECTORY_HORIZON_SECONDS = 60.0f; // how far ahead the lines reach
+
 // Grav constant, default to 1, scale other values
 constexpr double GRAVITATIONAL_CONSTANT = 1.0;
 

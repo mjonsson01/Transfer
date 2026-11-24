@@ -4,6 +4,7 @@
 
 // Custom Imports
 #include "Core/CameraState.hpp"
+#include "Core/Trajectories.hpp"
 #include "Core/UniverseState.hpp"
 #include "Entities/Sound/MusicModeEnum.hpp"
 #include "Player/Player.hpp"
@@ -39,6 +40,9 @@ class GameState
     UniverseState& getUniverseStateMutable() { return m_universe_state; }
     const UniverseState& getUniverseState() const { return m_universe_state; }
 
+    Trajectories& getTrajectoriesMutable() { return m_trajectories; }
+    const Trajectories& getTrajectories() const { return m_trajectories; }
+
   private:
     // State variables
     bool isPlaying = false;
@@ -48,6 +52,7 @@ class GameState
 
     // Contains all Physics integratable objects
     UniverseState m_universe_state;
+    Trajectories m_trajectories;
 
     Player player;
 

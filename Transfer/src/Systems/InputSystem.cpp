@@ -264,6 +264,16 @@ void InputSystem::translateGameInputs(GameState& game_state, UIState& ui_state, 
     {
         ui_state.setRenderDebug(!ui_state.getRenderDebug());
     }
+    // P: planning mode on/off (time stops; leaving it resumes at the speed slider's value)
+    if (m_input.wasKeyPressed(SDL_SCANCODE_P))
+    {
+        ui_state.setIsPlanning(!ui_state.getIsPlanning());
+    }
+    // I, only while planning: trace the predicted trajectories, or clear them (PhysicsSystem::updateTrajectories)
+    if (ui_state.getIsPlanning() && m_input.wasKeyPressed(SDL_SCANCODE_I))
+    {
+        legacy_state.toggleTrajectoriesRequested = true;
+    }
     // Update the visor if necessary
     updateVisor(game_state.getCameraStateMutable());
 }

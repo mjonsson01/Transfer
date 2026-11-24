@@ -24,6 +24,10 @@ constexpr uint32_t MAX_STARSHIP_VERTICES = 32; // Unknown if needed
 // the ship's hitbox 6 lines, so this leaves plenty of room for future debug drawings
 constexpr uint32_t MAX_DEBUG_LINE_VERTICES = 8192;
 
+// Planning mode's trajectory lines: 2 vertices per segment. At most 25 planets (the particle budget) + the ship, each
+// with 1800 points at the default horizon (60 s x 30 points/s) = 93600 vertices, plus the bright tips
+constexpr uint32_t MAX_TRAJECTORY_LINE_VERTICES = 131072;
+
 // Grav body max/mins
 constexpr double MAX_MASS = 1e11;
 constexpr double MAX_RADIUS = 700;

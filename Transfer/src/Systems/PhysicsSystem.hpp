@@ -6,6 +6,7 @@
 #include "Core/DEPRECATED_InputState.hpp"
 #include "Core/GameState.hpp"
 #include "Core/SpawnSettings.hpp"
+#include "Core/Trajectories.hpp"
 #include "Core/UIState.hpp"
 #include "Core/UniverseState.hpp"
 #include "DynamoEngine/Math/Vector2.hpp"
@@ -52,6 +53,10 @@ class PhysicsSystem
     // contents
     void cleanUp();
     void updateGravBodyInstantiations(GameState& game_state, UIState& ui_state);
+    // Once per FRAME (not per tick). Planning mode: handles the I request, wipes the lines when the universe was
+    // edited, and grows them. Outside planning mode: clears them. Defined in Systems/Physics/TrajectoryPrediction.cpp
+    void updateTrajectories(float frame_seconds, const UniverseState& universe_state, Trajectories& trajectories,
+                            UIState& ui_state);
 
   private:
     void integrateUniversePhysics(UniverseState& universe_state);
@@ -118,10 +123,28 @@ class PhysicsSystem
                                                             // as marked for deletion
     void cleanupMacroBodies(UniverseState& universe_state); // Clears any Macro Bodies from the screen
                                                             // flagged as marked for deletion
+    // --- Trajectory prediction (planning mode), defined in Systems/Physics/TrajectoryPrediction.cpp ---
+    // Copies the universe into the prediction and starts the paths (one per macro body, plus the ship)
+    void startTrajectories(const UniverseState& universe_state, Trajectories& trajectories);
+    // Drops the paths and the prediction: back to Idle
+    void clearTrajectories(Trajectories& trajectories);
+    // True when the real universe no longer matches the one the trace started from (a spawn, a delete, ...)
+    bool universeChangedSinceTraceStart(const UniverseState& universe_state) const;
+    // The integrator only (no collisions): steps the prediction for this frame's share of ticks, recording points
+    void advanceIntegratedTrajectories(float frame_seconds, Trajectories& trajectories);
+    // Appends the prediction's current positions to every path
+    void recordTrajectoryPoints(Trajectories& trajectories);
+
     // --- Data Members ---
     UniformParticleGrid particleGrid;
 
     // Fragments created during this tick's collision passes. Appended to the particles vector only after all three
     // passes are done, so nothing is ever added to particles while a loop is iterating over it.
     std::vector<GravitationalBody> m_pending_fragments;
+
+    // Trajectory prediction
+    UniverseState m_prediction_universe_state;  // the copy being stepped forward
+    UniverseState m_trace_start_universe_state; // the real universe when the trace started, to notice edits
+    float m_trace_time_accumulator = 0.0f;      // game seconds the prediction still owes (same idea as Game::Run's)
+    int m_trace_ticks_done = 0;                 // tracing stops at the horizon
 };

@@ -34,6 +34,7 @@ class UIState
 
     void QueueSoundEffect(const std::string& soundName) { pendingSoundEffects.push(soundName); };
     bool HasPendingSoundEffects() const { return !pendingSoundEffects.empty(); };
+
     std::string PopNextSoundEffect()
     {
         if (pendingSoundEffects.empty())
@@ -51,6 +52,9 @@ class UIState
     bool getPlaySoundEffects() const { return playSoundEffects; }
     void setPlaySoundEffects(bool pse) { playSoundEffects = pse; }
 
+    bool getIsPlanning() const { return m_is_planning; }
+    void setIsPlanning(bool is_planning) { m_is_planning = is_planning; }
+
   private:
     DEPRECATED_InputState inputState;
     SpawnSettings m_spawn_settings;
@@ -64,4 +68,6 @@ class UIState
     bool playSoundEffects = false;
     MusicMode requestedMusicMode = MusicMode::NONE;
     std::queue<std::string> pendingSoundEffects;
+
+    bool m_is_planning = false; // P: time stops, and I can trace trajectories
 };

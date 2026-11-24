@@ -98,6 +98,11 @@ class RenderSystem
     SDL_GPUTransferBuffer* m_debug_line_transfer_buffer = nullptr;
     SDL_GPUGraphicsPipeline* m_debug_line_pipeline = nullptr;
 
+    // Planning mode's trajectory lines. Same vertex layout as the debug lines, so they share m_debug_line_pipeline
+    std::vector<DebugLineVertex> m_trajectory_line_vertices;
+    SDL_GPUBuffer* m_trajectory_line_vertex_buffer = nullptr;
+    SDL_GPUTransferBuffer* m_trajectory_line_transfer_buffer = nullptr;
+
     // Text Rendering Components
     SDL_GPUTexture* fontAtlasTexture = nullptr;
     SDL_GPUSampler* fontAtlasSampler = nullptr;
@@ -142,6 +147,15 @@ class RenderSystem
                         SDL_FColor color);
     void uploadDebugLines(SDL_GPUCommandBuffer* cmdbuf);
     void renderDebugLines(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf, const CameraState& camera_state);
+    // Trajectory lines (planning mode): built from game_state's Trajectories every frame (empty when there are none)
+    void createTrajectoryLineBuffers();
+    void buildTrajectoryLines(const GameState& game_state);
+    // One body's path as line segments. `start_previous` is where the first point was one tick earlier, so the line
+    // starts exactly at the body as drawn (bodies are drawn interpolated between ticks, even while time is stopped)
+    void addTrajectoryPath(const TracedPath& path, const DynamoEngine::Vector2D& start_previous, SDL_FColor color,
+                           float clock, bool is_tracing);
+    void uploadTrajectoryLines(SDL_GPUCommandBuffer* cmdbuf);
+    void renderTrajectoryLines(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf, const CameraState& camera_state);
     void createFontAtlasSampler();
     // Loads a PNG (path relative to Assets/) into a GPU texture: alpha premultiplied, full mipmap chain.
     // Returns nullptr and logs why if it fails. The caller owns the texture and must SDL_ReleaseGPUTexture it.

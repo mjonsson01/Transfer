@@ -47,6 +47,7 @@ RenderSystem::RenderSystem(GameState& game_state)
     m_starship_texture = loadSpriteTexture("Visual/Ships/FutureShip.png");
     createStarshipGPUBufferAndPipeline();
     createDebugLineGPUBufferAndPipeline();
+    createTrajectoryLineBuffers();
     createTwinklingStarField(game_state.getCameraState().max_display_width,
                              game_state.getCameraState().max_display_height);
     if (m_gpu)
@@ -119,6 +120,12 @@ void RenderSystem::cleanUp()
         SDL_ReleaseGPUTransferBuffer(m_gpu, m_debug_line_transfer_buffer);
     if (m_debug_line_pipeline != nullptr)
         SDL_ReleaseGPUGraphicsPipeline(m_gpu, m_debug_line_pipeline);
+
+    // Release Trajectory Line Buffers (they use the debug line pipeline, released above)
+    if (m_trajectory_line_vertex_buffer != nullptr)
+        SDL_ReleaseGPUBuffer(m_gpu, m_trajectory_line_vertex_buffer);
+    if (m_trajectory_line_transfer_buffer != nullptr)
+        SDL_ReleaseGPUTransferBuffer(m_gpu, m_trajectory_line_transfer_buffer);
 
     // Release Font Resources
     if (fontAtlasTexture != nullptr)
@@ -202,6 +209,8 @@ void RenderSystem::renderFullFrame(GameState& game_state, UIState& ui_state, con
     {
         buildDebugLines(game_state, ui_state);
         uploadDebugLines(cmdbuf);
+        buildTrajectoryLines(game_state);
+        uploadTrajectoryLines(cmdbuf);
         uploadUnifiedBodies(game_state, ui_state, cmdbuf);
         uploadStarship(game_state, ui_state, cmdbuf);
     }
@@ -245,6 +254,7 @@ void RenderSystem::renderGameFrame(GameState& game_state, UIState& ui_state, con
 {
     game_state.getCameraStateMutable().render_alpha = game_state.getAlpha();
     renderTwinklingStarField(pass, cmdbuf, game_state.getCameraState());
+    renderTrajectoryLines(pass, cmdbuf, game_state.getCameraState()); // under the bodies and the ship
     renderBodies(game_state, ui_state, pass, cmdbuf);
     renderStarship(game_state, pass, cmdbuf, game_state.getCameraState());
     renderVelocityVectors(pass, cmdbuf, game_state.getCameraState());
@@ -1448,4 +1458,142 @@ void RenderSystem::renderDebugLines(SDL_GPURenderPass* pass, SDL_GPUCommandBuffe
     SDL_GPUBufferBinding vbo = {.buffer = m_debug_line_vertex_buffer, .offset = 0};
     SDL_BindGPUVertexBuffers(pass, 0, &vbo, 1);
     SDL_DrawGPUPrimitives(pass, (uint32_t)m_debug_line_vertices.size(), 1, 0, 0);
+}
+
+// --------- TRAJECTORY LINES (PLANNING MODE) --------- //
+
+// The look of the lines (tune freely). Each new piece fades in from FADE_START to LINE alpha; while tracing, the
+// newest few segments are drawn brighter on top, so the front of the line is easy to see.
+static constexpr SDL_FColor TRAJECTORY_MACRO_COLOR = {0.55f, 0.75f, 1.0f, 1.0f}; // pale blue
+static constexpr SDL_FColor TRAJECTORY_SHIP_COLOR = {0.4f, 1.0f, 0.5f, 1.0f};    // green, like the ship's hitbox
+static constexpr SDL_FColor TRAJECTORY_TIP_COLOR = {1.0f, 1.0f, 1.0f, 1.0f};     // the bright front while tracing
+static constexpr float TRAJECTORY_LINE_ALPHA = 0.7f;       // a settled line
+static constexpr float TRAJECTORY_FADE_START_ALPHA = 0.1f; // a brand-new piece
+static constexpr float TRAJECTORY_FADE_IN_SECONDS = 0.75f; // real seconds from new to settled
+static constexpr int TRAJECTORY_TIP_SEGMENTS = 3;          // how much of the front is drawn bright
+
+// How visible a point is, from how long ago it was drawn
+static float trajectoryAlpha(float seconds_since_drawn)
+{
+    float progress = std::clamp(seconds_since_drawn / TRAJECTORY_FADE_IN_SECONDS, 0.0f, 1.0f);
+    return TRAJECTORY_FADE_START_ALPHA + (TRAJECTORY_LINE_ALPHA - TRAJECTORY_FADE_START_ALPHA) * progress;
+}
+
+void RenderSystem::createTrajectoryLineBuffers()
+{
+    SDL_GPUBufferCreateInfo vb_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX,
+                                       .size = MAX_TRAJECTORY_LINE_VERTICES * sizeof(DebugLineVertex)};
+    m_trajectory_line_vertex_buffer = SDL_CreateGPUBuffer(m_gpu, &vb_info);
+
+    SDL_GPUTransferBufferCreateInfo tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+                                               .size = MAX_TRAJECTORY_LINE_VERTICES * sizeof(DebugLineVertex)};
+    m_trajectory_line_transfer_buffer = SDL_CreateGPUTransferBuffer(m_gpu, &tb_info);
+}
+
+void RenderSystem::buildTrajectoryLines(const GameState& game_state)
+{
+    m_trajectory_line_vertices.clear();
+    const Trajectories& trajectories = game_state.getTrajectories();
+    if (trajectories.status == TraceStatus::Idle)
+    {
+        return; // no lines
+    }
+    const bool is_tracing = trajectories.status == TraceStatus::Tracing;
+
+    // While there are lines, the real universe is exactly the one the trace started from (any edit wipes them), so
+    // real macro body i is where path i starts
+    const UniverseState& universe_state = game_state.getUniverseState();
+    for (size_t i = 0; i < trajectories.macro_body_paths.size() && i < universe_state.macro_bodies.size(); ++i)
+    {
+        addTrajectoryPath(trajectories.macro_body_paths[i], universe_state.macro_bodies[i].previousPosition,
+                          TRAJECTORY_MACRO_COLOR, trajectories.clock, is_tracing);
+    }
+    const Starship& ship = universe_state.ship;
+    addTrajectoryPath(trajectories.ship_path, ship.center() - ship.movementThisTick(), TRAJECTORY_SHIP_COLOR,
+                      trajectories.clock, is_tracing);
+}
+
+void RenderSystem::addTrajectoryPath(const TracedPath& path, const DynamoEngine::Vector2D& start_previous,
+                                     SDL_FColor color, float clock, bool is_tracing)
+{
+    // One segment per pair of neighbouring points. Only the very first point moves with the drawn body (the shader
+    // interpolates previous -> current); every other point is fixed in the world, so its "previous" is itself.
+    for (size_t k = 1; k < path.size(); ++k)
+    {
+        const TracedPoint& from = path[k - 1];
+        const TracedPoint& to = path[k];
+        DynamoEngine::Vector2D from_previous = (k == 1) ? start_previous : from.position;
+        float from_alpha = trajectoryAlpha(clock - from.drawn_at);
+        float to_alpha = trajectoryAlpha(clock - to.drawn_at);
+
+        m_trajectory_line_vertices.push_back({(float)from.position.x_val, (float)from.position.y_val,
+                                              (float)from_previous.x_val, (float)from_previous.y_val, color.r, color.g,
+                                              color.b, from_alpha});
+        m_trajectory_line_vertices.push_back({(float)to.position.x_val, (float)to.position.y_val,
+                                              (float)to.position.x_val, (float)to.position.y_val, color.r, color.g,
+                                              color.b, to_alpha});
+    }
+
+    if (!is_tracing)
+    {
+        return; // finished lines have no moving front
+    }
+    // The bright front: the newest segments again, on top, brightest at the very tip
+    const size_t tip_segments = static_cast<size_t>(TRAJECTORY_TIP_SEGMENTS);
+    size_t first_tip_point = (path.size() > tip_segments + 1) ? path.size() - tip_segments : 1;
+    for (size_t k = first_tip_point; k < path.size(); ++k)
+    {
+        const DynamoEngine::Vector2D& from = path[k - 1].position;
+        const DynamoEngine::Vector2D& to = path[k].position;
+        float from_alpha = (float)(k - first_tip_point) / TRAJECTORY_TIP_SEGMENTS;
+        float to_alpha = (float)(k - first_tip_point + 1) / TRAJECTORY_TIP_SEGMENTS;
+        m_trajectory_line_vertices.push_back({(float)from.x_val, (float)from.y_val, (float)from.x_val,
+                                              (float)from.y_val, TRAJECTORY_TIP_COLOR.r, TRAJECTORY_TIP_COLOR.g,
+                                              TRAJECTORY_TIP_COLOR.b, from_alpha});
+        m_trajectory_line_vertices.push_back({(float)to.x_val, (float)to.y_val, (float)to.x_val, (float)to.y_val,
+                                              TRAJECTORY_TIP_COLOR.r, TRAJECTORY_TIP_COLOR.g, TRAJECTORY_TIP_COLOR.b,
+                                              std::min(to_alpha, 1.0f)});
+    }
+}
+
+void RenderSystem::uploadTrajectoryLines(SDL_GPUCommandBuffer* cmdbuf)
+{
+    if (m_trajectory_line_vertices.empty())
+        return;
+
+    // Never copy more than the buffer holds; renderTrajectoryLines draws the vector's size, so it stays in sync
+    if (m_trajectory_line_vertices.size() > MAX_TRAJECTORY_LINE_VERTICES)
+    {
+        printf("Too many trajectory line vertices %zu > %u\n", m_trajectory_line_vertices.size(),
+               MAX_TRAJECTORY_LINE_VERTICES);
+        m_trajectory_line_vertices.resize(MAX_TRAJECTORY_LINE_VERTICES);
+    }
+
+    // cycle = true: last frame's commands may still be reading these buffers; SDL hands us a free copy instead
+    void* map = SDL_MapGPUTransferBuffer(m_gpu, m_trajectory_line_transfer_buffer, true);
+    SDL_memcpy(map, m_trajectory_line_vertices.data(), m_trajectory_line_vertices.size() * sizeof(DebugLineVertex));
+    SDL_UnmapGPUTransferBuffer(m_gpu, m_trajectory_line_transfer_buffer);
+
+    SDL_GPUCopyPass* copy_pass = SDL_BeginGPUCopyPass(cmdbuf);
+    SDL_GPUTransferBufferLocation src = {.transfer_buffer = m_trajectory_line_transfer_buffer, .offset = 0};
+    SDL_GPUBufferRegion dst = {.buffer = m_trajectory_line_vertex_buffer,
+                               .offset = 0,
+                               .size = (uint32_t)(m_trajectory_line_vertices.size() * sizeof(DebugLineVertex))};
+    SDL_UploadToGPUBuffer(copy_pass, &src, &dst, true);
+    SDL_EndGPUCopyPass(copy_pass);
+}
+
+void RenderSystem::renderTrajectoryLines(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf,
+                                         const CameraState& camera_state)
+{
+    if (m_trajectory_line_vertices.empty())
+        return;
+
+    SDL_BindGPUGraphicsPipeline(pass, m_debug_line_pipeline);
+    CameraConstants camera_constants = buildCameraConstants(camera_state, camera_state.offset);
+    SDL_PushGPUVertexUniformData(cmdbuf, 0, &camera_constants, sizeof(camera_constants));
+
+    SDL_GPUBufferBinding vbo = {.buffer = m_trajectory_line_vertex_buffer, .offset = 0};
+    SDL_BindGPUVertexBuffers(pass, 0, &vbo, 1);
+    SDL_DrawGPUPrimitives(pass, (uint32_t)m_trajectory_line_vertices.size(), 1, 0, 0);
 }

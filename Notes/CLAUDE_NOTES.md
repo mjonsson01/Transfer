@@ -508,7 +508,28 @@ step = walkthrough, starting with the tracer class header.**
   TransferGame 0 warnings. Engine + Tests untouched (no RunTests/TidyEngine needed). Open nits: VelocityVerletIntegration
   .cpp header comment lacks '.cpp', CustomMathUtilities include belongs in the .cpp (+ PhysicsConstants), no comments in
   its header, Starship's ...FirstHalf vs free ...FirstHalfStep.
-  NEXT = PHASE 1: Core/Trajectories.hpp + GameState member, then the prediction in physics.
+  PHASE 1+2 IMPLEMENTED BY CLAUDE 2026-11-24 (Marco: 'implement the whole thing', he reviews as we go; uncommitted):
+  - Core/Trajectories.hpp (TracedPoint{position, drawn_at}, TracedPath, TraceStatus Idle/Tracing/Finished, Trajectories
+    {status, macro_body_paths, ship_path, clock}); GameState::m_trajectories (Marco typed the member); UIState
+    getIsPlanning/setIsPlanning (Marco's copy kept, Claude's duplicate removed); DEPRECATED toggleTrajectoriesRequested;
+    Starship::cutThrust; PhysicsConstants TRAJECTORY_TRACE_SPEED 10, MAX_TRACE_TICKS_PER_FRAME 32,
+    MAX_TRACE_MILLISECONDS_PER_FRAME 4.0, TRAJECTORY_TICKS_PER_POINT 4, TRAJECTORY_HORIZON_SECONDS 60.
+  - Systems/Physics/TrajectoryPrediction.cpp = PhysicsSystem members (option a): updateTrajectories (public, once per
+    frame) -> startTrajectories / clearTrajectories / universeChangedSinceTraceStart / advanceIntegratedTrajectories /
+    recordTrajectoryPoints; members m_prediction_universe_state, m_trace_start_universe_state, accumulator, ticks.
+    Horizon ticks use lround(seconds * INV_PHYSICS_TIME_STEP): a plain cast of 60/(1/120f) gave 7199 (harness caught it).
+    TIME BUDGET added after measuring 30 ms/frame at 25 planets + 20000 particles -> now ~4.5 ms avg, 6 worst.
+  - Game::Run: time_scale = planning ? 0 : slider; updateTrajectories after the physics loop if runs_simulation.
+  - InputSystem::translateGameInputs: P toggles planning; I (only while planning) sets the request.
+  - RenderSystem: m_trajectory_line_* buffers (MAX_TRAJECTORY_LINE_VERTICES 131072 in EngineConstants), drawn with the
+    DEBUG LINE pipeline (same vertex layout), after the stars and before the bodies. Fade-in by age (trajectoryAlpha:
+    0.1 -> 0.7 over 0.75 s), white tip = newest 3 segments while Tracing. First point's 'previous' = the real body's
+    previousPosition (ship: center - movementThisTick) so the line starts at the body as DRAWN (alpha interpolation).
+    Look constants are static constexpr at the top of the trajectory section in RenderSystem.cpp.
+  - Readout: TransferScenes FPS label + planningReadout() label in a UIColumn top-left ('PLANNING: press I to
+    integrate' / 'PLANNING: Integrating...' / 'PLANNING').
+  - Verified: trajectory_harness (9005 points vs the real game: 0 differ; behaviour checks all as expected),
+    universe_refactor IDENTICAL, CMake Release build 0 warnings. NOT yet seen on screen by anyone: Marco to try it.
 - HARNESSES cleaned 2026-10-12 (Marco asked): 12 kept + updated to the UniverseState API, all print the same as on
   d41ec3d (shatter_order varies run to run anyway: random debris); 7 obsolete files deleted; Notes/drafts/Harnesses/
   README.md = build recipe + what each checks. GOTCHA: .gitignore line 14 ignores Notes/drafts/ -> only 8 harness files
@@ -546,6 +567,31 @@ step = walkthrough, starting with the tracer class header.**
     section or 2 rows once >2 per section (each section is 412 wide for 2 checkboxes).
   - Despawn far-away debris to return particle budget (idea, Marco's call).
   - Small tidy-ups: UIColumn into its own file; StarshipVertex's unused square_size/color; isPreviewingMacro naming (dies with E).
+- **GPU PARTICLES (goal stated by Marco 2026-10-12, not started):** he wants HUNDREDS OF THOUSANDS of particles AND
+  particle-particle gravity. He knows collisions are today's bottleneck. Claude's advice: GPU compute (SDL_GPU compute pipelines +
+  shadercross), staged: (1) compute pass + render particles straight from a storage buffer, (2) brute-force N^2 self-gravity
+  (tiled, ~20-30k max), (3) collisions = hash grid + GPU sort + GATHER contacts (each particle writes only itself, from a snapshot;
+  replaces the serial impulse + break), (4) Barnes-Hut / particle-mesh gravity reusing the sort (100k+), (5) events back to the
+  CPU (absorption, ship hits, shatter spawns) via small async readbacks. Open issues: Metal has NO double; IntegrationLines is
+  exact only if the tracer runs the same code (later: same shaders on a buffer copy). Keep the CPU physics as the reference for
+  harness comparisons.
+  2026-10-19: target is now ~500k+. Marco's reference: tsp.grantkot.com ('Tutti Space Program', Grant Kot). Claude inspected it:
+  it is NOT WebGPU. It's C++ MPM (material point method: particles interact through a sparse tiled GRID, no pair collisions)
+  compiled to WASM, multithreaded on all CPU cores (Taskflow, float2), rendered with WebGL2. ~199k particles, self-gravity
+  ('N-body', softening setting, method not visible in the WASM) + radial gravity, occupancy merge/split (adaptive particle
+  count), temperature + phase changes. Claude's hidden browser pane showed 2-3 FPS (throttled, ignore). MARCO'S MACHINE
+  (2026-10-21): 350k particles, 60 FPS, sim 20 ms. Read from its JS: the sim is DECOUPLED from rendering (_mpm_update_mt
+  dispatches 1 step of 1/60 s to worker threads and returns; a callback marks it done; FPS = render rate from the last
+  snapshot). 20 ms per 16.7 ms step = the sim runs at ~83% real time without stutter (slows down instead of dropping
+  frames). Claude had guessed 'CPU tops out ~200k': WRONG, conceded. New advice: CPU threads first (parallel-for, SoA floats,
+  gather collisions, grid gravity, sim thread + snapshot), GPU only if aiming for millions.
+  2026-10-21 later: Marco DOES want GPU compute long term (>500k). Agreed shape: write the CPU stage AS KERNELS so the port is
+  mechanical: flat float arrays (SoA, fixed capacity = future StructuredBuffers), one function per pass called as
+  kernel(i) by parallelFor and writing only index i, no push_back/erase inside passes (alive flags + spawn slots), hash-based
+  RNG (id + tick) instead of the shared randomDouble generator, counting-sort grid (count, prefix sum, scatter), no float
+  atomics, events appended to an output list. Then port kernel by kernel, checking each against the CPU version. Get a GPU
+  debugger first (Xcode Metal capture on the Mac or RenderDoc on Windows). OPEN DESIGN DECISION (Marco's): keep particles as hard discs (current rules, GPU hash
+  grid + gather) or switch debris to MPM-style material (fluid/rubble/lava, fracture and temperature for free, bigger rewrite).
 
 ---
 

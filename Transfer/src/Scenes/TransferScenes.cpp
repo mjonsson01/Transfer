@@ -40,6 +40,7 @@ using DynamoEngine::Vector2F;
 constexpr Vector2F CHECKBOX_SIZE = {200.0f, 36.0f}; // as tall as the visor dropdown; its label gets 164 of the 200
 constexpr float CHECKBOX_SPACING = 12.0f;           // between neighbouring checkboxes in a section
 constexpr float SECTION_TITLE_HEIGHT = 27.0f;       // one line of the 18 pt UI font
+constexpr float READOUT_LINE_HEIGHT = 27.0f;        // the top-left text lines (FPS, planning), same font
 constexpr float SECTION_TITLE_GAP = 4.0f;           // between a section's title and its checkboxes
 constexpr float SPAWN_SECTION_SPACING = 40.0f;      // between neighbouring sections
 constexpr float SPAWN_PANEL_HEIGHT = SECTION_TITLE_HEIGHT + SECTION_TITLE_GAP + CHECKBOX_SIZE.y_val;
@@ -134,6 +135,25 @@ std::unique_ptr<UIColumn> makeSpawnSection(const std::string& title, std::unique
     return section;
 }
 
+// The planning mode line under the FPS counter (empty outside planning mode)
+std::string planningReadout(const UIState& ui_state, const GameState& game_state)
+{
+    if (!ui_state.getIsPlanning())
+    {
+        return "";
+    }
+    switch (game_state.getTrajectories().status)
+    {
+    case TraceStatus::Idle:
+        return "PLANNING: press I to integrate";
+    case TraceStatus::Tracing:
+        return "PLANNING: Integrating...";
+    case TraceStatus::Finished:
+        return "PLANNING";
+    }
+    return "PLANNING";
+}
+
 // --- The scenes --- //
 
 std::unique_ptr<Scene> buildStartMenuScene(SceneManager& scenes, UIState& ui_state)
@@ -153,11 +173,20 @@ std::unique_ptr<Scene> buildGameScene(UIState& ui_state, GameState& game_state)
     std::unique_ptr<Scene> scene = makeScene(SceneSettings::simulation(), ui_state);
     DEPRECATED_InputState& choices = ui_state.getMutableDEPRECATED_InputState(); // where the slider values go
 
-    // FPS counter, top-left
+    // Top-left, one line each: the FPS counter, then the planning mode readout under it
     std::unique_ptr<UILabel> fps_label = std::make_unique<UILabel>("FPS: ");
-    fps_label->setPlacement({.align = UIAlign::TopLeft, .margin = 10.0f});
+    fps_label->setPlacement({.size = {0.0f, READOUT_LINE_HEIGHT}});
     fps_label->setTextSource([&ui_state]() { return "FPS: " + std::to_string(static_cast<int>(ui_state.getFPS())); });
-    scene->ui().addChild(std::move(fps_label));
+
+    std::unique_ptr<UILabel> planning_label = std::make_unique<UILabel>("");
+    planning_label->setPlacement({.size = {0.0f, READOUT_LINE_HEIGHT}});
+    planning_label->setTextSource([&ui_state, &game_state]() { return planningReadout(ui_state, game_state); });
+
+    std::unique_ptr<UIColumn> readouts = std::make_unique<UIColumn>(0.0f);
+    readouts->setPlacement({.align = UIAlign::TopLeft, .margin = 10.0f});
+    readouts->addChild(std::move(fps_label));
+    readouts->addChild(std::move(planning_label));
+    scene->ui().addChild(std::move(readouts));
 
     // Visor Dropdown, shows what bodies are colored by
     // camera_state.visor_view is the source of truth, the dropdown reads it every frame

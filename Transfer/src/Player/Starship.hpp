@@ -24,6 +24,8 @@ class Starship
     void applyRotation(UIState& uiState);
     // Reads W/S and sets the thrust acceleration (along the nose) for this tick
     void applyThrust(UIState& uiState);
+    // The trajectory prediction coasts: drops the thrust left over from the last real tick (W held when P was pressed)
+    void cutThrust() { m_thrust_acceleration = {}; }
     // Velocity Verlet, the same two halves the bodies use. Phase 1: half kick with last tick's acceleration, then drift
     void applyVelocityVerletFirstHalfStep();
     // Called between the two phases, once the planets' pull at the ship's NEW position is known
