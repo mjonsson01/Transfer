@@ -6,10 +6,10 @@
 // The prediction is a COPY of the universe, stepped with integrateUniversePhysics: exactly the forces and motion of
 // the real tick, without collisions. So a line is exactly what the game will do, as long as nothing collides.
 
-#include "Systems/PhysicsSystem.hpp"
+#include "Systems/Physics/PhysicsSystem.hpp"
 
 // Custom Imports
-#include "Utilities/Constants/PhysicsConstants.hpp"
+#include "Systems/Physics/PhysicsConstants.hpp"
 
 // Standard Library Imports
 #include <chrono>

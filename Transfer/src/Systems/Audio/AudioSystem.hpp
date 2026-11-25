@@ -1,4 +1,4 @@
-// File: Transfer/src/Systems/AudioSystem.hpp
+// File: Transfer/src/Systems/Audio/AudioSystem.hpp
 
 #pragma once
 
@@ -8,9 +8,9 @@
 // Custom Imports
 #include "Core/GameState.hpp"
 #include "Core/UIState.hpp"
-#include "Entities/Sound/MusicModeEnum.hpp"
-#include "Entities/Sound/SoundEffect.hpp"
-#include "Utilities/System/SystemPathUtility.hpp"
+#include "Systems/Audio/MusicModeEnum.hpp"
+#include "Systems/Audio/SoundEffect.hpp"
+#include "Utilities/SystemPathUtility.hpp"
 
 // Standard Library Imports
 #include <filesystem>

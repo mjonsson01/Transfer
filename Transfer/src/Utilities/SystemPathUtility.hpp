@@ -1,4 +1,4 @@
-// File: Transfer/src/Utilities/System/SystemPathUtility.hpp
+// File: Transfer/src/Utilities/SystemPathUtility.hpp
 
 #pragma once
 

@@ -1,9 +1,9 @@
-// File: Transfer/src/Utilities/Physics/FragmentLayout.hpp
+// File: Transfer/src/Systems/Physics/FragmentLayout.hpp
 
 #pragma once
 
 // Custom Imports
-#include "Entities/Physics/GravitationalBody.hpp"
+#include "Systems/Physics/GravitationalBody.hpp"
 
 // Standard Library Imports
 #include <cstdint>

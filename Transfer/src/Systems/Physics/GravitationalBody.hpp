@@ -4,7 +4,7 @@
 
 // Custom Imports
 #include "DynamoEngine/Math/Vector2.hpp"
-#include "Utilities/Rendering/GPUTypes.hpp"
+#include "Systems/Rendering/GPUTypes.hpp"
 
 // Standard Library Imports
 #include <SDL3/SDL_stdinc.h>

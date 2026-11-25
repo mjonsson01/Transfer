@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "Entities/Physics/GravitationalBody.hpp"
+#include "Systems/Physics/GravitationalBody.hpp"
 
 struct GravitationalBodyPair
 {

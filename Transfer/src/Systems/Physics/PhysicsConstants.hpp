@@ -1,7 +1,7 @@
-// File: Transfer/src/Utilities/Constants/PhysicsConstants.hpp
+// File: Transfer/src/Systems/Physics/PhysicsConstants.hpp
 
 #pragma once
-#include "Utilities/Constants/EngineConstants.hpp"
+#include "Constants/EngineConstants.hpp"
 
 // Global Physics DT
 constexpr float PHYSICS_TIME_STEP = 1.0f / 120.0f; // 120Hz physics update rate

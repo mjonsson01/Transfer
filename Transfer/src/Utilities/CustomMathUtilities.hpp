@@ -5,7 +5,7 @@
 
 // Custom Imports
 #include "DynamoEngine/Constants/GlobalConstants.hpp"
-#include "Utilities/Constants/EngineConstants.hpp"
+#include "Constants/EngineConstants.hpp"
 
 #pragma once
 

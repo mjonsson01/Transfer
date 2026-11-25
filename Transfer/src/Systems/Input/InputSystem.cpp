@@ -1,7 +1,7 @@
-// File: Transfer/src/Systems/InputSystem.cpp
+// File: Transfer/src/Systems/Input/InputSystem.cpp
 
 // Custom Includes
-#include "Systems/InputSystem.hpp"
+#include "Systems/Input/InputSystem.hpp"
 
 // SDL Includes
 #include <SDL3/SDL_init.h>

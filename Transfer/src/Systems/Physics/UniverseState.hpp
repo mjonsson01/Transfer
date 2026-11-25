@@ -1,9 +1,9 @@
-// File: Transfer/src/Core/UniverseState.hpp
+// File: Transfer/src/Systems/Physics/UniverseState.hpp
 
 #pragma once
 
 // Custom Imports
-#include "Entities/Physics/GravitationalBody.hpp"
+#include "Systems/Physics/GravitationalBody.hpp"
 #include "Player/Starship.hpp"
 
 // Standard Library Imports

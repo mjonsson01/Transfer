@@ -1,8 +1,8 @@
-// File: Transfer/src/Utilities/Physics/UniformParticleGrid.hpp
+// File: Transfer/src/Systems/Physics/UniformParticleGrid.hpp
 
 #pragma once
 
-#include "Entities/Physics/GravitationalBody.hpp"
+#include "Systems/Physics/GravitationalBody.hpp"
 
 #include <cstdint>
 #include <vector>

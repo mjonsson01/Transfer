@@ -1,17 +1,17 @@
-// File: Transfer/src/Systems/InputSystem.hpp
+// File: Transfer/src/Systems/Input/InputSystem.hpp
 
 #pragma once
 
 // Custom Imports
-#include "Core/CameraState.hpp"
+#include "Camera/CameraState.hpp"
 #include "Core/GameState.hpp"
-#include "Core/PlayerInput.hpp"
+#include "Systems/Input/PlayerInput.hpp"
 #include "Core/UIState.hpp"
 #include "Scenes/TransferScenes.hpp"
-#include "Utilities/Constants/EngineConstants.hpp"
-#include "Utilities/Constants/GameSystemConstants.hpp"
-#include "Utilities/Math/CustomMathUtilities.hpp"
-#include "Utilities/Rendering/CameraTransform.hpp"
+#include "Constants/EngineConstants.hpp"
+#include "Constants/GameSystemConstants.hpp"
+#include "Utilities/CustomMathUtilities.hpp"
+#include "Camera/CameraTransform.hpp"
 
 // Engine Imports
 #include "DynamoEngine/Input/InputEvent.hpp"

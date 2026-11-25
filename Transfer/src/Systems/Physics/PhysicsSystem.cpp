@@ -1,7 +1,7 @@
-// File: Transfer/src/Systems/PhysicsSystem.cpp
+// File: Transfer/src/Systems/Physics/PhysicsSystem.cpp
 
 #include "PhysicsSystem.hpp"
-#include "Utilities/Constants/PhysicsConstants.hpp"
+#include "Systems/Physics/PhysicsConstants.hpp"
 
 PhysicsSystem::PhysicsSystem()
 {

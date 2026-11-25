@@ -7,11 +7,11 @@
 #include <vector>
 
 // Custom includes
-#include "Core/PlayerInput.hpp"
+#include "Systems/Input/PlayerInput.hpp"
 #include "DynamoEngine/Math/Vector2.hpp"
 #include "DynamoEngine/Rendering/UIVertex.hpp"
-#include "Utilities/Constants/PhysicsConstants.hpp"
-#include "Utilities/Rendering/GPUTypes.hpp"
+#include "Systems/Physics/PhysicsConstants.hpp"
+#include "Systems/Rendering/GPUTypes.hpp"
 
 class Starship
 {

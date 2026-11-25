@@ -1,26 +1,26 @@
-// File: Transfer/src/Systems/PhysicsSystem.hpp
+// File: Transfer/src/Systems/Physics/PhysicsSystem.hpp
 
 #pragma once
 
 // Custom Imports
 #include "Core/GameState.hpp"
-#include "Core/PlayerInput.hpp"
-#include "Core/SpawnSettings.hpp"
-#include "Core/Trajectories.hpp"
+#include "Systems/Input/PlayerInput.hpp"
+#include "Systems/Physics/SpawnSettings.hpp"
+#include "Systems/Physics/Trajectories.hpp"
 #include "Core/UIState.hpp"
-#include "Core/UniverseState.hpp"
+#include "Systems/Physics/UniverseState.hpp"
 #include "DynamoEngine/Math/Vector2.hpp"
 #include "DynamoEngine/Physics/Collision2D.hpp"
-#include "Entities/Physics/GravitationalBody.hpp"
-#include "Entities/Physics/GravitationalBodyPair.hpp"
+#include "Systems/Physics/GravitationalBody.hpp"
+#include "Systems/Physics/GravitationalBodyPair.hpp"
 #include "Systems/Physics/VelocityVerletIntegration.hpp"
-#include "Utilities/Constants/EngineConstants.hpp"
-#include "Utilities/Constants/GameSystemConstants.hpp"
-#include "Utilities/Constants/PhysicsConstants.hpp"
-#include "Utilities/Math/CustomMathUtilities.hpp"
-#include "Utilities/Physics/FragmentLayout.hpp"
-#include "Utilities/Physics/UniformParticleGrid.hpp"
-#include "Utilities/Rendering/CameraTransform.hpp"
+#include "Constants/EngineConstants.hpp"
+#include "Constants/GameSystemConstants.hpp"
+#include "Systems/Physics/PhysicsConstants.hpp"
+#include "Utilities/CustomMathUtilities.hpp"
+#include "Systems/Physics/FragmentLayout.hpp"
+#include "Systems/Physics/UniformParticleGrid.hpp"
+#include "Camera/CameraTransform.hpp"
 
 // Standard Library Imports
 #include <algorithm>

@@ -1,5 +1,5 @@
-// File: Transfer/src/Core/SpawnSettings.cpp
-#include "Core/SpawnSettings.hpp"
+// File: Transfer/src/Systems/Physics/SpawnSettings.cpp
+#include "Systems/Physics/SpawnSettings.hpp"
 
 void SpawnSettings::setFlag(SpawnFlag flag, bool on)
 {

@@ -1,10 +1,10 @@
-// File: Transfer/src/Core/CameraState.hpp
+// File: Transfer/src/Camera/CameraState.hpp
 
 #pragma once
 
 // Custom Imports
 #include "DynamoEngine/Math/Vector2.hpp"
-#include "Utilities/Constants/GameSystemConstants.hpp"
+#include "Constants/GameSystemConstants.hpp"
 
 // Standard Library Imports
 #include <cstdint>

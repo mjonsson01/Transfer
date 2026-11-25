@@ -2,7 +2,7 @@
 // Particle budget: spawns are refused using live + 800 per macro, so physics can never pass MAX_LIVE_PARTICLES.
 #include "Core/GameState.hpp"
 #include "Core/UIState.hpp"
-#include "Systems/PhysicsSystem.hpp"
+#include "Systems/Physics/PhysicsSystem.hpp"
 #include "HarnessInput.hpp"
 #include <algorithm>
 #include <cstdio>

@@ -1,4 +1,4 @@
-// File: Transfer/src/Utilities/Rendering/GPUTypes.hpp
+// File: Transfer/src/Systems/Rendering/GPUTypes.hpp
 
 #pragma once
 

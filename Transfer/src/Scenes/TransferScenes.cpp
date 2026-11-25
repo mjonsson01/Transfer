@@ -9,8 +9,8 @@
 #include "DynamoEngine/UI/Widgets/UILabel.hpp"
 #include "DynamoEngine/UI/Widgets/UIRow.hpp"
 #include "DynamoEngine/UI/Widgets/UISlider.hpp"
-#include "Utilities/Constants/EngineConstants.hpp"
-#include "Utilities/Constants/PhysicsConstants.hpp"
+#include "Constants/EngineConstants.hpp"
+#include "Systems/Physics/PhysicsConstants.hpp"
 
 // Standard Library Imports
 #include <cmath>

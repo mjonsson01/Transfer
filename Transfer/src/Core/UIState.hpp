@@ -6,9 +6,9 @@
 #include <SDL3/SDL.h>
 
 // Custom Imports
-#include "Core/SpawnSettings.hpp"
-#include "Entities/Sound/MusicModeEnum.hpp"
-#include "Utilities/Constants/GameSystemConstants.hpp"
+#include "Systems/Physics/SpawnSettings.hpp"
+#include "Systems/Audio/MusicModeEnum.hpp"
+#include "Constants/GameSystemConstants.hpp"
 
 // Standard Library Imports
 #include <queue>

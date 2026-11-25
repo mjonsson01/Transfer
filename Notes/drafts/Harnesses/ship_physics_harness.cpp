@@ -5,7 +5,7 @@
 #undef private
 #include "Core/GameState.hpp"
 #include "Core/UIState.hpp"
-#include "Systems/PhysicsSystem.hpp"
+#include "Systems/Physics/PhysicsSystem.hpp"
 #include "HarnessInput.hpp"
 #include <algorithm>
 #include <cmath>

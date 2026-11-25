@@ -1,4 +1,4 @@
-// File: Transfer/src/Utilities/Constants/GameSystemConstants.hpp
+// File: Transfer/src/Constants/GameSystemConstants.hpp
 
 #pragma once
 

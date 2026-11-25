@@ -1,6 +1,6 @@
-// File: Transfer/src/Systems/RenderSystem.cpp
+// File: Transfer/src/Systems/Rendering/RenderSystem.cpp
 
-#include "Systems/RenderSystem.hpp"
+#include "Systems/Rendering/RenderSystem.hpp"
 
 #include "DynamoEngine/Constants/GlobalConstants.hpp"
 

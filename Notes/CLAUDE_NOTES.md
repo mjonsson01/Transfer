@@ -134,6 +134,34 @@ tracer, DESIGN AGREED, nothing typed yet (see 'IN PROGRESS' at the top of sectio
 
 ## 3. Architecture (current, after the UI/scene rework)
 
+**SOURCE LAYOUT (reorganized 2026-11-25 by Claude, Marco's choice of layout; older notes use the OLD paths):**
+```
+Transfer/src/
+  main.cpp
+  Core/              Game, GameState, UIState                       (only the top level of the game)
+  Systems/
+    Physics/         PhysicsSystem, TrajectoryPrediction.cpp, VelocityVerletIntegration, UniverseState,
+                     Trajectories, SpawnSettings, GravitationalBody(+Pair), FragmentLayout, UniformParticleGrid,
+                     PhysicsConstants
+    Rendering/       RenderSystem, GPUTypes, CameraData (the shaders' CameraConstants cbuffer), TwinklingStars
+    Input/           InputSystem, PlayerInput
+    Audio/           AudioSystem, MusicModeEnum, SoundEffect
+  Camera/            CameraState, CameraTransform (screen <-> world)
+  Player/            Player, Starship
+  Scenes/            TransferScenes
+  Constants/         EngineConstants, GameSystemConstants
+  Utilities/         CustomMathUtilities, SystemPathUtility
+  HLSL/, DynamoEngine/   (unchanged)
+```
+Old -> new: Core/{CameraState} -> Camera/; Core/{PlayerInput} -> Systems/Input/; Core/{SpawnSettings,Trajectories,
+UniverseState} -> Systems/Physics/; Entities/Physics/* -> Systems/Physics/; Entities/Sound/* -> Systems/Audio/;
+Entities/VisualElements/TwinklingStars -> Systems/Rendering/; Systems/XSystem -> Systems/X/XSystem (Render ->
+Rendering/); Utilities/Constants/{Engine,GameSystem}Constants -> Constants/, PhysicsConstants -> Systems/Physics/;
+Utilities/Physics/* -> Systems/Physics/; Utilities/Rendering/{CameraData,GPUTypes} -> Systems/Rendering/,
+CameraTransform -> Camera/; Utilities/Math/ and Utilities/System/ flattened into Utilities/. Done with git mv + a
+script rewriting every include (src, Tests, harnesses); verified: deterministic harnesses identical, Release build
+0 warnings, 148/148 tests, TidyEngine clean. Documentation/class_map.md is stale (rerun PythonScripts/create_docs.py).
+
 **Game loop** (`Core/Game.cpp`, `Game::Run`): frame_seconds → updateFPS → `ProcessInput(frame_seconds)` → UpdateInstantiations
 (spawns from input) → PlayAudio → fixed-step physics (120 Hz accumulator × time scale, only while `scenes.currentScene().settings().runs_simulation`)
 → alpha → RenderFrame → **`scenes.applyPendingSwitch()`** (deferred scene switches happen here) → limitFrameRate (60 FPS).

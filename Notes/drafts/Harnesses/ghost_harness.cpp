@@ -2,7 +2,7 @@
 // Two overlapping particles closing head-on, mass ratio 100 (>= 8). Ghost = they pass through; fixed = they bounce.
 #include "Core/GameState.hpp"
 #include "Core/UIState.hpp"
-#include "Systems/PhysicsSystem.hpp"
+#include "Systems/Physics/PhysicsSystem.hpp"
 #include "HarnessInput.hpp"
 #include <cstdio>
 

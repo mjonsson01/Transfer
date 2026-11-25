@@ -1,7 +1,7 @@
 // File: Transfer/src/Systems/Physics/VelocityVerletIntegration.cpp
 
 #include "Systems/Physics/VelocityVerletIntegration.hpp"
-#include "Utilities/Math/CustomMathUtilities.hpp"
+#include "Utilities/CustomMathUtilities.hpp"
 
 void integrateVelocityVerletFirstHalfStep(UniverseState& universe_state)
 {

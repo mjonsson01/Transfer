@@ -1,4 +1,4 @@
-#include "Entities/Physics/GravitationalBody.hpp"
+#include "Systems/Physics/GravitationalBody.hpp"
 
 UnifiedBodyVertex GravitationalBody::toUnifiedVertex() const
 {

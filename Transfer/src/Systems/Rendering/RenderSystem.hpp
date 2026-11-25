@@ -1,4 +1,4 @@
-// File: Transfer/src/Systems/RenderSystem.hpp
+// File: Transfer/src/Systems/Rendering/RenderSystem.hpp
 
 #pragma once
 
@@ -9,23 +9,23 @@
 #include <SDL3_ttf/SDL_ttf.h>
 
 // Custom Imports
-#include "Core/CameraState.hpp"
+#include "Camera/CameraState.hpp"
 #include "Core/GameState.hpp"
-#include "Core/PlayerInput.hpp"
+#include "Systems/Input/PlayerInput.hpp"
 #include "Core/UIState.hpp"
 #include "DynamoEngine/Rendering/FontAtlas.hpp"
 #include "DynamoEngine/Rendering/UIVertex.hpp"
 #include "DynamoEngine/Scenes/Scene.hpp"
 #include "DynamoEngine/UI/UIGeometryBuilder.hpp"
 #include "DynamoEngine/UI/UIRoot.hpp"
-#include "Entities/VisualElements/TwinklingStars.hpp"
-#include "Utilities/Constants/EngineConstants.hpp"
-#include "Utilities/Constants/GameSystemConstants.hpp"
-#include "Utilities/Physics/FragmentLayout.hpp"
-#include "Utilities/Rendering/CameraData.hpp"
-#include "Utilities/Rendering/CameraTransform.hpp"
-#include "Utilities/Rendering/GPUTypes.hpp"
-#include "Utilities/System/SystemPathUtility.hpp"
+#include "Systems/Rendering/TwinklingStars.hpp"
+#include "Constants/EngineConstants.hpp"
+#include "Constants/GameSystemConstants.hpp"
+#include "Systems/Physics/FragmentLayout.hpp"
+#include "Systems/Rendering/CameraData.hpp"
+#include "Camera/CameraTransform.hpp"
+#include "Systems/Rendering/GPUTypes.hpp"
+#include "Utilities/SystemPathUtility.hpp"
 
 // Standard Library Imports
 #include <algorithm>

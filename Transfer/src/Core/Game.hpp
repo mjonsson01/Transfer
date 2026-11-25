@@ -9,19 +9,19 @@
 
 // Custom Imports
 #include "Core/GameState.hpp"
-#include "Core/PlayerInput.hpp"
+#include "Systems/Input/PlayerInput.hpp"
 #include "Core/UIState.hpp"
 #include "DynamoEngine/Debug/FrameProfiler.hpp"
 #include "DynamoEngine/Scenes/SceneManager.hpp"
-#include "Entities/Sound/MusicModeEnum.hpp"
+#include "Systems/Audio/MusicModeEnum.hpp"
 #include "Scenes/TransferScenes.hpp"
-#include "Systems/AudioSystem.hpp"
-#include "Systems/InputSystem.hpp"
-#include "Systems/PhysicsSystem.hpp"
-#include "Systems/RenderSystem.hpp"
-#include "Utilities/Constants/EngineConstants.hpp"
-#include "Utilities/Constants/GameSystemConstants.hpp"
-// #include "Utilities/System/SystemPathUtility.hpp"
+#include "Systems/Audio/AudioSystem.hpp"
+#include "Systems/Input/InputSystem.hpp"
+#include "Systems/Physics/PhysicsSystem.hpp"
+#include "Systems/Rendering/RenderSystem.hpp"
+#include "Constants/EngineConstants.hpp"
+#include "Constants/GameSystemConstants.hpp"
+// #include "Utilities/SystemPathUtility.hpp"
 
 class Game
 {
