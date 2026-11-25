@@ -26,7 +26,7 @@ AudioSystem::AudioSystem()
 
 AudioSystem::~AudioSystem() {}
 
-void AudioSystem::CleanUp()
+void AudioSystem::cleanUp()
 {
     // SDL_Log("Cleaning up Audio System...");
     if (device)

@@ -1,6 +1,9 @@
 // File: Transfer/src/Utilities/Constants/GameSystemConstants.hpp
 
 #pragma once
+
+// Standard Library Imports
+#include <cstddef>
 // #ifndef GAME_SYSTEM_CONSTANTS_H
 // #define GAME_SYSTEM_CONSTANTS_H
 
@@ -33,6 +36,10 @@ constexpr int SCREEN_WIDTH = 1280;
 constexpr int STAR_NUM = 100000;
 
 constexpr bool VIEW_DEBUG = false;
+// The F4 profiler reports averages and 1% lows over this many frames (5 s at 60 FPS)
+constexpr size_t PROFILER_WINDOW_FRAMES = 300;
+// Most lines the F4 profiler overlay shows (a header plus one line per section)
+constexpr size_t MAX_PROFILER_LINES = 12;
 
 const double MIN_ZOOM = 0.01;
 

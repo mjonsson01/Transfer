@@ -49,8 +49,8 @@ struct GravitationalBody
     bool isShatterable = false; // allows for shattering into particles
     bool isAccretable = false;  // allows body to be absorbed into another
     bool isCollidable = false;  // makes the body a ghost
-    bool isMacroGhost = false;  // makes the body a ghost to macro bodies, but
-                                // does not ghost for micro particles.
+    bool isMacroGhost = false;  // a ghost to macro bodies and the ship, but still collides with
+                                // particles (debris). Set from SpawnSettings::is_macro_ghost.
     bool isPreview = false;
     bool visible = true; // particles and macros should be visible by default
                          // but if instantiated specifically for collision

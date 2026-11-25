@@ -6,6 +6,13 @@ Last full rewrite: 2026-09-27, on macOS, branch `EngineSep` at `959b486` ("Finis
 Updated 2026-09-29 on Windows, at `7f852af` (everything committed and pushed; build/scripts rework done on both platforms).
 Updated 2026-10-09 on macOS: EngineSep merged to master (PR 31), Mac packaging merged (PR 32/33, master at `a1cb3a7`).
 The folder was renamed `CLAUDE/` -> `Notes/`. Current working branch: `Bugfixes` (REWORK items first, then new features).
+Updated 2026-10-10 on macOS, end of a long session: Bugfixes merged to master up to PR 35 (`ba10f43`). UNCOMMITTED at handoff:
+the cluster spawn preview (FragmentLayout.hpp/.cpp are new, untracked -- `git add` them) + REWORK edits. 139/139 tests, tidy 38
+clean. Section 5's done list has one entry per feature from 2026-10-09/10 (newest physics ones near the top of 'Done').
+Since 2026-10-09 Marco sometimes asks Claude to APPLY changes directly ("apply it"); the default is still walkthrough
+(he types). Verify in a scratch copy first either way. Tip: compile Transfer/src to .o once and link harnesses against it.
+Updated 2026-10-11: the cluster preview is committed (`d41ec3d`). New branch `IntegrationLines`: planning mode + trajectory
+tracer, DESIGN AGREED, nothing typed yet (see 'IN PROGRESS' at the top of section 5's 'Next candidates').
 
 ---
 
@@ -315,9 +322,9 @@ Lambdas capture Game members by reference, which is safe because they outlive th
   angular velocity/torque/inertia): a conscious later decision.
   FINAL DESIGN (supersedes parts of the plan below): (3) debug overlay done (F3, green ship polygon + yellow planet circles,
   DebugLine shaders listed in BOTH MakeTransfer scripts). (4) Starship: m_mass = DRY_MASS 1000; applyThrust sets
-  m_thrust_acceleration = nose x THRUST_ACCELERATION (1200 px/s^2 = old feel); KDK Verlet applyVelocityVerletPhase1/2 inside the
-  bodies' phases; PhysicsSystem::updateShipGravity (in updateAllForces) = TWO-WAY ship<->planet forces (same softening rule as
-  calculateGravity), setGravityForce -> a = F/m + thrust. Debris and ship don't attract. (5) handleShipCollisions (in
+  m_thrust_acceleration = nose x THRUST_ACCELERATION (1200 px/s^2 = old feel); KDK Verlet applyVelocityVerletFirstHalf/2 inside the
+  bodies' phases; PhysicsSystem::addGravityBetweenShipAndBodies (in updateAllForces) = TWO-WAY ship<->planet forces (same softening rule as
+  addGravityBetweenGravBodyPair), setGravityForce -> a = F/m + thrust. Debris and ship don't attract. (5) handleShipCollisions (in
   handleCollisions, before the pending-fragment flush): planets + particles (bounding-radius pre-check), resolveShipContact =
   push apart split by inverse mass (force-static = 0), impulse with SHIP_RESTITUTION = 0.2 only when closing, returns absorbed
   energy 1/2 mu v^2 (1-e^2) -> ship.setLastImpactEnergy (hook for future DAMAGE; Marco's plan). NO ship-caused shattering
@@ -393,6 +400,15 @@ Lambdas capture Game members by reference, which is safe because they outlive th
   touch may shatter right after separating (two 1e9 r=60 planets gain ~414 px/s closing speed in one tick from gravity, >
   MIN_SHATTER_SPEED) -- fine (option B). Ideas kept for later: shatter threshold relative to mutual escape speed; resting
   contact bounces forever (ELASTIC_LOSS_FACTOR 0.994). Harnesses: placement_separation_, heavy_overlap_.
+- **Cluster spawn preview (2026-10-10, applied by Marco, works in-game):** new free functions in
+  Utilities/Physics/FragmentLayout.hpp/.cpp: survivableFragmentCount (was a PhysicsSystem member) + layOutFragments (the Vogel
+  spiral, no velocities, body untouched). substituteWithParticles = layOutFragments + random velocities + mark deleted;
+  RenderSystem::appendPreviewBodies draws layOutFragments(preview_body) for a cluster, so the preview is EXACTLY the real
+  cluster (harness: 0 difference). DEPRECATED_InputState::isPreviewingCluster (right button, on world; left wins if both);
+  shift adds the velocity arrow for either. Right-click had NEVER previewed (checked history back to April) -- Marco thought
+  it regressed. EngineConstants MAX_PREVIEW_BODIES = 800, INITIAL_UNIFIED_BODY_CAPACITY = MAX_LIVE_PARTICLES +
+  MAX_PREVIEW_BODIES; PhysicsConstants static_asserts DEFAULT_FRAGMENT_COUNT <= MAX_PREVIEW_BODIES. randomDouble is seeded
+  from std::random_device: harness output involving fragments/stacking varies run to run (compare ranges, not exact text).
 - Physics fix (2026-09-27, applied by Claude at Marco's request; committed in `26a094a`): shatter fragments go into
   `PhysicsSystem::m_pending_fragments` (via a `fragments_out` parameter on substituteWithParticles / ...FromImpact) and are appended
   to `particles` after all three collision passes (`handleCollisions`); `createParticleCluster` passes `particles` directly (no loop
@@ -411,7 +427,195 @@ Lambdas capture Game members by reference, which is safe because they outlive th
   cluster path (radius 1.2 click spawned 1 particle that died next tick). Behavior change: bodies with 0.75R < MIN now bounce instead of
   becoming one particle. Visual result NOT verified by Claude (can't see screen): Marco must zoom out on a shatter (Retina + Windows 1x).
 
+**IN PROGRESS (2026-10-11, branch `IntegrationLines`): planning mode + trajectory tracer. Design agreed in discussion; next
+step = walkthrough, starting with the tracer class header.**
+- Keys (no checkboxes, Marco dropped them): **P** toggles PLANNING mode (game scene only). **I**, only while planning, toggles
+  tracing: start, or clear the lines. I outside planning = ignored.
+- Planning = forced pause. Effective time scale in Game::Run = planning ? 0 : slider value. The slider is never overwritten, so
+  leaving planning resumes at whatever the slider shows (dragging it while planning changes the speed you return to; Marco OK'd).
+  No save/restore, no UISlider value source needed. Ship controls run inside the physics tick, so the ship is frozen too.
+- Tracer = a separate copy of the state (macros + ship + debris) stepped with the REAL functions in the same order
+  (Verlet phase 1, updateAllForces, phase 2): NO collisions, no cleanup, no player input. Contacts phase through (Marco: contact
+  visualisation later). Same code + same order = the line is exactly what the game does while nothing un-modelled happens
+  (incl. the skipped first half kick of a body spawned while paused). Idea: the copy is a GameState with the same vectors; a new
+  public PhysicsSystem step does only the three gravity/Verlet calls.
+- Debris is IN the copy (it pulls planets: addGravityBetweenGravBodyPair(particle, macro) is two-way) but NEVER gets lines (Marco
+  2026-10-11: particle paths dropped, 20000 x points is too much data). Lines = macro bodies + ship only.
+  Particles don't collide in the prediction -> least accurate next to a fresh shatter.
+  Shatter randomness (randomDouble, shared generator) is why the prediction must NOT run collisions.
+- Drifting static bodies get a line (free: Verlet drifts them). Rewind = separate later feature (needs collision history).
+- Growth: the line is TRACED, not instant: accumulator like Game::Run, TRAJECTORY_TRACE_SPEED (game s per real s, tunable
+  constant, Marco wants 'as fast as looks smooth') + a max steps per frame cap (spiral-of-death lesson). Record a point every
+  few ticks. Horizon: long, still a constant to tune (memory needs SOME max; stops when reached).
+- Wipe: any edit of the real state while tracing/done wipes the lines and WAITS for I again. Plan: detect by comparing the real
+  macros + ship (exact ==, safe because nothing changes while paused) and particle count to the snapshot the trace started
+  from, instead of calling invalidate() from every edit site (covers future velocity dragging automatically).
+- Look: transparent front, solid back (alpha per vertex). SDL_GPU lines are 1 px; thicker = quads later.
+  Status readout label (e.g. 'Integrating...').
+- Future (Marco): drag initial velocity vectors while planning, guided by the lines.
+- Decided 2026-10-11: each new piece of line FADES IN by age (finished lines end fully solid), and while tracing the TIP
+  stays brighter than the trail so the front is obvious. Leaving planning (P) makes the lines vanish. Readout = UILabel
+  top-left under FPS: 'PLANNING: press I to integrate' (no lines) / 'PLANNING: Integrating...' (tracing) / 'PLANNING'
+  (finished); empty outside planning.
+- ARCHITECTURE (2026-10-11, after 3 rejected variants: Game-owned tracer / tracer in PhysicsSystem holding a GameState /
+  tracer in GameState = recursion). Root cause: GameState is a bag of everything and physics takes GameState&.
+  PHASE 0 = refactor first (Marco: 'as early as we can'): a plain copyable struct **UniverseState** (Marco's name; not
+  'World', it's a space sim) = what physics simulates: macro bodies, particles, the ship, the spawn-ID counter (proposed).
+  GameState owns a UniverseState AND a Trajectories (separately). Physics functions take UniverseState&, not GameState&.
+  NO separate PredictionSystem (Marco: prediction = advancing a subset of physics -> physics owns it; Claude conceded).
+  NAMES (Marco, explicit on purpose; he finds the codebase's names blur together):
+    PhysicsSystem::advanceUniverseState(universe, controls)   = one real tick (replaces UpdateSystemFrame), calls:
+      handleCollisionEvents -> applyShipInputPhysics -> integrateUniversePhysics -> cleanupBodies
+    integrateUniversePhysics = Verlet first half (half kick + drift), all forces, Verlet second half. Shared by the real
+      tick and the prediction (sub-function names proposed by Claude, pending: integrateVelocityVerletFirstHalf,
+      calculateNetForces, integrateVelocityVerletSecondHalf).
+    advanceIntegratedTrajectories = the prediction's wrapper (Marco): integrator only, makes 'just the integrator' vs
+      'the full system' obvious at the call site.
+  FILES: Physics owns it all, but the new code goes OUT of PhysicsSystem.cpp (Marco). Claude's proposal (pending): the
+    integration rules use no PhysicsSystem member data -> free functions in their own file; a TrajectoryPredictor class in
+    its own file (prediction universe, start snapshot, accumulator, recording), owned by PhysicsSystem, calls them directly.
+  Player stays (Marco: progression, stats, later) but NO LONGER holds the Starship: the ship moves into UniverseState.
+  UniverseState = { macro_bodies, particles, ship, newest_spawn_id }. Phase 0 split into 0a (UniverseState switch) and
+  0b (extract + rename integration), each verified BIT-IDENTICAL (fixed no-shatter scene, N ticks) before/after.
+  Logged in REWORK 2026-10-11: PhysicsSystem file split, GameState grouping, naming/hierarchy pass, setUniverseState
+  (Marco: starting from ANY universe state is baseline physics, do later).
+- PHASE 0 PROGRESS: harness Notes/drafts/Harnesses/universe_refactor_harness.cpp (fixed deterministic scene, 1200 ticks,
+  %a hexfloats) + universe_refactor_baseline.txt (output of the PRE-refactor code, d41ec3d). After every step: build the
+  tree, run with -DAFTER_REFACTOR, diff against the baseline = must be empty. Only the adapter block may change.
+  0a-1 DONE: Core/UniverseState.hpp (typed by Marco). 0a-2 DONE (typed by Marco, harness IDENTICAL): GameState owns
+  `UniverseState m_universe_state` with getUniverseState()/getUniverseStateMutable() (Marco kept GameState's get-style,
+  consistent within the class), old body/ID getters forward to it (temporary), Player no longer holds the ship
+  (8 call sites -> getUniverseStateMutable().ship). 0a-3 DONE (typed by Marco, ALL groups at once, harness IDENTICAL):
+  every private physics function takes UniverseState& universe_state; Marco also renamed UpdateSystemFrame ->
+  updateSystemFrame and CleanUp -> cleanUp (Audio/Physics/Render). The spawn path (createMacroBody,
+  createParticleCluster, populateGravBodyPropertiesFromDEPRECATED_InputState) still takes GameState, only for the camera.
+  0a-4 DONE (typed by Marco, harness IDENTICAL, real CMake Debug build 0 warnings): forwarding getters gone (except the
+  unused incrementMaxIDInstantiated/getMaxIDInstantiated: delete), spawn path takes (UniverseState&, const CameraState&),
+  advanceUniverseState(UniverseState&, UIState&), createParticle pruned. Marco is ALSO renaming game code to the tidy rules
+  as he goes (RenderSystem: m_window, m_gpu, m_unified_body_vertices, renderFullFrame...). His rename was textual: it
+  also hit comments ('release the m_window from m_gpu') and a LOCAL (m_window_flags) -> told him to fix those.
+  0b-1 DONE (typed by Marco, his own self-consistent names): advanceUniverseState = handleCollisionEvents ->
+  applyShipInputPhysics -> integrateUniversePhysics -> cleanupGravBodies. integrateUniversePhysics (still a PhysicsSystem
+  member) = integrateVelocityVerletFirstHalfStep -> recomputeAllForces (addGravityBetweenGravBodies,
+  addGravityBetweenShipAndBodies, addGravityBetweenGravBodyPair) -> integrateVelocityVerletSecondHalfStep. Starship:
+  applyVelocityVerletFirstHalf/SecondHalf. calculateTotalEnergy pruned.
+  0b-2 DONE (Marco, 2026-10-12): Verlet = free functions in Systems/Physics/VelocityVerletIntegration.hpp/.cpp
+  (applyVelocityVerletFirst/SecondHalfStep per body, integrateVelocityVerletFirst/SecondHalfStep per universe). Lesson
+  from the first attempt: leftover member declarations HID the free functions inside member functions -> link errors.
+  Forces stay PhysicsSystem members for now (Marco splits the rest of PhysicsSystem later; REWORK item).
+  **PHASE 0 COMPLETE (verified 2026-10-12):** game links, universe_refactor_harness IDENTICAL to the d41ec3d baseline,
+  all 12 kept harnesses same as before (shatter_order: same outcomes, random debris counts), real CMake Debug build of
+  TransferGame 0 warnings. Engine + Tests untouched (no RunTests/TidyEngine needed). Open nits: VelocityVerletIntegration
+  .cpp header comment lacks '.cpp', CustomMathUtilities include belongs in the .cpp (+ PhysicsConstants), no comments in
+  its header, Starship's ...FirstHalf vs free ...FirstHalfStep.
+  PHASE 1+2 IMPLEMENTED BY CLAUDE 2026-11-24 (Marco: 'implement the whole thing', he reviews as we go; uncommitted):
+  - Core/Trajectories.hpp (TracedPoint{position, drawn_at}, TracedPath, TraceStatus Idle/Tracing/Finished, Trajectories
+    {status, macro_body_paths, ship_path, clock}); GameState::m_trajectories (Marco typed the member); UIState
+    getIsPlanning/setIsPlanning (Marco's copy kept, Claude's duplicate removed); DEPRECATED toggleTrajectoriesRequested;
+    Starship::cutThrust; PhysicsConstants TRAJECTORY_TRACE_SPEED 10, MAX_TRACE_TICKS_PER_FRAME 32,
+    MAX_TRACE_MILLISECONDS_PER_FRAME 4.0, TRAJECTORY_TICKS_PER_POINT 4, TRAJECTORY_HORIZON_SECONDS 60.
+  - Systems/Physics/TrajectoryPrediction.cpp = PhysicsSystem members (option a): updateTrajectories (public, once per
+    frame) -> startTrajectories / clearTrajectories / universeChangedSinceTraceStart / advanceIntegratedTrajectories /
+    recordTrajectoryPoints; members m_prediction_universe_state, m_trace_start_universe_state, accumulator, ticks.
+    Horizon ticks use lround(seconds * INV_PHYSICS_TIME_STEP): a plain cast of 60/(1/120f) gave 7199 (harness caught it).
+    TIME BUDGET added after measuring 30 ms/frame at 25 planets + 20000 particles -> now ~4.5 ms avg, 6 worst.
+  - Game::Run: time_scale = planning ? 0 : slider; updateTrajectories after the physics loop if runs_simulation.
+  - InputSystem::translateGameInputs: P toggles planning; I (only while planning) sets the request.
+  - RenderSystem: m_trajectory_line_* buffers (MAX_TRAJECTORY_LINE_VERTICES 131072 in EngineConstants), drawn with the
+    DEBUG LINE pipeline (same vertex layout), after the stars and before the bodies. Fade-in by age (trajectoryAlpha:
+    0.1 -> 0.7 over 0.75 s), white tip = newest 3 segments while Tracing. First point's 'previous' = the real body's
+    previousPosition (ship: center - movementThisTick) so the line starts at the body as DRAWN (alpha interpolation).
+    Look constants are static constexpr at the top of the trajectory section in RenderSystem.cpp.
+  - Readout: TransferScenes FPS label + planningReadout() label in a UIColumn top-left ('PLANNING: press I to
+    integrate' / 'PLANNING: Integrating...' / 'PLANNING').
+  - Verified: trajectory_harness (9005 points vs the real game: 0 differ; behaviour checks all as expected),
+    universe_refactor IDENTICAL, CMake Release build 0 warnings. NOT yet seen on screen by anyone: Marco to try it.
+  - Round 2 (2026-11-24, after Marco tried it: 'solid'): static bodies' lines AMBER (TRAJECTORY_STATIC_COLOR);
+    Marco REJECTED drawing relative to a reference body (keep world space). PLACEMENT PREVIEW: while the left button is
+    held on the world in planning mode, updateSpawnPreviewTrajectory predicts the planet being placed
+    (makeSpawnPreviewBody in PhysicsSystem.cpp = populateGravBodyProperties... with the preview velocity flag, so it IS
+    the spawned body); preview universe = planets + ship + that planet, NO debris; restarts when the planet changes;
+    no speed limit, MAX_PREVIEW_MILLISECONDS_PER_FRAME 4; drawn white (amber if the spawn will be static), no fade, no
+    tip; Trajectories::spawn_preview_path. TIME MARKS every TRAJECTORY_TIME_MARK_SECONDS (5 game s), 5 px across the
+    line at any zoom, toggled by UIState::getShowTrajectoryTimeMarks (default on, no key yet: will be a setting).
+    Horizon 60 -> 180 s, TRACE_SPEED 10 -> 30, tick cap 32 -> 64. MAX_TRAJECTORY_LINE_VERTICES 327680 with a
+    static_assert in PhysicsConstants (worst case 27 lines) so tuning can't silently cut lines. Render rebuilds and
+    re-uploads all line vertices every frame: worst case ~9 MB/frame (fine for now; append-only upload if it shows).
+    updateTrajectories now also takes const CameraState&. Harness: 27005 trace points + 5401 preview points vs the
+    real game, 0 differ.
+  - Round 3 (2026-11-24): TRACE_SPEED 30 -> 15 (Marco). APPEND-ONLY UPLOAD: new TrajectoryLine.vert/.frag shaders (added
+    to BOTH MakeTransfer scripts; the .msl/.spv only exist after MakeTransfer) compute the fade-in from a per-vertex
+    drawn_at + a clock uniform (vertex uniform slot 1, TrajectoryShaderConstants must match the HLSL cbuffer), so a
+    traced segment never changes once uploaded. TrajectoryLineVertex {x,y,prevX,prevY,r,g,b,a,drawn_at,fades_in} in
+    GPUTypes.hpp. Traced segments: m_trajectory_line_vertex_buffer, each frame uploads only new segments at offset
+    uploaded_count with cycle=false (safe: only writes past what earlier frames draw); a new trace (Trajectories::
+    trace_id changed) restarts at offset 0 with cycle=true. Per-frame buffer (preview, time marks (zoom-sized), tips)
+    rebuilt + uploaded whole. MAX_TRAJECTORY_LINE_VERTICES 294912, MAX_TRAJECTORY_FRAME_VERTICES 16384, both
+    static_asserted in PhysicsConstants. Debug lines still use DebugLine shaders. Harness still 0 differ; the GPU
+    upload path itself can only be checked on screen.
+- **F4 PROFILER (2026-11-24, implemented by Claude at Marco's request, uncommitted):** engine class
+  DynamoEngine/Debug/FrameProfiler (addSection -> id, record(id, ms) adds up within a frame, endFrame; every
+  PROFILER_WINDOW_FRAMES (300, GameSystemConstants) builds a report: average, '1% low' = average of the slowest 1% of
+  frames (at least the slowest one), worst; takeNewReport() true once; millisecondsBetween(perf counters)). 9 googletests
+  in Tests/DynamoEngine/Debug/Test_FrameProfiler.cpp (148/148 pass, TidyEngine 40 files clean). Game owns m_profiler +
+  ProfilerSections ids: Input, Spawns, Audio, Physics (all ticks summed), Trajectories, Render (CPU side only: the GPU
+  runs async), Frame work (before the limiter), Frame total. Game::publishProfilerReport formats lines (monospace
+  columns) into UIState::setProfilerLines and printf's them while the overlay is on. F4 toggles
+  UIState::getShowProfiler; TransferScenes adds MAX_PROFILER_LINES (12) labels under the FPS/planning readouts.
+  The old unused input_time/... locals and commented printf in Game::Run are gone.
+- **GHOST CHECKBOX (2026-11-24, Claude):** SpawnSettings::is_ghost -> isCollidable = false (populate... for planets,
+  the cluster loop for every particle). Third checkbox in 'Global Instantiation Properties' (that section is now 624
+  wide; panel ~1076 of 1280). Ghost = passes through everything incl. the ship, keeps gravity. Built on isCollidable
+  because isMacroGhost is NOT checked for particles in handleMacroParticleCollisions (only for the macro side): a
+  'ghost to planets only' variant would need that check first. Harness ghost_spawn_. Marco asked whether debris
+  alters trajectories: yes for planets in the main trace (it pulls them; no collisions in the prediction), never the
+  ship directly (ship gravity loops planets only), not at all in the placement preview.
+- **PLANET GHOST (macro ghost) FINISHED (2026-11-24, Marco: 'finish it'):** isMacroGhost was never set before (dead
+  since 14827cf). Now SpawnSettings::is_macro_ghost -> isMacroGhost (planets via populate..., every cluster particle).
+  Meaning: passes through planets AND the ship (the ship counts as a big body; planets already skipped macro-ghost
+  planets vs the ship), still collides with debris; gravity unchanged. Added the missing particle-side check in
+  handleMacroParticleCollisions (outer loop skip) and in handleShipCollisions' particle loop. Spawn panel: 'Global'
+  section is now TWO rows (Accretable, Bounce / Ghost, Planet Ghost): 4 in a row + the macro section was ~1288 > 1280.
+  makeSpawnSection takes unique_ptr<UIElement> (a row or a column of rows); SPAWN_PANEL_CHECKBOX_ROWS = 2 feeds
+  SPAWN_PANEL_HEIGHT, so the slider row moved up with it. Both ghost kinds render at 70% alpha (shader, existing).
+  Harness ghost_spawn_ covers ghost / planet ghost vs planet, debris and ship.
+- **PREVIEW NOW INCLUDES DEBRIS (2026-11-24):** Marco noticed the drag preview ignored particle clouds (it copied only
+  planets + ship). Now m_preview_universe_state = the whole universe + the planet being placed: the preview equals the
+  I trace of that planet point for point (harness case 5: 0 / 5401 differ; a 2e8 cloud moves its end by 27167 px).
+  COST (measured, 4 ms budget): 5 planets 0 particles = full 180 s instantly; 10 + 2400 = 34 s of path per second held
+  still, 0.6 s while the mouse moves; 25 + 20000 = 2 s per second held still, ~0 while moving (each move restarts it).
+  Options offered to Marco: (a) aggregate debris into <= N clumps above a threshold (exact below), (b) keep showing
+  the previous preview while the new one regrows, (c) thread the particle x planet gravity (also speeds up the real
+  sim; fits his CPU-threads-then-GPU particle goal).
+  -> Marco's DECISION (same day): keep the preview CHEAP, NO debris (reverted to planets + ship + the new planet).
+  Harness case 5 now documents it: the cloud moves the preview by 0 px, the I trace by ~27000 px.
+- **PREDICTION TIMERS (2026-11-24):** Trajectories::predicted_seconds (= trace ticks done x PHYSICS_TIME_STEP, set in
+  advanceIntegratedTrajectories, 0 on start/clear) and preview_predicted_seconds (placement preview, 0 when cleared).
+  Readout: 'PLANNING: Integrating... 42.0 / 180 s', 'PLANNING: 180 s predicted' when finished, and a new line under it
+  while placing a planet: 'PREVIEW: 12.3 / 180 s' (previewReadout in TransferScenes).
+- HARNESSES cleaned 2026-10-12 (Marco asked): 12 kept + updated to the UniverseState API, all print the same as on
+  d41ec3d (shatter_order varies run to run anyway: random debris); 7 obsolete files deleted; Notes/drafts/Harnesses/
+  README.md = build recipe + what each checks. GOTCHA: .gitignore line 14 ignores Notes/drafts/ -> only 8 harness files
+  were ever force-added; the rest (incl. universe_refactor_* and README) DON'T travel between machines. Asked Marco.
+- Gotcha for the copy: Starship keeps m_thrust_acceleration from the last real tick (W held when P was pressed) -> the
+  prediction must cut thrust (coast), or it thrusts forever.
+
 **Next candidates** (let Marco pick):
+- **FUTURE FEATURES requested by Marco 2026-11-24 (after the planning-mode PR):**
+  - **CAMERA (Marco: 'really need to fix the game camera'):** C = recenter the camera on the player's ship, and toggle
+    between FREE camera (today's behaviour: middle-mouse pan, wheel zoom) and SOFT-CENTERED camera (follows the ship
+    smoothly, e.g. ease toward it each frame instead of snapping). Today the camera is CameraState (offset, zoom,
+    render_alpha) moved by InputSystem::updateCamera (zoomAroundCursor, panCamera, clampCameraToStarField). Things to
+    decide: does panning in soft mode drop back to free? follow the ship's INTERPOLATED (drawn) position, or jitter;
+    how the star-field clamp interacts with following; zoom around the ship vs the cursor while following.
+  - **SPAWN PRESETS:** two quick-swap slots for the instantiation settings. Press-and-HOLD 1 = save the current settings
+    into slot 1, hold 2 = save into slot 2; a short TAP of 1/2 = load that slot, so you flip between two setups
+    instantly. What a preset holds: SpawnSettings (Static, Shatterable, Accretable, Bounce, Ghost, Planet Ghost) and
+    probably the radius + mass sliders (selectedRadius / selectedMass in DEPRECATED_InputState) -- Marco to confirm.
+    Needs: hold-vs-tap detection (InputState has edges + levels; time a key held, e.g. > 0.5 s = save), sliders must
+    SHOW loaded values (UISlider has setValue but no value source; the checkboxes already pull their SpawnSettings
+    field every frame), some feedback that a save happened (sound / readout). Number keys must not clash with E
+    (rebinding) later.
 - Build/scripts follow-ups (the rework itself is DONE, see the done list): the [BUG]/[REFACTOR] items in REWORK's BUILD / TOOLING
   section (Windows setup: silent rmdir failure, unchecked submodules, implicit job count; Mac arch / minimum macOS version;
   Windows VC++ runtime).
@@ -429,6 +633,43 @@ Lambdas capture Game members by reference, which is safe because they outlive th
   - R4 RenderContext.
   - SDLContext lifetime fix (SDL_Quit runs before members die; see REWORK).
 - REWORK.txt: ~33 items (physics bugs, render risks, audio, build/tooling).
+- From the 2026-10-09/10 session (Marco's open threads, roughly in the order they came up):
+  - Right-click passes through the UI (UIRoot handles LEFT only): right-clicking a checkbox spawns a cluster behind it and now
+    also shows the cluster preview over the UI. Logged in REWORK; the natural next fix.
+  - Damage from Starship::lastImpactEnergy() (needs a threshold: resting on a planet reports ~7e6 per tick).
+  - Fuel + Tsiolkovsky (thrust force / current mass, fuel burn per tick; seam = Starship::applyThrust); RCS translation fits,
+    RCS rotation would mean real angular physics (reverses 'player-only rotation').
+  - Shatter threshold relative to mutual escape speed (heavy planets that touch shatter from gravity alone; Marco accepted
+    that for now), resting contact that never settles (ELASTIC_LOSS_FACTOR 0.994).
+  - More spawn-panel checkboxes: Ghost + Planet Ghost DONE 2026-11-24 ('Global' is now 2 rows). Next one: one SpawnSettings
+    field + one addSpawnCheckbox line; the Macro section still has room for a second row.
+  - Despawn far-away debris to return particle budget (idea, Marco's call).
+  - Small tidy-ups: UIColumn into its own file; StarshipVertex's unused square_size/color; isPreviewingMacro naming (dies with E).
+- **GPU PARTICLES (goal stated by Marco 2026-10-12, not started):** he wants HUNDREDS OF THOUSANDS of particles AND
+  particle-particle gravity. He knows collisions are today's bottleneck. Claude's advice: GPU compute (SDL_GPU compute pipelines +
+  shadercross), staged: (1) compute pass + render particles straight from a storage buffer, (2) brute-force N^2 self-gravity
+  (tiled, ~20-30k max), (3) collisions = hash grid + GPU sort + GATHER contacts (each particle writes only itself, from a snapshot;
+  replaces the serial impulse + break), (4) Barnes-Hut / particle-mesh gravity reusing the sort (100k+), (5) events back to the
+  CPU (absorption, ship hits, shatter spawns) via small async readbacks. Open issues: Metal has NO double; IntegrationLines is
+  exact only if the tracer runs the same code (later: same shaders on a buffer copy). Keep the CPU physics as the reference for
+  harness comparisons.
+  2026-10-19: target is now ~500k+. Marco's reference: tsp.grantkot.com ('Tutti Space Program', Grant Kot). Claude inspected it:
+  it is NOT WebGPU. It's C++ MPM (material point method: particles interact through a sparse tiled GRID, no pair collisions)
+  compiled to WASM, multithreaded on all CPU cores (Taskflow, float2), rendered with WebGL2. ~199k particles, self-gravity
+  ('N-body', softening setting, method not visible in the WASM) + radial gravity, occupancy merge/split (adaptive particle
+  count), temperature + phase changes. Claude's hidden browser pane showed 2-3 FPS (throttled, ignore). MARCO'S MACHINE
+  (2026-10-21): 350k particles, 60 FPS, sim 20 ms. Read from its JS: the sim is DECOUPLED from rendering (_mpm_update_mt
+  dispatches 1 step of 1/60 s to worker threads and returns; a callback marks it done; FPS = render rate from the last
+  snapshot). 20 ms per 16.7 ms step = the sim runs at ~83% real time without stutter (slows down instead of dropping
+  frames). Claude had guessed 'CPU tops out ~200k': WRONG, conceded. New advice: CPU threads first (parallel-for, SoA floats,
+  gather collisions, grid gravity, sim thread + snapshot), GPU only if aiming for millions.
+  2026-10-21 later: Marco DOES want GPU compute long term (>500k). Agreed shape: write the CPU stage AS KERNELS so the port is
+  mechanical: flat float arrays (SoA, fixed capacity = future StructuredBuffers), one function per pass called as
+  kernel(i) by parallelFor and writing only index i, no push_back/erase inside passes (alive flags + spawn slots), hash-based
+  RNG (id + tick) instead of the shared randomDouble generator, counting-sort grid (count, prefix sum, scatter), no float
+  atomics, events appended to an output list. Then port kernel by kernel, checking each against the CPU version. Get a GPU
+  debugger first (Xcode Metal capture on the Mac or RenderDoc on Windows). OPEN DESIGN DECISION (Marco's): keep particles as hard discs (current rules, GPU hash
+  grid + gather) or switch debris to MPM-style material (fluid/rubble/lava, fracture and temperature for free, bigger rewrite).
 
 ---
 

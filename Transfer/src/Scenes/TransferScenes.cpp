@@ -11,12 +11,15 @@
 #include "DynamoEngine/UI/Widgets/UIRow.hpp"
 #include "DynamoEngine/UI/Widgets/UISlider.hpp"
 #include "Utilities/Constants/EngineConstants.hpp"
+#include "Utilities/Constants/PhysicsConstants.hpp"
 
 // Standard Library Imports
 #include <cmath>
+#include <cstdio>
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace
 {
@@ -29,6 +32,7 @@ using DynamoEngine::UIButton;
 using DynamoEngine::UICheckbox;
 using DynamoEngine::UIColumn;
 using DynamoEngine::UIDropdown;
+using DynamoEngine::UIElement;
 using DynamoEngine::UILabel;
 using DynamoEngine::UIRow;
 using DynamoEngine::UISlider;
@@ -40,9 +44,14 @@ using DynamoEngine::Vector2F;
 constexpr Vector2F CHECKBOX_SIZE = {200.0f, 36.0f}; // as tall as the visor dropdown; its label gets 164 of the 200
 constexpr float CHECKBOX_SPACING = 12.0f;           // between neighbouring checkboxes in a section
 constexpr float SECTION_TITLE_HEIGHT = 27.0f;       // one line of the 18 pt UI font
+constexpr float READOUT_LINE_HEIGHT = 27.0f;        // the top-left text lines (FPS, planning), same font
 constexpr float SECTION_TITLE_GAP = 4.0f;           // between a section's title and its checkboxes
 constexpr float SPAWN_SECTION_SPACING = 40.0f;      // between neighbouring sections
-constexpr float SPAWN_PANEL_HEIGHT = SECTION_TITLE_HEIGHT + SECTION_TITLE_GAP + CHECKBOX_SIZE.y_val;
+constexpr float CHECKBOX_ROW_SPACING = 8.0f;        // between the rows of a section with more than one row
+constexpr int SPAWN_PANEL_CHECKBOX_ROWS = 2;        // the tallest section's rows (Global has two)
+constexpr float SPAWN_PANEL_HEIGHT = SECTION_TITLE_HEIGHT + SECTION_TITLE_GAP +
+                                     SPAWN_PANEL_CHECKBOX_ROWS * CHECKBOX_SIZE.y_val +
+                                     (SPAWN_PANEL_CHECKBOX_ROWS - 1) * CHECKBOX_ROW_SPACING;
 constexpr float SPAWN_PANEL_BOTTOM_MARGIN = 20.0f;
 constexpr float SLIDERS_TO_SPAWN_PANEL_GAP = 30.0f; // empty space between the sliders' text and the section titles
 
@@ -121,17 +130,56 @@ void addSpawnCheckbox(UIRow& checkbox_row, const std::string& label, bool& setti
     checkbox_row.addChild(std::move(checkbox));
 }
 
-// One titled section of the spawn panel: the title on one line, its row of checkboxes underneath.
-// The title must fit within the row's width (two checkboxes = 412): it's drawn from its top-left corner.
-std::unique_ptr<UIColumn> makeSpawnSection(const std::string& title, std::unique_ptr<UIRow> checkbox_row)
+// One titled section of the spawn panel: the title on one line, its checkboxes underneath (one row, or a column of
+// rows). The title must fit within the checkboxes' width (two checkboxes = 412): it's drawn from its top-left corner.
+// A section with fewer rows than SPAWN_PANEL_CHECKBOX_ROWS leaves space underneath (sections line up at the top).
+std::unique_ptr<UIColumn> makeSpawnSection(const std::string& title, std::unique_ptr<UIElement> checkboxes)
 {
     std::unique_ptr<UILabel> title_label = std::make_unique<UILabel>(title);
-    title_label->setPlacement({.size = {0.0f, SECTION_TITLE_HEIGHT}}); // 0 wide: the checkbox row sets the width
+    title_label->setPlacement({.size = {0.0f, SECTION_TITLE_HEIGHT}}); // 0 wide: the checkboxes set the width
 
     std::unique_ptr<UIColumn> section = std::make_unique<UIColumn>(SECTION_TITLE_GAP);
     section->addChild(std::move(title_label));
-    section->addChild(std::move(checkbox_row));
+    section->addChild(std::move(checkboxes));
     return section;
+}
+
+// The planning mode line under the FPS counter (empty outside planning mode), with how far the trace has got
+std::string planningReadout(const UIState& ui_state, const GameState& game_state)
+{
+    if (!ui_state.getIsPlanning())
+    {
+        return "";
+    }
+    const Trajectories& trajectories = game_state.getTrajectories();
+    char text[96];
+    switch (trajectories.status)
+    {
+    case TraceStatus::Idle:
+        return "PLANNING: press I to integrate";
+    case TraceStatus::Tracing:
+        std::snprintf(text, sizeof(text), "PLANNING: Integrating... %.1f / %.0f s", trajectories.predicted_seconds,
+                      TRAJECTORY_HORIZON_SECONDS);
+        return text;
+    case TraceStatus::Finished:
+        std::snprintf(text, sizeof(text), "PLANNING: %.0f s predicted", trajectories.predicted_seconds);
+        return text;
+    }
+    return "PLANNING";
+}
+
+// The line under that while a planet is being placed: how far its preview reaches (empty otherwise)
+std::string previewReadout(const GameState& game_state)
+{
+    const Trajectories& trajectories = game_state.getTrajectories();
+    if (trajectories.spawn_preview_path.empty())
+    {
+        return "";
+    }
+    char text[96];
+    std::snprintf(text, sizeof(text), "PREVIEW: %.1f / %.0f s", trajectories.preview_predicted_seconds,
+                  TRAJECTORY_HORIZON_SECONDS);
+    return text;
 }
 
 // --- The scenes --- //
@@ -153,11 +201,43 @@ std::unique_ptr<Scene> buildGameScene(UIState& ui_state, GameState& game_state)
     std::unique_ptr<Scene> scene = makeScene(SceneSettings::simulation(), ui_state);
     DEPRECATED_InputState& choices = ui_state.getMutableDEPRECATED_InputState(); // where the slider values go
 
-    // FPS counter, top-left
+    // Top-left, one line each: the FPS counter, then the planning mode readout under it
     std::unique_ptr<UILabel> fps_label = std::make_unique<UILabel>("FPS: ");
-    fps_label->setPlacement({.align = UIAlign::TopLeft, .margin = 10.0f});
+    fps_label->setPlacement({.size = {0.0f, READOUT_LINE_HEIGHT}});
     fps_label->setTextSource([&ui_state]() { return "FPS: " + std::to_string(static_cast<int>(ui_state.getFPS())); });
-    scene->ui().addChild(std::move(fps_label));
+
+    std::unique_ptr<UILabel> planning_label = std::make_unique<UILabel>("");
+    planning_label->setPlacement({.size = {0.0f, READOUT_LINE_HEIGHT}});
+    planning_label->setTextSource([&ui_state, &game_state]() { return planningReadout(ui_state, game_state); });
+
+    std::unique_ptr<UILabel> preview_label = std::make_unique<UILabel>("");
+    preview_label->setPlacement({.size = {0.0f, READOUT_LINE_HEIGHT}});
+    preview_label->setTextSource([&game_state]() { return previewReadout(game_state); });
+
+    std::unique_ptr<UIColumn> readouts = std::make_unique<UIColumn>(0.0f);
+    readouts->setPlacement({.align = UIAlign::TopLeft, .margin = 10.0f});
+    readouts->addChild(std::move(fps_label));
+    readouts->addChild(std::move(planning_label));
+    readouts->addChild(std::move(preview_label));
+
+    // F4 profiler overlay under those: one label per line of the latest report (empty while it's hidden)
+    for (size_t line_index = 0; line_index < MAX_PROFILER_LINES; ++line_index)
+    {
+        std::unique_ptr<UILabel> profiler_label = std::make_unique<UILabel>("");
+        profiler_label->setPlacement({.size = {0.0f, READOUT_LINE_HEIGHT}});
+        profiler_label->setTextSource(
+            [&ui_state, line_index]()
+            {
+                const std::vector<std::string>& lines = ui_state.profilerLines();
+                if (!ui_state.getShowProfiler() || line_index >= lines.size())
+                {
+                    return std::string();
+                }
+                return lines[line_index];
+            });
+        readouts->addChild(std::move(profiler_label));
+    }
+    scene->ui().addChild(std::move(readouts));
 
     // Visor Dropdown, shows what bodies are colored by
     // camera_state.visor_view is the source of truth, the dropdown reads it every frame
@@ -190,10 +270,16 @@ std::unique_ptr<Scene> buildGameScene(UIState& ui_state, GameState& game_state)
     // Spawn panel, under the sliders: settings for the NEXT planet or cluster.
     // ui_state's SpawnSettings is the source of truth: each checkbox reads it every frame and writes it when clicked.
     SpawnSettings& spawn_settings = ui_state.spawnSettings();
-    // Global: settings for planets AND clusters
-    std::unique_ptr<UIRow> global_checkboxes = std::make_unique<UIRow>(CHECKBOX_SPACING);
-    addSpawnCheckbox(*global_checkboxes, "Accretable", spawn_settings.is_accretable);
-    addSpawnCheckbox(*global_checkboxes, "Bounce", spawn_settings.is_bounce);
+    // Global: settings for planets AND clusters, two rows (four in one row wouldn't fit next to the macro section)
+    std::unique_ptr<UIRow> collision_checkboxes = std::make_unique<UIRow>(CHECKBOX_SPACING);
+    addSpawnCheckbox(*collision_checkboxes, "Accretable", spawn_settings.is_accretable);
+    addSpawnCheckbox(*collision_checkboxes, "Bounce", spawn_settings.is_bounce);
+    std::unique_ptr<UIRow> ghost_checkboxes = std::make_unique<UIRow>(CHECKBOX_SPACING);
+    addSpawnCheckbox(*ghost_checkboxes, "Ghost", spawn_settings.is_ghost);
+    addSpawnCheckbox(*ghost_checkboxes, "Planet Ghost", spawn_settings.is_macro_ghost);
+    std::unique_ptr<UIColumn> global_checkboxes = std::make_unique<UIColumn>(CHECKBOX_ROW_SPACING);
+    global_checkboxes->addChild(std::move(collision_checkboxes));
+    global_checkboxes->addChild(std::move(ghost_checkboxes));
 
     // Macro body: settings only planets have
     std::unique_ptr<UIRow> macro_checkboxes = std::make_unique<UIRow>(CHECKBOX_SPACING);

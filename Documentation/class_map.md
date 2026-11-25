@@ -96,10 +96,10 @@
 - *No methods found*
 
 ### Class: `PhysicsSystem`
-- `UpdateSystemFrame()`
+- `advanceUniverseState()`
 - `CleanUp()`
 - `UpdateGravBodyInstantiations()`
-- `handleCollisions()`
+- `handleCollisionEvents()`
 - `handleMacroMacroCollisions()`
 - `handleMacroParticleCollisions()`
 - `handleParticleParticleCollisions()`
@@ -111,17 +111,17 @@
 - `substituteWithParticlesFromImpact()`
 - `liveParticleCount()`
 - `updateAllForces()`
-- `updateGravityForSystem()`
-- `calculateGravity()`
-- `integrateForwardsVelocityVerletPhase1()`
-- `applyVelocityVerletPhase1()`
-- `integrateForwardsVelocityVerletPhase2()`
-- `applyVelocityVerletPhase2()`
+- `addGravityBetweenGravBodies()`
+- `addGravityBetweenGravBodyPair()`
+- `integrateVelocityVerletFirstHalfStep()`
+- `applyVelocityVerletFirstHalf()`
+- `integrateVelocityVerletSecondHalfStep()`
+- `applyVelocityVerletSecondHalf()`
 - `createMacroBody()`
 - `createParticle()`
 - `createParticleCluster()`
 - `calculateTotalEnergy()`
-- `updatePlayerPhysics()`
+- `applyShipInputPhysics()`
 - `cleanupParticles()`
 - `cleanupMacroBodies()`
 - `survivableFragmentCount()`

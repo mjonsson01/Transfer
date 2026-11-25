@@ -20,4 +20,13 @@ struct SpawnSettings
     // Only ever bounces: never shatters, absorbs or gets absorbed, whatever it hits (GravitationalBody::isBounce).
     // For a cluster: every particle.
     bool is_bounce = false;
+
+    // A ghost passes through everything (planets, debris, the ship) but still pulls and is pulled by gravity
+    // (GravitationalBody::isCollidable = false). For a cluster: every particle.
+    bool is_ghost = false;
+
+    // A macro ghost passes through planets and the ship, but still collides with debris (and a ghost cluster's
+    // particles still collide with each other). Gravity is unchanged (GravitationalBody::isMacroGhost). For a
+    // cluster: every particle. A full ghost (is_ghost) passes through everything either way.
+    bool is_macro_ghost = false;
 };

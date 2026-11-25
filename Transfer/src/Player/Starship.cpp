@@ -105,7 +105,7 @@ void Starship::applyRotation(UIState& uiState)
     m_rotation = std::remainder(m_rotation, DynamoEngine::TWO_PI); // result in [-π, π]
 }
 
-void Starship::applyVelocityVerletPhase1()
+void Starship::applyVelocityVerletFirstHalfStep()
 {
     m_prev_position = m_position;
     m_velocity += m_acceleration * (PHYSICS_TIME_STEP / 2.0); // first half kick, with last tick's acceleration
@@ -118,7 +118,7 @@ void Starship::setGravityForce(const DynamoEngine::Vector2D& gravitational_force
     m_acceleration = gravitational_force / m_mass + m_thrust_acceleration;
 }
 
-void Starship::applyVelocityVerletPhase2()
+void Starship::applyVelocityVerletSecondHalfStep()
 {
     m_velocity += m_acceleration * (PHYSICS_TIME_STEP / 2.0); // second half kick, with the new acceleration
 }

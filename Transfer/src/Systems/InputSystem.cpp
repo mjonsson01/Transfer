@@ -121,10 +121,14 @@ void InputSystem::processSystemInputFrame(GameState& game_state, UIState& ui_sta
         translateMenuInputs(ui_state, scenes);
     }
 
-    // The ghost body follows the cursor while the left button is held down on the world (not on the UI)
-    legacy_state.isPreviewingMacro =
-        runs_simulation && m_input.isMouseButtonDown(DynamoEngine::MouseButton::Left) && !ui_result.pointer_captured;
-    legacy_state.isPreviewingWithInitialVelocity = legacy_state.isPreviewingMacro && m_input.isShiftDown();
+    // A see-through preview follows the cursor while a spawn button is held down on the world (not on the UI):
+    // left = the planet, right = the cluster's particles. If both are held, left wins (one preview at a time).
+    const bool on_world = runs_simulation && !ui_result.pointer_captured;
+    legacy_state.isPreviewingMacro = on_world && m_input.isMouseButtonDown(DynamoEngine::MouseButton::Left);
+    legacy_state.isPreviewingParticleCluster =
+        on_world && m_input.isMouseButtonDown(DynamoEngine::MouseButton::Right) && !legacy_state.isPreviewingMacro;
+    legacy_state.isPreviewingWithInitialVelocity =
+        (legacy_state.isPreviewingMacro || legacy_state.isPreviewingParticleCluster) && m_input.isShiftDown();
 }
 
 DynamoEngine::UIInputResult InputSystem::updateSceneUI(DynamoEngine::UIRoot& ui, const CameraState& camera_state,
@@ -259,6 +263,21 @@ void InputSystem::translateGameInputs(GameState& game_state, UIState& ui_state, 
     if (m_input.wasKeyPressed(SDL_SCANCODE_F3))
     {
         ui_state.setRenderDebug(!ui_state.getRenderDebug());
+    }
+    // F4: show or hide the profiler (how long each system takes: average and 1% low)
+    if (m_input.wasKeyPressed(SDL_SCANCODE_F4))
+    {
+        ui_state.setShowProfiler(!ui_state.getShowProfiler());
+    }
+    // P: planning mode on/off (time stops; leaving it resumes at the speed slider's value)
+    if (m_input.wasKeyPressed(SDL_SCANCODE_P))
+    {
+        ui_state.setIsPlanning(!ui_state.getIsPlanning());
+    }
+    // I, only while planning: trace the predicted trajectories, or clear them (PhysicsSystem::updateTrajectories)
+    if (ui_state.getIsPlanning() && m_input.wasKeyPressed(SDL_SCANCODE_I))
+    {
+        legacy_state.toggleTrajectoriesRequested = true;
     }
     // Update the visor if necessary
     updateVisor(game_state.getCameraStateMutable());

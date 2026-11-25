@@ -34,6 +34,7 @@ class UIState
 
     void QueueSoundEffect(const std::string& soundName) { pendingSoundEffects.push(soundName); };
     bool HasPendingSoundEffects() const { return !pendingSoundEffects.empty(); };
+
     std::string PopNextSoundEffect()
     {
         if (pendingSoundEffects.empty())
@@ -51,6 +52,17 @@ class UIState
     bool getPlaySoundEffects() const { return playSoundEffects; }
     void setPlaySoundEffects(bool pse) { playSoundEffects = pse; }
 
+    // Time marks on the trajectory lines (every TRAJECTORY_TIME_MARK_SECONDS); will become a setting
+    bool getShowTrajectoryTimeMarks() const { return m_show_trajectory_time_marks; }
+    void setShowTrajectoryTimeMarks(bool show) { m_show_trajectory_time_marks = show; }
+    // F4 profiler overlay: on/off, and the lines it shows (Game writes them after every profiler window)
+    bool getShowProfiler() const { return m_show_profiler; }
+    void setShowProfiler(bool show) { m_show_profiler = show; }
+    const std::vector<std::string>& profilerLines() const { return m_profiler_lines; }
+    void setProfilerLines(const std::vector<std::string>& lines) { m_profiler_lines = lines; }
+    bool getIsPlanning() const { return m_is_planning; }
+    void setIsPlanning(bool is_planning) { m_is_planning = is_planning; }
+
   private:
     DEPRECATED_InputState inputState;
     SpawnSettings m_spawn_settings;
@@ -64,4 +76,9 @@ class UIState
     bool playSoundEffects = false;
     MusicMode requestedMusicMode = MusicMode::NONE;
     std::queue<std::string> pendingSoundEffects;
+
+    bool m_show_trajectory_time_marks = true;
+    bool m_show_profiler = false;
+    std::vector<std::string> m_profiler_lines;
+    bool m_is_planning = false; // P: time stops, and I can trace trajectories
 };

@@ -54,8 +54,10 @@ struct DEPRECATED_InputState
     // Managed by player input
     bool clearAll = false;          // Toggled when screen wipe is requested
     bool removeNewestSpawn = false; // Toggled when undoing the last spawn is requested
+    bool toggleTrajectoriesRequested = false; // I while planning: start the trace, or clear the lines
     bool isPaused = false;
     bool isPreviewingMacro = false;
+    bool isPreviewingParticleCluster = false;
     bool isPreviewingWithInitialVelocity = false;
 
     // Starship inputs

@@ -24,12 +24,14 @@ class Starship
     void applyRotation(UIState& uiState);
     // Reads W/S and sets the thrust acceleration (along the nose) for this tick
     void applyThrust(UIState& uiState);
+    // The trajectory prediction coasts: drops the thrust left over from the last real tick (W held when P was pressed)
+    void cutThrust() { m_thrust_acceleration = {}; }
     // Velocity Verlet, the same two halves the bodies use. Phase 1: half kick with last tick's acceleration, then drift
-    void applyVelocityVerletPhase1();
+    void applyVelocityVerletFirstHalfStep();
     // Called between the two phases, once the planets' pull at the ship's NEW position is known
     void setGravityForce(const DynamoEngine::Vector2D& gravitational_force);
     // Phase 2: the other half kick, with the new acceleration (gravity + thrust)
-    void applyVelocityVerletPhase2();
+    void applyVelocityVerletSecondHalfStep();
 
     // The ship's centre: its centre of mass, and the middle of its sprite and hitbox
     DynamoEngine::Vector2D center() const;
