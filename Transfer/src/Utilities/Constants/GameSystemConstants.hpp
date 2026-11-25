@@ -37,6 +37,8 @@ constexpr int SCREEN_WIDTH = 1280;
 constexpr int STAR_NUM = 100000;
 
 constexpr bool VIEW_DEBUG = false;
+// Whether the player's ship is in the universe when the game starts (off for now, while other systems are ironed out)
+constexpr bool RUN_GAME_WITH_PLAYER_SHP = false;
 // The F4 profiler reports averages and 1% lows over this many frames (5 s at 60 FPS)
 constexpr size_t PROFILER_WINDOW_FRAMES = 300;
 // Most lines the F4 profiler overlay shows (a header plus one line per section)

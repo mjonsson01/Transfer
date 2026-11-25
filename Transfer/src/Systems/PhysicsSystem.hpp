@@ -3,8 +3,8 @@
 #pragma once
 
 // Custom Imports
-#include "Core/PlayerInput.hpp"
 #include "Core/GameState.hpp"
+#include "Core/PlayerInput.hpp"
 #include "Core/SpawnSettings.hpp"
 #include "Core/Trajectories.hpp"
 #include "Core/UIState.hpp"
@@ -114,9 +114,10 @@ class PhysicsSystem
     void addGravityBetweenShipAndBodies(UniverseState& universe_state);
 
     // --- Gravitational Body Creation Mechanisms ---
-    void createMacroBody(UniverseState& universe_state, const SpawnAim& spawn_aim, const SpawnSettings& spawn_settings); // Creates a Macro Gravitational Body
+    void createMacroBody(UniverseState& universe_state, const SpawnProperties& spawn_aim,
+                         const SpawnSettings& spawn_settings); // Creates a Macro Gravitational Body
                                                                // with the user-defined attributes
-    void createParticleCluster(UniverseState& universe_state, const SpawnAim& spawn_aim,
+    void createParticleCluster(UniverseState& universe_state, const SpawnProperties& spawn_aim,
                                const SpawnSettings& spawn_settings);
 
     // --- Player Physics ---
@@ -147,7 +148,7 @@ class PhysicsSystem
     void clearSpawnPreviewTrajectory(Trajectories& trajectories);
     // The planet a left-button release would spawn right now (defined in PhysicsSystem.cpp next to createMacroBody,
     // built by the same function, so the preview can never disagree with the real spawn). False if none would spawn.
-    bool makeSpawnPreviewBody(const SpawnAim& spawn_aim, const SpawnSettings& spawn_settings,
+    bool makeSpawnPreviewBody(const SpawnProperties& spawn_aim, const SpawnSettings& spawn_settings,
                               GravitationalBody& body_out) const;
 
     // --- Data Members ---

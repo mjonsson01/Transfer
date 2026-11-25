@@ -144,7 +144,7 @@ tracer, DESIGN AGREED, nothing typed yet (see 'IN PROGRESS' at the top of sectio
 `processInput` (the order matters), giving a `UIInputResult`. Then the game side (a release on the UI, pointer_captured, spawns nothing):
 `translateGameInputs(game_state, ui_state, scenes, player_input, pointer_captured)` / `translateMenuInputs(scenes)`, writing into
 **`Core/PlayerInput`** (owned by Game, passed explicitly; since 2026-11-25, replacing DEPRECATED_InputState): ShipControls,
-is_aiming_spawn + SpawnAim (world space, computed once in InputSystem::aimSpawn), one-frame PlayerCommands cleared every frame.
+is_aiming_spawn + SpawnProperties (world space, computed once in InputSystem::aimSpawn), one-frame PlayerCommands cleared every frame.
 Key bindings: Esc = pause/resume (requestSwitch), Delete = undo newest spawn, Shift+Delete = clear, W/S = throttle up/down
 (holds), A/D = turn, P = planning, I = trace (planning), F3 = hitboxes, F4 = profiler, left/right release = spawn macro/cluster,
 Shift = initial velocity, middle mouse = pan, wheel = zoom, **Tab = cycle visor view** (`updateVisor` in the sim branch).
@@ -605,7 +605,7 @@ step = walkthrough, starting with the tracer class header.**
 **Next candidates** (let Marco pick):
 - **DEPRECATED_InputState RETIRED (2026-11-25, branch FixInputState, implemented by Claude, Marco reviewing):**
   24 of its 41 fields were dead. Replaced by Core/PlayerInput.hpp: ShipControls {thrust, rotation: +1/-1/0},
-  SpawnAim {is_cluster, with_velocity, world_position, world_velocity}, PlayerCommands {spawn + spawn_aim,
+  SpawnProperties {is_cluster, with_velocity, world_position, world_velocity}, PlayerCommands {spawn + spawn_aim,
   undo_newest_spawn, clear_all_bodies, toggle_trajectories} (InputSystem clears them EVERY frame: no more
   resetTransientFlags), PlayerInput {is_aiming_spawn, spawn_aim, commands, ship}. Game owns m_player_input (Marco's
   choice) and passes it: inputSystem.processSystemInputFrame(..., m_player_input, ...),
@@ -620,6 +620,12 @@ step = walkthrough, starting with the tracer class header.**
   Harnesses use Notes/drafts/Harnesses/HarnessInput.hpp (releaseSpawn, pressDelete, aimAtScreen, shipControls).
   GOTCHA seen: Marco's editor formatter reflowed long trailing comments in PlayerCommands INTO the code (fields
   vanished into comments). Comments on their own line above a field are safe.
+- **SHIP OPTIONAL (2026-11-25, Marco: off by default while he irons out other problems):** UniverseState::has_ship
+  (default TRUE in the struct, so harnesses keep their ship); Game::StartGame sets it from RUN_GAME_WITH_PLAYER_SHP
+  (GameSystemConstants, currently FALSE). Without the ship nothing touches it: handleShipCollisions,
+  addGravityBetweenShipAndBodies, applyShipInputPhysics, adjustThrottleWhilePlanning, both Verlet halves, the ship
+  trajectory line, uploadStarship, the F3 hitbox and the THROTTLE readout all check has_ship. The placement preview
+  copies has_ship. To bring the ship back: set RUN_GAME_WITH_PLAYER_SHP = true (a key/setting later if wanted).
 - **VELOCITY ARROW SIZE FIXED (2026-11-25, Marco's note):** buildVelocityVectorGeometry(start, end, zoom) sizes the
   shaft (12 px), head length (30 px) and head width (36 px) in SCREEN pixels (divided by zoom; the shader multiplies by
   zoom), and shrinks them proportionally when the drag is shorter than the head. appendPreviewBodies gets the zoom.
@@ -648,7 +654,7 @@ step = walkthrough, starting with the tracer class header.**
     their VELOCITY ARROWS should stay visible in planning mode and be draggable too (edit a body's velocity after it
     spawned). Fits the existing design: any edit already wipes the traced lines (universeChangedSinceTraceStart) and
     the placement preview machinery could show the edited body's new path live. Needs: picking a body under the
-    cursor (world-space hit test), a drag state in PlayerInput (like SpawnAim), arrows drawn per body (the arrow size
+    cursor (world-space hit test), a drag state in PlayerInput (like SpawnProperties), arrows drawn per body (the arrow size
     bug in REWORK should be fixed first), and the edit applied by physics (UniverseState stays physics-owned).
   - **SPAWN FLAG UI (Marco 2026-11-25):** an expandable dropdown for the body property flags instead of independent
     checkboxes, so only meaningful combinations can be chosen. Goes with the REWORK 'Body property flags' item

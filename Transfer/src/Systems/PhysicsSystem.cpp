@@ -256,6 +256,10 @@ void PhysicsSystem::handleParticleParticleCollisions(UniverseState& universe_sta
 }
 void PhysicsSystem::handleShipCollisions(UniverseState& universe_state)
 {
+    if (!universe_state.has_ship)
+    {
+        return;
+    }
     Starship& ship = universe_state.ship;
     double impact_energy_this_tick = 0.0;
 
@@ -732,6 +736,10 @@ void PhysicsSystem::addGravityBetweenShipAndBodies(UniverseState& universe_state
 {
     // Two-way gravity between the ship and every planet (Newton's third law): the same pull acts on both, in
     // opposite directions. The ship is so much lighter than any planet that planets barely notice it.
+    if (!universe_state.has_ship)
+    {
+        return;
+    }
     Starship& ship = universe_state.ship;
     DynamoEngine::Vector2D ship_center = ship.center();
     DynamoEngine::Vector2D total_force_on_ship = {0.0, 0.0};
@@ -806,7 +814,7 @@ void PhysicsSystem::addGravityBetweenGravBodyPair(GravitationalBody& firstBody, 
 // --------- GRAVITATIONAL BODY CREATION --------- //
 
 // Fills in a new planet (or a cluster's template body) from where it was aimed and the spawn panel's settings
-static inline void populateSpawnedBodyProperties(GravitationalBody& grav_body, const SpawnAim& spawn_aim,
+static inline void populateSpawnedBodyProperties(GravitationalBody& grav_body, const SpawnProperties& spawn_aim,
                                                  const SpawnSettings& spawn_settings)
 {
     grav_body.mass = spawn_settings.mass;
@@ -838,7 +846,7 @@ static inline void populateSpawnedBodyProperties(GravitationalBody& grav_body, c
     grav_body.isPlanet = true; // Default for now until I implement procedural texture generation.
 }
 
-bool PhysicsSystem::makeSpawnPreviewBody(const SpawnAim& spawn_aim, const SpawnSettings& spawn_settings,
+bool PhysicsSystem::makeSpawnPreviewBody(const SpawnProperties& spawn_aim, const SpawnSettings& spawn_settings,
                                          GravitationalBody& body_out) const
 {
     // Same refusals as createMacroBody (the particle budget aside: a refused spawn simply won't happen)
@@ -851,7 +859,7 @@ bool PhysicsSystem::makeSpawnPreviewBody(const SpawnAim& spawn_aim, const SpawnS
     return true;
 }
 
-void PhysicsSystem::createMacroBody(UniverseState& universe_state, const SpawnAim& spawn_aim,
+void PhysicsSystem::createMacroBody(UniverseState& universe_state, const SpawnProperties& spawn_aim,
                                     const SpawnSettings& spawn_settings)
 {
     std::vector<GravitationalBody>& macro_bodies = universe_state.macro_bodies;
@@ -880,7 +888,7 @@ void PhysicsSystem::createMacroBody(UniverseState& universe_state, const SpawnAi
     macro_bodies.push_back(macro_body);
 }
 
-void PhysicsSystem::createParticleCluster(UniverseState& universe_state, const SpawnAim& spawn_aim,
+void PhysicsSystem::createParticleCluster(UniverseState& universe_state, const SpawnProperties& spawn_aim,
                                           const SpawnSettings& spawn_settings)
 {
     std::vector<GravitationalBody>& particles = universe_state.particles;
@@ -955,11 +963,18 @@ void PhysicsSystem::cleanupMacroBodies(UniverseState& universe_state)
 void PhysicsSystem::adjustThrottleWhilePlanning(UniverseState& universe_state, const ShipControls& ship_controls,
                                                 float frame_seconds)
 {
-    universe_state.ship.adjustThrottle(ship_controls.thrust, frame_seconds);
+    if (universe_state.has_ship)
+    {
+        universe_state.ship.adjustThrottle(ship_controls.thrust, frame_seconds);
+    }
 }
 
 void PhysicsSystem::applyShipInputPhysics(UniverseState& universe_state, const ShipControls& ship_controls)
 {
+    if (!universe_state.has_ship)
+    {
+        return;
+    }
     universe_state.ship.applyRotation(ship_controls);
     universe_state.ship.applyThrust(ship_controls);
 }

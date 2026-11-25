@@ -60,7 +60,7 @@ class InputSystem
     void translateMenuInputs(DynamoEngine::SceneManager& scenes);
     // Where the next body would spawn right now, in world space: at the cursor, or (with Shift) at the drag's start,
     // moving toward the cursor. The one place this is worked out: the spawn and both previews all use it.
-    SpawnAim aimSpawn(bool is_cluster, bool with_velocity, const CameraState& camera_state) const;
+    SpawnProperties aimSpawn(bool is_cluster, bool with_velocity, const CameraState& camera_state) const;
 
     void updateVisor(CameraState& camera_state); // tab cycles the visor view;
 

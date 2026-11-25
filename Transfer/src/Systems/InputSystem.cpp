@@ -132,13 +132,13 @@ void InputSystem::processSystemInputFrame(GameState& game_state, UIState& ui_sta
     }
 }
 
-SpawnAim InputSystem::aimSpawn(bool is_cluster, bool with_velocity, const CameraState& camera_state) const
+SpawnProperties InputSystem::aimSpawn(bool is_cluster, bool with_velocity, const CameraState& camera_state) const
 {
     // Screen positions as doubles first: the world math is done in doubles
     const DynamoEngine::Vector2D cursor = m_input.mousePosition();
     const DynamoEngine::Vector2D drag_start = m_mouse_drag_anchor;
 
-    SpawnAim aim;
+    SpawnProperties aim;
     aim.is_cluster = is_cluster;
     aim.with_velocity = with_velocity;
     if (with_velocity)

@@ -20,7 +20,7 @@ struct ShipControls
 
 // Where and how the next body would spawn, already in WORLD space: computed once, by InputSystem, so the spawn
 // itself, the see-through preview and the placement trajectory can never disagree
-struct SpawnAim
+struct SpawnProperties
 {
     bool is_cluster = false;    // right button (left = a planet)
     bool with_velocity = false; // Shift: the body starts where the drag began, moving toward the cursor
@@ -35,7 +35,7 @@ struct PlayerCommands
     // A spawn drag was released on the world this frame: spawn what spawn_aim describes
     bool spawn = false;
     // Only meaningful when spawn is true
-    SpawnAim spawn_aim;
+    SpawnProperties spawn_aim;
     // Delete
     bool undo_newest_spawn = false;
     // Shift + Delete
@@ -48,7 +48,7 @@ struct PlayerInput
 {
     // A spawn button held down on the world (not on the UI): what would spawn on release, for the previews
     bool is_aiming_spawn = false;
-    SpawnAim spawn_aim; // only meaningful while is_aiming_spawn is true
+    SpawnProperties spawn_aim; // only meaningful while is_aiming_spawn is true
 
     PlayerCommands commands;
     ShipControls ship;

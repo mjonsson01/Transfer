@@ -210,7 +210,12 @@ std::unique_ptr<Scene> buildGameScene(UIState& ui_state, GameState& game_state)
     throttle_label->setTextSource(
         [&game_state]()
         {
-            int percent = static_cast<int>(std::lround(game_state.getUniverseState().ship.throttle() * 100.0));
+            const UniverseState& universe_state = game_state.getUniverseState();
+            if (!universe_state.has_ship)
+            {
+                return std::string(); // no ship, no throttle
+            }
+            int percent = static_cast<int>(std::lround(universe_state.ship.throttle() * 100.0));
             return "THROTTLE: " + std::to_string(percent) + "%";
         });
 

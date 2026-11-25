@@ -261,7 +261,8 @@ void RenderSystem::renderGameFrame(GameState& game_state, UIState& ui_state, con
 {
     game_state.getCameraStateMutable().render_alpha = game_state.getAlpha();
     renderTwinklingStarField(pass, cmdbuf, game_state.getCameraState());
-    renderTrajectoryLines(pass, cmdbuf, game_state.getCameraState(), game_state.getTrajectories().clock); // under bodies
+    renderTrajectoryLines(pass, cmdbuf, game_state.getCameraState(),
+                          game_state.getTrajectories().clock); // under bodies
     renderBodies(game_state, ui_state, pass, cmdbuf);
     renderStarship(game_state, pass, cmdbuf, game_state.getCameraState());
     renderVelocityVectors(pass, cmdbuf, game_state.getCameraState());
@@ -300,7 +301,8 @@ void RenderSystem::uploadUnifiedBodies(GameState& game_state, UIState& ui_state,
         }
     }
 
-    appendPreviewBodies(m_unified_body_vertices, player_input, ui_state.spawnSettings(), game_state.getCameraState().zoom);
+    appendPreviewBodies(m_unified_body_vertices, player_input, ui_state.spawnSettings(),
+                        game_state.getCameraState().zoom);
     uploadVelocityVectorVertices(cmdbuf);
 
     // Emergency only: the particle budget should make this impossible. If a rule change ever breaks it, grow the
@@ -345,6 +347,10 @@ void RenderSystem::uploadStarship(GameState& game_state, UIState& ui_state, SDL_
 {
     starshipVertices.clear();
     starshipVertices.reserve(MAX_STARSHIP_VERTICES);
+    if (!game_state.getUniverseState().has_ship)
+    {
+        return; // no ship in this universe: nothing to draw (renderStarship skips an empty list)
+    }
 
     game_state.getUniverseStateMutable().ship.buildGeometry(starshipVertices);
 
@@ -709,7 +715,7 @@ void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertex_da
 
     // The body that will spawn: the chosen size and mass, where InputSystem aimed it (with an arrow along its
     // velocity when it's being given one)
-    const SpawnAim& aim = player_input.spawn_aim;
+    const SpawnProperties& aim = player_input.spawn_aim;
     GravitationalBody preview_body = {};
     preview_body.mass = spawn_settings.mass;
     preview_body.radius = spawn_settings.radius;
@@ -1231,9 +1237,9 @@ void RenderSystem::buildVelocityVectorGeometry(DynamoEngine::Vector2D lineStart,
 
     // Sizes on screen, in pixels. The vertices are in world space and the shader multiplies them by zoom, so dividing
     // by zoom here keeps the arrow the same thickness at any zoom.
-    const float THICKNESS_PX = 12.0f;
-    const float HEAD_LENGTH_PX = 30.0f;
-    const float HEAD_WIDTH_PX = 36.0f;
+    const float THICKNESS_PX = 6.0f;
+    const float HEAD_LENGTH_PX = 15.0f;
+    const float HEAD_WIDTH_PX = 18.0f;
     const float world_per_px = static_cast<float>(1.0 / zoom);
     float thickness = THICKNESS_PX * world_per_px;
     float arrow_length = HEAD_LENGTH_PX * world_per_px;
@@ -1399,6 +1405,10 @@ void RenderSystem::buildDebugLines(const GameState& game_state, UIState& ui_stat
     // The ship: its hitbox polygon (green). One tick ago it was the same shape moved back by this tick's movement
     // (the rotation isn't interpolated, exactly like the sprite)
     const SDL_FColor SHIP_COLOR = {0.2f, 1.0f, 0.3f, 1.0f};
+    if (!game_state.getUniverseState().has_ship)
+    {
+        return;
+    }
     const Starship& ship = game_state.getUniverseState().ship;
     std::vector<DynamoEngine::Vector2D> corners = ship.collisionPolygon();
     DynamoEngine::Vector2D movement = ship.movementThisTick();
@@ -1481,16 +1491,16 @@ void RenderSystem::renderDebugLines(SDL_GPURenderPass* pass, SDL_GPUCommandBuffe
 
 // The look of the lines (tune freely). Each new piece fades in from FADE_START to LINE alpha (in the shader); while
 // tracing, the newest few segments are drawn brighter on top, so the front of the line is easy to see.
-static constexpr SDL_FColor TRAJECTORY_MACRO_COLOR = {0.55f, 0.75f, 1.0f, 1.0f};   // pale blue
-static constexpr SDL_FColor TRAJECTORY_SHIP_COLOR = {0.4f, 1.0f, 0.5f, 1.0f};      // green, like the ship's hitbox
-static constexpr SDL_FColor TRAJECTORY_STATIC_COLOR = {1.0f, 0.65f, 0.2f, 1.0f};   // amber: a static body, no forces
+static constexpr SDL_FColor TRAJECTORY_MACRO_COLOR = {0.55f, 0.75f, 1.0f, 1.0f};    // pale blue
+static constexpr SDL_FColor TRAJECTORY_SHIP_COLOR = {0.4f, 1.0f, 0.5f, 1.0f};       // green, like the ship's hitbox
+static constexpr SDL_FColor TRAJECTORY_STATIC_COLOR = {1.0f, 0.65f, 0.2f, 1.0f};    // amber: a static body, no forces
 static constexpr SDL_FColor TRAJECTORY_PREVIEW_COLOR = {0.95f, 0.95f, 0.95f, 1.0f}; // the planet being placed
-static constexpr SDL_FColor TRAJECTORY_TIP_COLOR = {1.0f, 1.0f, 1.0f, 1.0f};       // the bright front while tracing
-static constexpr float TRAJECTORY_LINE_ALPHA = 0.7f;       // a settled line
-static constexpr float TRAJECTORY_FADE_START_ALPHA = 0.1f; // a brand-new piece
-static constexpr float TRAJECTORY_FADE_IN_SECONDS = 0.75f; // real seconds from new to settled
-static constexpr int TRAJECTORY_TIP_SEGMENTS = 3;          // how much of the front is drawn bright (at most 8: see
-                                                           // the MAX_TRAJECTORY_FRAME_VERTICES check)
+static constexpr SDL_FColor TRAJECTORY_TIP_COLOR = {1.0f, 1.0f, 1.0f, 1.0f};        // the bright front while tracing
+static constexpr float TRAJECTORY_LINE_ALPHA = 0.7f;                                // a settled line
+static constexpr float TRAJECTORY_FADE_START_ALPHA = 0.1f;                          // a brand-new piece
+static constexpr float TRAJECTORY_FADE_IN_SECONDS = 0.75f;                          // real seconds from new to settled
+static constexpr int TRAJECTORY_TIP_SEGMENTS = 3; // how much of the front is drawn bright (at most 8: see
+                                                  // the MAX_TRAJECTORY_FRAME_VERTICES check)
 static constexpr float TRAJECTORY_TIME_MARK_HALF_LENGTH_PX = 5.0f; // each time mark sticks out this far on screen
 
 // The TrajectoryLine vertex shader's second uniform buffer: must match its TrajectoryConstants, field for field
@@ -1506,9 +1516,16 @@ static TrajectoryLineVertex trajectoryVertex(const DynamoEngine::Vector2D& posit
                                              const DynamoEngine::Vector2D& previous, SDL_FColor color, float alpha,
                                              float drawn_at, bool fades_in)
 {
-    return {(float)position.x_val, (float)position.y_val, (float)previous.x_val, (float)previous.y_val,
-            color.r,               color.g,               color.b,               alpha,
-            drawn_at,              fades_in ? 1.0f : 0.0f};
+    return {(float)position.x_val,
+            (float)position.y_val,
+            (float)previous.x_val,
+            (float)previous.y_val,
+            color.r,
+            color.g,
+            color.b,
+            alpha,
+            drawn_at,
+            fades_in ? 1.0f : 0.0f};
 }
 
 void RenderSystem::createTrajectoryLineBuffersAndPipeline()
@@ -1518,14 +1535,16 @@ void RenderSystem::createTrajectoryLineBuffersAndPipeline()
     m_trajectory_line_vertex_buffer = SDL_CreateGPUBuffer(m_gpu, &line_vb_info);
     // As big as the whole line buffer, so one upload can never be too large for it (uploads are normally small)
     SDL_GPUTransferBufferCreateInfo line_tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-                                                    .size = MAX_TRAJECTORY_LINE_VERTICES * sizeof(TrajectoryLineVertex)};
+                                                    .size =
+                                                        MAX_TRAJECTORY_LINE_VERTICES * sizeof(TrajectoryLineVertex)};
     m_trajectory_line_transfer_buffer = SDL_CreateGPUTransferBuffer(m_gpu, &line_tb_info);
 
     SDL_GPUBufferCreateInfo frame_vb_info = {.usage = SDL_GPU_BUFFERUSAGE_VERTEX,
                                              .size = MAX_TRAJECTORY_FRAME_VERTICES * sizeof(TrajectoryLineVertex)};
     m_trajectory_frame_vertex_buffer = SDL_CreateGPUBuffer(m_gpu, &frame_vb_info);
     SDL_GPUTransferBufferCreateInfo frame_tb_info = {.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-                                                     .size = MAX_TRAJECTORY_FRAME_VERTICES * sizeof(TrajectoryLineVertex)};
+                                                     .size =
+                                                         MAX_TRAJECTORY_FRAME_VERTICES * sizeof(TrajectoryLineVertex)};
     m_trajectory_frame_transfer_buffer = SDL_CreateGPUTransferBuffer(m_gpu, &frame_tb_info);
 
     // Two vertex uniform buffers: the camera (slot 0) and TrajectoryShaderConstants (slot 1)
@@ -1534,14 +1553,22 @@ void RenderSystem::createTrajectoryLineBuffersAndPipeline()
 
     // The four inputs of TrajectoryLine.vert, in order
     SDL_GPUVertexAttribute vertex_attributes[4];
-    vertex_attributes[0] = {.location = 0, .buffer_slot = 0, .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
+    vertex_attributes[0] = {.location = 0,
+                            .buffer_slot = 0,
+                            .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
                             .offset = offsetof(TrajectoryLineVertex, x)};
-    vertex_attributes[1] = {.location = 1, .buffer_slot = 0, .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
+    vertex_attributes[1] = {.location = 1,
+                            .buffer_slot = 0,
+                            .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
                             .offset = offsetof(TrajectoryLineVertex, prevX)};
-    vertex_attributes[2] = {.location = 2, .buffer_slot = 0, .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4,
+    vertex_attributes[2] = {.location = 2,
+                            .buffer_slot = 0,
+                            .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4,
                             .offset = offsetof(TrajectoryLineVertex, r)};
     // drawn_at and fades_in sit next to each other, so the shader reads them as one float2
-    vertex_attributes[3] = {.location = 3, .buffer_slot = 0, .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
+    vertex_attributes[3] = {.location = 3,
+                            .buffer_slot = 0,
+                            .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
                             .offset = offsetof(TrajectoryLineVertex, drawn_at)};
 
     SDL_GPUColorTargetDescription color_target = {};
@@ -1638,8 +1665,7 @@ void RenderSystem::buildTrajectoryLines(const GameState& game_state, const UISta
     {
         bool will_be_static = ui_state.spawnSettings().is_force_static;
         TrajectoryStyle preview_style = {will_be_static ? TRAJECTORY_STATIC_COLOR : TRAJECTORY_PREVIEW_COLOR, false};
-        appendTrajectorySegments(preview_path, 0, preview_path[0].position, preview_style,
-                                 m_trajectory_frame_vertices);
+        appendTrajectorySegments(preview_path, 0, preview_path[0].position, preview_style, m_trajectory_frame_vertices);
         if (time_marks)
             appendTrajectoryTimeMarks(preview_path, preview_style, zoom, m_trajectory_frame_vertices);
     }
@@ -1685,10 +1711,10 @@ void RenderSystem::appendTrajectoryTimeMarks(const TracedPath& path, const Traje
             DynamoEngine::Vector2D(-direction.y_val, direction.x_val) * (half_length / length);
         DynamoEngine::Vector2D a = path[k].position + across;
         DynamoEngine::Vector2D b = path[k].position - across;
-        vertices_out.push_back(trajectoryVertex(a, a, style.color, TRAJECTORY_LINE_ALPHA, path[k].drawn_at,
-                                                style.fades_in));
-        vertices_out.push_back(trajectoryVertex(b, b, style.color, TRAJECTORY_LINE_ALPHA, path[k].drawn_at,
-                                                style.fades_in));
+        vertices_out.push_back(
+            trajectoryVertex(a, a, style.color, TRAJECTORY_LINE_ALPHA, path[k].drawn_at, style.fades_in));
+        vertices_out.push_back(
+            trajectoryVertex(b, b, style.color, TRAJECTORY_LINE_ALPHA, path[k].drawn_at, style.fades_in));
     }
 }
 
@@ -1740,7 +1766,8 @@ void RenderSystem::uploadTrajectoryLines(SDL_GPUCommandBuffer* cmdbuf)
 
         SDL_GPUTransferBufferLocation src = {.transfer_buffer = m_trajectory_line_transfer_buffer, .offset = 0};
         SDL_GPUBufferRegion dst = {.buffer = m_trajectory_line_vertex_buffer,
-                                   .offset = (uint32_t)(m_trajectory_uploaded_vertex_count * sizeof(TrajectoryLineVertex)),
+                                   .offset =
+                                       (uint32_t)(m_trajectory_uploaded_vertex_count * sizeof(TrajectoryLineVertex)),
                                    .size = bytes};
         // cycle: when starting over, earlier frames may still be drawing the OLD trace from this buffer, so take a
         // fresh one (true). When appending, the old segments must stay where they are (false); that is safe because

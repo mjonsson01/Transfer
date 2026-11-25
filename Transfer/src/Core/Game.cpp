@@ -9,8 +9,8 @@
 #include <vector>
 
 Game::Game()
-    : game_state(), ui_state(), m_player_input(), inputSystem(), physicsSystem(), renderSystem(game_state), audioSystem(), scenes(),
-      m_profiler(PROFILER_WINDOW_FRAMES)
+    : game_state(), ui_state(), m_player_input(), inputSystem(), physicsSystem(), renderSystem(game_state),
+      audioSystem(), scenes(), m_profiler(PROFILER_WINDOW_FRAMES)
 {
     addTransferScenes(scenes, ui_state, game_state);
 
@@ -36,6 +36,7 @@ void Game::StartGame()
 {
     // Initialize any other useful game_state variables here.
     game_state.SetPlaying(true);
+    game_state.getUniverseStateMutable().has_ship = RUN_GAME_WITH_PLAYER_SHP;
 
     // Default to starting in the level scene since other scenes are not
     // implemented yet.
@@ -134,7 +135,8 @@ void Game::Run()
             physics_time_accumulator -= PHYSICS_TIME_STEP;
         }
         Uint64 physics_end = SDL_GetPerformanceCounter();
-        m_profiler.record(m_profile.physics, DynamoEngine::FrameProfiler::millisecondsBetween(physics_start, physics_end));
+        m_profiler.record(m_profile.physics,
+                          DynamoEngine::FrameProfiler::millisecondsBetween(physics_start, physics_end));
 
         // 5. Planning mode's trajectory lines: once per frame in REAL time (they grow while the simulation is stopped)
         Uint64 trajectories_start = SDL_GetPerformanceCounter();
@@ -164,14 +166,16 @@ void Game::Run()
         // Scene switches requested this frame (buttons, Esc) happen here, once nothing is using the old scene
         scenes.applyPendingSwitch();
         Uint64 work_end = SDL_GetPerformanceCounter();
-        m_profiler.record(m_profile.frame_work, DynamoEngine::FrameProfiler::millisecondsBetween(frame_start, work_end));
+        m_profiler.record(m_profile.frame_work,
+                          DynamoEngine::FrameProfiler::millisecondsBetween(frame_start, work_end));
 
         // --- FRAME LIMITING ---
         // We limit based on how much work we did since frame_start
         Game::limitFrameRate(frame_start, render_end, perf_freq);
 
         Uint64 frame_end = SDL_GetPerformanceCounter();
-        m_profiler.record(m_profile.frame_total, DynamoEngine::FrameProfiler::millisecondsBetween(frame_start, frame_end));
+        m_profiler.record(m_profile.frame_total,
+                          DynamoEngine::FrameProfiler::millisecondsBetween(frame_start, frame_end));
         m_profiler.endFrame();
         if (m_profiler.takeNewReport())
         {

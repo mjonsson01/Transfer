@@ -179,7 +179,10 @@ void PhysicsSystem::recordTrajectoryPoints(Trajectories& trajectories)
     {
         trajectories.macro_body_paths[i].push_back({macro_bodies[i].position, trajectories.clock});
     }
-    trajectories.ship_path.push_back({m_prediction_universe_state.ship.center(), trajectories.clock});
+    if (m_prediction_universe_state.has_ship) // no ship, no ship line
+    {
+        trajectories.ship_path.push_back({m_prediction_universe_state.ship.center(), trajectories.clock});
+    }
 }
 
 void PhysicsSystem::updateSpawnPreviewTrajectory(const UniverseState& universe_state, const PlayerInput& player_input,
@@ -209,6 +212,7 @@ void PhysicsSystem::updateSpawnPreviewTrajectory(const UniverseState& universe_s
         m_preview_universe_state.macro_bodies.push_back(body);
         m_preview_universe_state.particles.clear();
         m_preview_universe_state.ship = universe_state.ship;
+        m_preview_universe_state.has_ship = universe_state.has_ship;
         m_preview_spawn_body = body;
         m_preview_ticks_done = 0;
         m_has_spawn_preview = true;
