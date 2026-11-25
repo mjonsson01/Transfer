@@ -8,20 +8,20 @@
 #include <unordered_map>
 
 // Custom Imports
-#include "Core/DEPRECATED_InputState.hpp"
 #include "Core/GameState.hpp"
+#include "Systems/Input/PlayerInput.hpp"
 #include "Core/UIState.hpp"
 #include "DynamoEngine/Debug/FrameProfiler.hpp"
 #include "DynamoEngine/Scenes/SceneManager.hpp"
-#include "Entities/Sound/MusicModeEnum.hpp"
+#include "Systems/Audio/MusicModeEnum.hpp"
 #include "Scenes/TransferScenes.hpp"
-#include "Systems/AudioSystem.hpp"
-#include "Systems/InputSystem.hpp"
-#include "Systems/PhysicsSystem.hpp"
-#include "Systems/RenderSystem.hpp"
-#include "Utilities/Constants/EngineConstants.hpp"
-#include "Utilities/Constants/GameSystemConstants.hpp"
-// #include "Utilities/System/SystemPathUtility.hpp"
+#include "Systems/Audio/AudioSystem.hpp"
+#include "Systems/Input/InputSystem.hpp"
+#include "Systems/Physics/PhysicsSystem.hpp"
+#include "Systems/Rendering/RenderSystem.hpp"
+#include "Constants/EngineConstants.hpp"
+#include "Constants/GameSystemConstants.hpp"
+// #include "Utilities/SystemPathUtility.hpp"
 
 class Game
 {
@@ -48,13 +48,8 @@ class Game
     void RenderFrame();           // Renders the current frame to the screen including UI
     void PlayAudio();             // Plays audio based on the current game state and UI state
     // Helpers for Run() method
-    // void updateFPS(Uint32 renderEnd, Uint32 lastRender, float& fpsAccumulator,
-    //                float& currentFPS); // Rolling average frame calculation and update
-    void updateFPS(Uint64 renderEnd, Uint64 lastRender, float& fpsAccumulator, float& currentFPS);
-    // void limitFrameRate(Uint32 renderStart,
-    //                     Uint32 renderEnd); // Soft Clamps frame rate based on
-    //                                        // static Game System Constant value
-    void limitFrameRate(Uint64 renderStart, Uint64 renderEnd, Uint64 perfFreq);
+    void updateFPS(Uint64 render_end, Uint64 last_render, float& fps_accumulator, float& current_fps);
+    void limitFrameRate(Uint64 renderStart, Uint64 render_end, Uint64 perfFreq);
     // Turns the profiler's latest report into the F4 overlay's lines (and prints them while the overlay is shown)
     void publishProfilerReport();
 
@@ -62,6 +57,7 @@ class Game
     // Systems and State
     GameState game_state;        // Contains all game entities and their states
     UIState ui_state;            // Contains all UI related states
+    PlayerInput m_player_input;  // what the player is doing this frame: InputSystem writes it, the others read it
     InputSystem inputSystem;     // Manages all user input
     PhysicsSystem physicsSystem; // Manages physics calculations and Frame Updates
     RenderSystem renderSystem;   // Manages all rendering operations

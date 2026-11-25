@@ -9,8 +9,8 @@
 #include <vector>
 
 Game::Game()
-    : game_state(), ui_state(), inputSystem(), physicsSystem(), renderSystem(game_state), audioSystem(), scenes(),
-      m_profiler(PROFILER_WINDOW_FRAMES)
+    : game_state(), ui_state(), m_player_input(), inputSystem(), physicsSystem(), renderSystem(game_state),
+      audioSystem(), scenes(), m_profiler(PROFILER_WINDOW_FRAMES)
 {
     addTransferScenes(scenes, ui_state, game_state);
 
@@ -36,6 +36,7 @@ void Game::StartGame()
 {
     // Initialize any other useful game_state variables here.
     game_state.SetPlaying(true);
+    game_state.getUniverseStateMutable().has_ship = RUN_GAME_WITH_PLAYER_SHP;
 
     // Default to starting in the level scene since other scenes are not
     // implemented yet.
@@ -134,13 +135,20 @@ void Game::Run()
             physics_time_accumulator -= PHYSICS_TIME_STEP;
         }
         Uint64 physics_end = SDL_GetPerformanceCounter();
-        m_profiler.record(m_profile.physics, DynamoEngine::FrameProfiler::millisecondsBetween(physics_start, physics_end));
+        m_profiler.record(m_profile.physics,
+                          DynamoEngine::FrameProfiler::millisecondsBetween(physics_start, physics_end));
 
         // 5. Planning mode's trajectory lines: once per frame in REAL time (they grow while the simulation is stopped)
         Uint64 trajectories_start = SDL_GetPerformanceCounter();
+        if (runs_simulation && ui_state.getIsPlanning())
+        {
+            // Time is stopped, but W/S still set up the burn (before the prediction, so it sees the new throttle)
+            physicsSystem.adjustThrottleWhilePlanning(game_state.getUniverseStateMutable(), m_player_input.ship,
+                                                      frame_seconds);
+        }
         if (runs_simulation)
         {
-            physicsSystem.updateTrajectories(frame_seconds, game_state.getUniverseState(), game_state.getCameraState(),
+            physicsSystem.updateTrajectories(frame_seconds, game_state.getUniverseState(), m_player_input,
                                              game_state.getTrajectoriesMutable(), ui_state);
         }
         Uint64 trajectories_end = SDL_GetPerformanceCounter();
@@ -158,14 +166,16 @@ void Game::Run()
         // Scene switches requested this frame (buttons, Esc) happen here, once nothing is using the old scene
         scenes.applyPendingSwitch();
         Uint64 work_end = SDL_GetPerformanceCounter();
-        m_profiler.record(m_profile.frame_work, DynamoEngine::FrameProfiler::millisecondsBetween(frame_start, work_end));
+        m_profiler.record(m_profile.frame_work,
+                          DynamoEngine::FrameProfiler::millisecondsBetween(frame_start, work_end));
 
         // --- FRAME LIMITING ---
         // We limit based on how much work we did since frame_start
         Game::limitFrameRate(frame_start, render_end, perf_freq);
 
         Uint64 frame_end = SDL_GetPerformanceCounter();
-        m_profiler.record(m_profile.frame_total, DynamoEngine::FrameProfiler::millisecondsBetween(frame_start, frame_end));
+        m_profiler.record(m_profile.frame_total,
+                          DynamoEngine::FrameProfiler::millisecondsBetween(frame_start, frame_end));
         m_profiler.endFrame();
         if (m_profiler.takeNewReport())
         {
@@ -205,59 +215,63 @@ void Game::publishProfilerReport()
 void Game::ProcessInput(float frame_seconds)
 {
     // Dispatch to Input System (which gives the current scene's UI the first look)
-    inputSystem.processSystemInputFrame(game_state, ui_state, scenes, frame_seconds);
+    inputSystem.processSystemInputFrame(game_state, ui_state, scenes, m_player_input, frame_seconds);
 }
 
 void Game::IntegratePhysicsFrame()
 {
     // Dispatch to Physics System
-    physicsSystem.advanceUniverseState(game_state.getUniverseStateMutable(), ui_state);
+    physicsSystem.advanceUniverseState(game_state.getUniverseStateMutable(), m_player_input.ship);
 }
 
-void Game::UpdateInstantiations() { physicsSystem.updateGravBodyInstantiations(game_state, ui_state); }
+void Game::UpdateInstantiations()
+{
+    physicsSystem.updateGravBodyInstantiations(game_state.getUniverseStateMutable(), m_player_input,
+                                               ui_state.spawnSettings());
+}
 void Game::RenderFrame()
 {
     // Dispatch to Render System -- renders the current scene's UI as well.
-    renderSystem.renderFullFrame(game_state, ui_state, scenes.currentScene());
+    renderSystem.renderFullFrame(game_state, ui_state, m_player_input, scenes.currentScene());
 }
 
 void Game::PlayAudio() { audioSystem.ProcessSystemAudioFrame(game_state, ui_state); }
 // --------- UTILITY METHODS FOR FPS --------- //
-void Game::updateFPS(Uint64 renderEnd, Uint64 lastRender, float& fpsAccumulator, float& currentFPS)
+void Game::updateFPS(Uint64 render_end, Uint64 last_render, float& fps_accumulator, float& current_fps)
 {
     static const Uint64 perf_freq = SDL_GetPerformanceFrequency();
 
     // Calculate the duration of this specific frame in seconds
-    float frameTimeSeconds = (float)(renderEnd - lastRender) / perf_freq;
+    float frameTimeSeconds = (float)(render_end - last_render) / perf_freq;
 
     // Accumulate the time in milliseconds for the update interval logic
-    fpsAccumulator += (frameTimeSeconds * 1000.0f);
+    fps_accumulator += (frameTimeSeconds * 1000.0f);
 
     // Update the average FPS every FPS_UPDATE_DELTA_MS (e.g., 500ms)
-    if (fpsAccumulator >= FPS_UPDATE_DELTA_MS)
+    if (fps_accumulator >= FPS_UPDATE_DELTA_MS)
     {
         // Avoid division by zero; cap minimum frame time to 1 microsecond
-        float safeFrameTime = std::max(frameTimeSeconds, 0.000001f);
-        float instantFPS = 1.0f / safeFrameTime;
+        float safe_frame_time = std::max(frameTimeSeconds, 0.000001f);
+        float instantFPS = 1.0f / safe_frame_time;
 
         // Exponential moving average for smoothing
-        currentFPS = (0.9f * currentFPS) + (0.1f * instantFPS);
+        current_fps = (0.9f * current_fps) + (0.1f * instantFPS);
 
         // Clamp for stability (prevents massive spikes from affecting the UI)
         float target_fps_max = static_cast<float>(TARGET_FPS) * 1.1f;
-        currentFPS = std::min(currentFPS, target_fps_max);
+        current_fps = std::min(current_fps, target_fps_max);
 
-        ui_state.setFPS(currentFPS);
-        fpsAccumulator = 0.0f;
+        ui_state.setFPS(current_fps);
+        fps_accumulator = 0.0f;
     }
 }
-void Game::limitFrameRate(Uint64 renderStart, Uint64 renderEnd, Uint64 perfFreq)
+void Game::limitFrameRate(Uint64 renderStart, Uint64 render_end, Uint64 perfFreq)
 {
     // 1. Calculate how many ticks our target frame duration is
     // (1.0 / TARGET_FPS) * perfFreq
     const Uint64 targetTicksPerFrame = perfFreq / TARGET_FPS;
 
-    Uint64 frameTicks = renderEnd - renderStart;
+    Uint64 frameTicks = render_end - renderStart;
 
     if (frameTicks < targetTicksPerFrame)
     {

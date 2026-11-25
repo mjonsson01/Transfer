@@ -3,7 +3,7 @@
 #pragma once
 
 // Custom Imports
-#include "Core/UniverseState.hpp"
+#include "Systems/Physics/UniverseState.hpp"
 
 // Velocity Verlet ("kick, drift, kick"). One physics tick is:
 //   1. integrateVelocityVerletFirstHalfStep   half kick with last tick's forces, then move

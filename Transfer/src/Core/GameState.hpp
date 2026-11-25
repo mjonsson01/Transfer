@@ -3,12 +3,12 @@
 #pragma once
 
 // Custom Imports
-#include "Core/CameraState.hpp"
-#include "Core/Trajectories.hpp"
-#include "Core/UniverseState.hpp"
-#include "Entities/Sound/MusicModeEnum.hpp"
+#include "Camera/CameraState.hpp"
+#include "Systems/Physics/Trajectories.hpp"
+#include "Systems/Physics/UniverseState.hpp"
+#include "Systems/Audio/MusicModeEnum.hpp"
 #include "Player/Player.hpp"
-#include "Utilities/Constants/GameSystemConstants.hpp"
+#include "Constants/GameSystemConstants.hpp"
 // Standard Library Imports
 #include <vector>
 

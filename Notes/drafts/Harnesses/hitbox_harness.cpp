@@ -6,8 +6,7 @@
 #include <vector>
 int main()
 {
-    Starship ship; UIState ui;
-    DEPRECATED_InputState& in = ui.getMutableDEPRECATED_InputState();
+    Starship ship;
     std::vector<DynamoEngine::Vector2D> p = ship.collisionPolygon();
     printf("rotation 0 corners:"); for (auto& c : p) printf(" (%.2f, %.2f)", c.x_val, c.y_val); printf("\n");
     double worst = 0;
@@ -20,7 +19,7 @@ int main()
         DynamoEngine::Vector2D pointing = ship.getPointingVector();
         double err = (facing - pointing).magnitude();
         if (err > worst) worst = err;
-        in.negativeRotation = true; ship.applyRotation(ui);
+        ShipControls turn_right; turn_right.rotation = -1; ship.applyRotation(turn_right);
     }
     printf("worst |hitbox facing - getPointingVector| over a full turn: %.2e\n", worst);
 }

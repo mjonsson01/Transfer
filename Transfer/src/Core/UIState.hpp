@@ -6,10 +6,9 @@
 #include <SDL3/SDL.h>
 
 // Custom Imports
-#include "Core/DEPRECATED_InputState.hpp"
-#include "Core/SpawnSettings.hpp"
-#include "Entities/Sound/MusicModeEnum.hpp"
-#include "Utilities/Constants/GameSystemConstants.hpp"
+#include "Systems/Physics/SpawnSettings.hpp"
+#include "Systems/Audio/MusicModeEnum.hpp"
+#include "Constants/GameSystemConstants.hpp"
 
 // Standard Library Imports
 #include <queue>
@@ -21,13 +20,13 @@ class UIState
   public:
     UIState();
     ~UIState();
-    DEPRECATED_InputState& getMutableDEPRECATED_InputState() { return inputState; }
-    const DEPRECATED_InputState& getDEPRECATED_InputState() const { return inputState; }
     float getFPS() { return framesPerSecond; }
     void setFPS(float fps) { framesPerSecond = fps; }
     bool getRenderDebug() { return renderDebug; }
     void setRenderDebug(bool rd) { renderDebug = rd; }
-    float getTimeScaleFactor() const { return static_cast<float>(inputState.selectedSimSpeedScale); }
+    // The simulation speed slider (1 = normal speed). Planning mode stops time without changing it.
+    float getTimeScaleFactor() const { return static_cast<float>(m_simulation_speed); }
+    void setSimulationSpeed(double speed) { m_simulation_speed = speed; }
     // What the next spawned planet or cluster will be like (edited by the spawn panel's checkboxes)
     SpawnSettings& spawnSettings() { return m_spawn_settings; }
     const SpawnSettings& spawnSettings() const { return m_spawn_settings; }
@@ -64,7 +63,7 @@ class UIState
     void setIsPlanning(bool is_planning) { m_is_planning = is_planning; }
 
   private:
-    DEPRECATED_InputState inputState;
+    double m_simulation_speed = 1.0;
     SpawnSettings m_spawn_settings;
     float framesPerSecond = TARGET_FPS;
 

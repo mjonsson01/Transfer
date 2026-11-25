@@ -3,15 +3,14 @@
 #include "Scenes/TransferScenes.hpp"
 
 // Custom Imports
-#include "Core/DEPRECATED_InputState.hpp"
 #include "DynamoEngine/UI/Widgets/UIButton.hpp"
 #include "DynamoEngine/UI/Widgets/UICheckbox.hpp"
 #include "DynamoEngine/UI/Widgets/UIDropdown.hpp"
 #include "DynamoEngine/UI/Widgets/UILabel.hpp"
 #include "DynamoEngine/UI/Widgets/UIRow.hpp"
 #include "DynamoEngine/UI/Widgets/UISlider.hpp"
-#include "Utilities/Constants/EngineConstants.hpp"
-#include "Utilities/Constants/PhysicsConstants.hpp"
+#include "Constants/EngineConstants.hpp"
+#include "Systems/Physics/PhysicsConstants.hpp"
 
 // Standard Library Imports
 #include <cmath>
@@ -48,7 +47,7 @@ constexpr float READOUT_LINE_HEIGHT = 27.0f;        // the top-left text lines (
 constexpr float SECTION_TITLE_GAP = 4.0f;           // between a section's title and its checkboxes
 constexpr float SPAWN_SECTION_SPACING = 40.0f;      // between neighbouring sections
 constexpr float CHECKBOX_ROW_SPACING = 8.0f;        // between the rows of a section with more than one row
-constexpr int SPAWN_PANEL_CHECKBOX_ROWS = 2;        // the tallest section's rows (Global has two)
+constexpr int SPAWN_PANEL_CHECKBOX_ROWS = 1;        // the tallest section's rows (all one row today)
 constexpr float SPAWN_PANEL_HEIGHT = SECTION_TITLE_HEIGHT + SECTION_TITLE_GAP +
                                      SPAWN_PANEL_CHECKBOX_ROWS * CHECKBOX_SIZE.y_val +
                                      (SPAWN_PANEL_CHECKBOX_ROWS - 1) * CHECKBOX_ROW_SPACING;
@@ -119,14 +118,15 @@ SliderMapping massMapping()
     return mapping;
 }
 
-// One spawn-panel checkbox bound to one SpawnSettings flag: it shows the flag every frame and flips it when clicked.
-// `setting` is a reference into ui_state's SpawnSettings, which outlives every scene, so the lambdas can keep it.
-void addSpawnCheckbox(UIRow& checkbox_row, const std::string& label, bool& setting)
+// One spawn-panel checkbox bound to one SpawnSettings flag: it shows the flag every frame and sets it when clicked.
+// `settings` is ui_state's SpawnSettings, which outlives every scene, so the lambdas can keep a reference to it.
+void addSpawnCheckbox(UIRow& checkbox_row, const std::string& label, SpawnSettings& settings, SpawnFlag flag)
 {
-    std::unique_ptr<UICheckbox> checkbox = std::make_unique<UICheckbox>(label, setting);
+    std::unique_ptr<UICheckbox> checkbox = std::make_unique<UICheckbox>(label, settings.flag(flag));
     checkbox->setPlacement({.size = CHECKBOX_SIZE});
-    checkbox->setCheckedSource([&setting]() { return setting; });
-    checkbox->setOnToggled([&setting](bool is_checked) { setting = is_checked; });
+    checkbox->setCheckedSource([&settings, flag]() { return settings.flag(flag); });
+    // Through setFlag, so checking one box unchecks the boxes it makes meaningless (they show it next frame)
+    checkbox->setOnToggled([&settings, flag](bool is_checked) { settings.setFlag(flag, is_checked); });
     checkbox_row.addChild(std::move(checkbox));
 }
 
@@ -199,12 +199,26 @@ std::unique_ptr<Scene> buildStartMenuScene(SceneManager& scenes, UIState& ui_sta
 std::unique_ptr<Scene> buildGameScene(UIState& ui_state, GameState& game_state)
 {
     std::unique_ptr<Scene> scene = makeScene(SceneSettings::simulation(), ui_state);
-    DEPRECATED_InputState& choices = ui_state.getMutableDEPRECATED_InputState(); // where the slider values go
 
-    // Top-left, one line each: the FPS counter, then the planning mode readout under it
+    // Top-left, one line each: the FPS counter, the throttle, then the planning mode readouts
     std::unique_ptr<UILabel> fps_label = std::make_unique<UILabel>("FPS: ");
     fps_label->setPlacement({.size = {0.0f, READOUT_LINE_HEIGHT}});
     fps_label->setTextSource([&ui_state]() { return "FPS: " + std::to_string(static_cast<int>(ui_state.getFPS())); });
+
+    // The ship's throttle: it holds when W/S are released, so it needs to be visible
+    std::unique_ptr<UILabel> throttle_label = std::make_unique<UILabel>("");
+    throttle_label->setPlacement({.size = {0.0f, READOUT_LINE_HEIGHT}});
+    throttle_label->setTextSource(
+        [&game_state]()
+        {
+            const UniverseState& universe_state = game_state.getUniverseState();
+            if (!universe_state.has_ship)
+            {
+                return std::string(); // no ship, no throttle
+            }
+            int percent = static_cast<int>(std::lround(universe_state.ship.throttle() * 100.0));
+            return "THROTTLE: " + std::to_string(percent) + "%";
+        });
 
     std::unique_ptr<UILabel> planning_label = std::make_unique<UILabel>("");
     planning_label->setPlacement({.size = {0.0f, READOUT_LINE_HEIGHT}});
@@ -217,6 +231,7 @@ std::unique_ptr<Scene> buildGameScene(UIState& ui_state, GameState& game_state)
     std::unique_ptr<UIColumn> readouts = std::make_unique<UIColumn>(0.0f);
     readouts->setPlacement({.align = UIAlign::TopLeft, .margin = 10.0f});
     readouts->addChild(std::move(fps_label));
+    readouts->addChild(std::move(throttle_label));
     readouts->addChild(std::move(planning_label));
     readouts->addChild(std::move(preview_label));
 
@@ -256,35 +271,30 @@ std::unique_ptr<Scene> buildGameScene(UIState& ui_state, GameState& game_state)
         "Simulation Speed", SliderMapping::linear(MIN_TIME_SCALE_FACTOR, MAX_TIME_SCALE_FACTOR),
         REGULAR_TIME_SCALE_FACTOR);
     speed_slider->setPlacement({.size = SLIDER_SIZE});
-    speed_slider->setOnValueChanged([&choices](double value) { choices.selectedSimSpeedScale = value; });
+    speed_slider->setOnValueChanged([&ui_state](double value) { ui_state.setSimulationSpeed(value); });
 
     std::unique_ptr<UISlider> radius_slider =
         std::make_unique<UISlider>("Radius", SliderMapping::linear(0.0, MAX_RADIUS - 100.0), 0.0);
     radius_slider->setPlacement({.size = SLIDER_SIZE});
-    radius_slider->setOnValueChanged([&choices](double value) { choices.selectedRadius = value; });
+    radius_slider->setOnValueChanged([&ui_state](double value) { ui_state.spawnSettings().radius = value; });
 
     std::unique_ptr<UISlider> mass_slider = std::make_unique<UISlider>("Mass", massMapping(), 0.0);
     mass_slider->setPlacement({.size = SLIDER_SIZE});
-    mass_slider->setOnValueChanged([&choices](double value) { choices.selectedMass = value; });
+    mass_slider->setOnValueChanged([&ui_state](double value) { ui_state.spawnSettings().mass = value; });
 
     // Spawn panel, under the sliders: settings for the NEXT planet or cluster.
     // ui_state's SpawnSettings is the source of truth: each checkbox reads it every frame and writes it when clicked.
     SpawnSettings& spawn_settings = ui_state.spawnSettings();
-    // Global: settings for planets AND clusters, two rows (four in one row wouldn't fit next to the macro section)
-    std::unique_ptr<UIRow> collision_checkboxes = std::make_unique<UIRow>(CHECKBOX_SPACING);
-    addSpawnCheckbox(*collision_checkboxes, "Accretable", spawn_settings.is_accretable);
-    addSpawnCheckbox(*collision_checkboxes, "Bounce", spawn_settings.is_bounce);
-    std::unique_ptr<UIRow> ghost_checkboxes = std::make_unique<UIRow>(CHECKBOX_SPACING);
-    addSpawnCheckbox(*ghost_checkboxes, "Ghost", spawn_settings.is_ghost);
-    addSpawnCheckbox(*ghost_checkboxes, "Planet Ghost", spawn_settings.is_macro_ghost);
-    std::unique_ptr<UIColumn> global_checkboxes = std::make_unique<UIColumn>(CHECKBOX_ROW_SPACING);
-    global_checkboxes->addChild(std::move(collision_checkboxes));
-    global_checkboxes->addChild(std::move(ghost_checkboxes));
+    // Global: settings for planets AND clusters
+    std::unique_ptr<UIRow> global_checkboxes = std::make_unique<UIRow>(CHECKBOX_SPACING);
+    addSpawnCheckbox(*global_checkboxes, "Accretable", spawn_settings, SpawnFlag::Accretable);
+    addSpawnCheckbox(*global_checkboxes, "Bounce", spawn_settings, SpawnFlag::Bounce);
+    addSpawnCheckbox(*global_checkboxes, "Ghost", spawn_settings, SpawnFlag::Ghost);
 
     // Macro body: settings only planets have
     std::unique_ptr<UIRow> macro_checkboxes = std::make_unique<UIRow>(CHECKBOX_SPACING);
-    addSpawnCheckbox(*macro_checkboxes, "Static", spawn_settings.is_force_static);
-    addSpawnCheckbox(*macro_checkboxes, "Shatterable", spawn_settings.is_shatterable);
+    addSpawnCheckbox(*macro_checkboxes, "Static", spawn_settings, SpawnFlag::Static);
+    addSpawnCheckbox(*macro_checkboxes, "Shatterable", spawn_settings, SpawnFlag::Shatterable);
 
     std::unique_ptr<UIRow> spawn_panel = std::make_unique<UIRow>(SPAWN_SECTION_SPACING);
     spawn_panel->setPlacement({.align = UIAlign::BottomCenter, .margin = SPAWN_PANEL_BOTTOM_MARGIN});

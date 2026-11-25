@@ -7,12 +7,11 @@
 #include <vector>
 
 // Custom includes
-#include "Core/DEPRECATED_InputState.hpp"
-#include "Core/UIState.hpp"
+#include "Systems/Input/PlayerInput.hpp"
 #include "DynamoEngine/Math/Vector2.hpp"
 #include "DynamoEngine/Rendering/UIVertex.hpp"
-#include "Utilities/Constants/PhysicsConstants.hpp"
-#include "Utilities/Rendering/GPUTypes.hpp"
+#include "Systems/Physics/PhysicsConstants.hpp"
+#include "Systems/Rendering/GPUTypes.hpp"
 
 class Starship
 {
@@ -21,11 +20,17 @@ class Starship
     ~Starship();
 
     // --- Physics: PhysicsSystem calls these every tick, in this order ---
-    void applyRotation(UIState& uiState);
-    // Reads W/S and sets the thrust acceleration (along the nose) for this tick
-    void applyThrust(UIState& uiState);
-    // The trajectory prediction coasts: drops the thrust left over from the last real tick (W held when P was pressed)
-    void cutThrust() { m_thrust_acceleration = {}; }
+    // A/D: turns the ship for this tick
+    void applyRotation(const ShipControls& controls);
+    // W/S: moves the throttle up or down (it holds when neither is held), then sets this tick's thrust acceleration
+    // along the nose = throttle x THRUST_ACCELERATION
+    void applyThrust(const ShipControls& controls);
+    // Moves the throttle by `direction` (+1 up, -1 down, 0 hold) for `seconds` at THROTTLE_CHANGE_PER_SECOND, then
+    // sets the thrust acceleration to match. applyThrust uses it for one tick; planning mode (time stopped) uses it
+    // with real frame time, so the burn can be set up before time runs.
+    void adjustThrottle(int direction, double seconds);
+    // 0 = engine off, 1 = full thrust
+    double throttle() const { return m_throttle; }
     // Velocity Verlet, the same two halves the bodies use. Phase 1: half kick with last tick's acceleration, then drift
     void applyVelocityVerletFirstHalfStep();
     // Called between the two phases, once the planets' pull at the ship's NEW position is known
@@ -85,7 +90,10 @@ class Starship
 
     // Speed gained per second of full thrust (px/s^2). 1200 indicates "+10 px/s every tick" at 120 ticks/s.
     static constexpr double THRUST_ACCELERATION = 1200.0;
-    DynamoEngine::Vector2D m_thrust_acceleration = {}; // from the controls, set every tick by applyThrust
+    // How fast W/S move the throttle: 1 = from off to full in one second of game time
+    static constexpr double THROTTLE_CHANGE_PER_SECOND = 1.0;
+    double m_throttle = 0.0; // 0..1, the engine setting: stays put when no key is held
+    DynamoEngine::Vector2D m_thrust_acceleration = {}; // throttle x THRUST_ACCELERATION along the nose, set by applyThrust
     DynamoEngine::Vector2D m_acceleration = {};        // gravity + thrust, as of the end of the last tick
     DynamoEngine::Vector2D m_velocity = {};
     DynamoEngine::Vector2D m_position = {};

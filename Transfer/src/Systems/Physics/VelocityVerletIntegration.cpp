@@ -1,7 +1,7 @@
 // File: Transfer/src/Systems/Physics/VelocityVerletIntegration.cpp
 
 #include "Systems/Physics/VelocityVerletIntegration.hpp"
-#include "Utilities/Math/CustomMathUtilities.hpp"
+#include "Utilities/CustomMathUtilities.hpp"
 
 void integrateVelocityVerletFirstHalfStep(UniverseState& universe_state)
 {
@@ -16,7 +16,10 @@ void integrateVelocityVerletFirstHalfStep(UniverseState& universe_state)
     {
         applyVelocityVerletFirstHalfStep(macro_body);
     }
-    universe_state.ship.applyVelocityVerletFirstHalfStep();
+    if (universe_state.has_ship)
+    {
+        universe_state.ship.applyVelocityVerletFirstHalfStep();
+    }
 }
 
 void applyVelocityVerletFirstHalfStep(GravitationalBody& grav_body)
@@ -64,5 +67,8 @@ void integrateVelocityVerletSecondHalfStep(UniverseState& universe_state)
     {
         applyVelocityVerletSecondHalfStep(macro_body);
     }
-    universe_state.ship.applyVelocityVerletSecondHalfStep();
+    if (universe_state.has_ship)
+    {
+        universe_state.ship.applyVelocityVerletSecondHalfStep();
+    }
 }

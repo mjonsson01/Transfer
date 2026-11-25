@@ -73,32 +73,31 @@ std::vector<DynamoEngine::Vector2D> Starship::collisionPolygon() const
     return corners;
 }
 
-void Starship::applyThrust(UIState& uiState)
+void Starship::applyThrust(const ShipControls& controls)
 {
-    DEPRECATED_InputState& input_state = uiState.getMutableDEPRECATED_InputState();
-    int sign = 0; // +1 = forward (W), -1 = backward (S), 0 = no thrust
-    if (input_state.isRequestingThrust)
-    {
-        if (input_state.positiveThrust)
-            sign = 1;
-        if (input_state.negativeThrust)
-            sign = -1;
-    }
+    adjustThrottle(controls.thrust, PHYSICS_TIME_STEP); // one tick of game time
+}
+
+void Starship::adjustThrottle(int direction, double seconds)
+{
+    // W pushes the throttle up, S pulls it down, at THROTTLE_CHANGE_PER_SECOND; with neither it stays where it is.
+    // No reverse thrust: S only goes down to 0 (to brake, turn around and burn).
+    m_throttle += direction * THROTTLE_CHANGE_PER_SECOND * seconds;
+    m_throttle = std::clamp(m_throttle, 0.0, 1.0);
 
     // An ACCELERATION along the nose, not a jump in velocity: the speed it adds depends on how long it's held,
     // and it's integrated together with gravity
-    m_thrust_acceleration = getPointingVector() * (sign * THRUST_ACCELERATION);
+    m_thrust_acceleration = getPointingVector() * (m_throttle * THRUST_ACCELERATION);
 }
 
-void Starship::applyRotation(UIState& uiState)
+void Starship::applyRotation(const ShipControls& controls)
 {
-    DEPRECATED_InputState& input_state = uiState.getMutableDEPRECATED_InputState();
     const double turn_speed = 0.05;
 
     // NOTE: signs are reversed on purpose because the y origin is in the upper left instead of lower left.
-    if (input_state.positiveRotation)
+    if (controls.rotation > 0)
         m_rotation -= turn_speed;
-    if (input_state.negativeRotation)
+    if (controls.rotation < 0)
         m_rotation += turn_speed;
 
     // Optional: keep rotation in a sane range to avoid float drift over time

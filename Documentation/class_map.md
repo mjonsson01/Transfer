@@ -2,13 +2,14 @@
 
 ## Header: `Core/UIState.hpp`
 ### Class: `UIState`
-- `getMutableDEPRECATED_InputState()`
-- `getDEPRECATED_InputState()`
 - `getFPS()`
 - `setFPS()`
 - `getRenderDebug()`
 - `setRenderDebug()`
 - `getTimeScaleFactor()`
+- `setSimulationSpeed()`
+- `spawnSettings()`
+- `spawnSettings()`
 - `QueueSoundEffect()`
 - `HasPendingSoundEffects()`
 - `PopNextSoundEffect()`
@@ -18,6 +19,14 @@
 - `setPlayMusic()`
 - `getPlaySoundEffects()`
 - `setPlaySoundEffects()`
+- `getShowTrajectoryTimeMarks()`
+- `setShowTrajectoryTimeMarks()`
+- `getShowProfiler()`
+- `setShowProfiler()`
+- `profilerLines()`
+- `setProfilerLines()`
+- `getIsPlanning()`
+- `setIsPlanning()`
 
 ---
 ## Header: `Core/GameState.hpp`
@@ -26,23 +35,16 @@
 - `SetPlaying()`
 - `getIsShuttingDownAudioSystem()`
 - `setIsShuttingDownAudioSystem()`
-- `getParticles()`
-- `getParticlesMutable()`
-- `getMacroBodies()`
-- `getMacroBodiesMutable()`
 - `getAlpha()`
 - `setAlpha()`
-- `incrementMaxIDInstantiated()`
-- `getMaxIDInstantiated()`
 - `getCameraStateMutable()`
 - `getCameraState()`
 - `getPlayerMutable()`
 - `getPlayer()`
-
----
-## Header: `Core/CameraState.hpp`
-### Class: `CameraState`
-- *No methods found*
+- `getUniverseStateMutable()`
+- `getUniverseState()`
+- `getTrajectoriesMutable()`
+- `getTrajectories()`
 
 ---
 ## Header: `Core/Game.hpp`
@@ -57,77 +59,29 @@
 - `PlayAudio()`
 - `updateFPS()`
 - `limitFrameRate()`
+- `publishProfilerReport()`
 
 ---
-## Header: `Core/DEPRECATED_InputState.hpp`
-### Class: `DEPRECATED_InputState`
-- `resetTransientFlags()`
-- `resetFlagsForSceneChange()`
-- `clearAllBodies()`
-
----
-## Header: `Utilities/Rendering/CameraData.hpp`
-### Class: `CameraConstants`
+## Header: `Camera/CameraState.hpp`
+### Class: `CameraState`
 - *No methods found*
 
 ---
-## Header: `Utilities/Rendering/GPUTypes.hpp`
-### Class: `UnifiedBodyVertex`
+## Header: `Systems/Input/PlayerInput.hpp`
+### Class: `ShipControls`
 - *No methods found*
 
-### Class: `TwinklingStarVertex`
+### Class: `SpawnProperties`
 - *No methods found*
 
-### Class: `VelocityVectorVertex`
+### Class: `PlayerCommands`
 - *No methods found*
 
-### Class: `StarshipVertex`
+### Class: `PlayerInput`
 - *No methods found*
 
 ---
-## Header: `Utilities/Physics/UniformParticleGrid.hpp`
-### Class: `UniformParticleGrid`
-- `build()`
-- `queryCandidates()`
-
----
-## Header: `Systems/PhysicsSystem.hpp`
-### Class: `CollisionInfo`
-- *No methods found*
-
-### Class: `PhysicsSystem`
-- `advanceUniverseState()`
-- `CleanUp()`
-- `UpdateGravBodyInstantiations()`
-- `handleCollisionEvents()`
-- `handleMacroMacroCollisions()`
-- `handleMacroParticleCollisions()`
-- `handleParticleParticleCollisions()`
-- `handleDynamicCollision()`
-- `handleElasticCollisions()`
-- `handleAccretion()`
-- `promoteOversizedParticles()`
-- `substituteWithParticles()`
-- `substituteWithParticlesFromImpact()`
-- `liveParticleCount()`
-- `updateAllForces()`
-- `addGravityBetweenGravBodies()`
-- `addGravityBetweenGravBodyPair()`
-- `integrateVelocityVerletFirstHalfStep()`
-- `applyVelocityVerletFirstHalf()`
-- `integrateVelocityVerletSecondHalfStep()`
-- `applyVelocityVerletSecondHalf()`
-- `createMacroBody()`
-- `createParticle()`
-- `createParticleCluster()`
-- `calculateTotalEnergy()`
-- `applyShipInputPhysics()`
-- `cleanupParticles()`
-- `cleanupMacroBodies()`
-- `survivableFragmentCount()`
-
----
-## Header: `Systems/InputSystem.hpp`
+## Header: `Systems/Input/InputSystem.hpp`
 ### Class: `InputSystem`
 - `processSystemInputFrame()`
 - `cleanUp()`
@@ -136,11 +90,11 @@
 - `updateCamera()`
 - `translateGameInputs()`
 - `translateMenuInputs()`
-- `copySharedPointerState()`
+- `aimSpawn()`
 - `updateVisor()`
 
 ---
-## Header: `Systems/AudioSystem.hpp`
+## Header: `Systems/Audio/AudioSystem.hpp`
 ### Class: `AudioSystem`
 - `ProcessSystemAudioFrame()`
 - `loadAndPlayTrack()`
@@ -153,27 +107,78 @@
 - `prepareShufflePlaylist()`
 - `playNextShuffleTrack()`
 - `cleanupFinishedSFX()`
-- `CleanUp()`
+- `cleanUp()`
 - `processMusic()`
 
 ---
-## Header: `Systems/RenderSystem.hpp`
+## Header: `Systems/Audio/SoundEffect.hpp`
+### Class: `SoundEffect`
+- *No methods found*
+
+---
+## Header: `Systems/Rendering/CameraData.hpp`
+### Class: `CameraConstants`
+- *No methods found*
+
+---
+## Header: `Systems/Rendering/TwinklingStars.hpp`
+### Class: `TwinklingStar`
+- *No methods found*
+
+---
+## Header: `Systems/Rendering/GPUTypes.hpp`
+### Class: `UnifiedBodyVertex`
+- *No methods found*
+
+### Class: `TwinklingStarVertex`
+- *No methods found*
+
+### Class: `VelocityVectorVertex`
+- *No methods found*
+
+### Class: `TrajectoryLineVertex`
+- *No methods found*
+
+### Class: `DebugLineVertex`
+- *No methods found*
+
+### Class: `StarshipVertex`
+- *No methods found*
+
+---
+## Header: `Systems/Rendering/RenderSystem.hpp`
 ### Class: `RenderSystem`
-- `RenderFullFrame()`
-- `CleanUp()`
+- `renderFullFrame()`
+- `cleanUp()`
 - `getUIFontRegular()`
 - `renderGameFrame()`
 - `renderNonGameFrame()`
 - `appendPreviewBodies()`
 - `renderBodies()`
 - `uploadUnifiedBodies()`
+- `createUnifiedBodyBuffers()`
 - `LoadShader()`
 - `createUnifiedBodyGPUBufferAndPipeline()`
 - `createUIGPUBufferAndPipeline()`
 - `createVelocityVectorGPUBufferAndPipeline()`
 - `createTwinklingStarGPUBufferAndPipeline()`
 - `createStarshipGPUBufferAndPipeline()`
+- `createDebugLineGPUBufferAndPipeline()`
+- `buildDebugLines()`
+- `addDebugLine()`
+- `addDebugCircle()`
+- `uploadDebugLines()`
+- `renderDebugLines()`
+- `createTrajectoryLineBuffersAndPipeline()`
+- `buildTrajectoryLines()`
+- `appendTrajectorySegments()`
+- `appendTrajectoryTimeMarks()`
+- `appendTrajectoryTip()`
+- `uploadTrajectoryLines()`
+- `renderTrajectoryLines()`
 - `createFontAtlasSampler()`
+- `loadSpriteTexture()`
+- `createSpriteSampler()`
 - `rebuildFontAtlas()`
 - `uploadUIVertices()`
 - `renderUIElements()`
@@ -189,33 +194,112 @@
 - `getColorForProperty()`
 
 ---
-## Header: `Entities/Physics/GravitationalBody.hpp`
+## Header: `Systems/Physics/GravitationalBody.hpp`
 ### Class: `GravitationalBody`
 - `toUnifiedVertex()`
 
 ---
-## Header: `Entities/Physics/GravitationalBodyPair.hpp`
+## Header: `Systems/Physics/UniverseState.hpp`
+### Class: `UniverseState`
+- *No methods found*
+
+---
+## Header: `Systems/Physics/UniformParticleGrid.hpp`
+### Class: `UniformParticleGrid`
+- `build()`
+- `queryCandidates()`
+- `firstEntryAtOrAfter()`
+
+---
+## Header: `Systems/Physics/PhysicsSystem.hpp`
+### Class: `CollisionInfo`
+- *No methods found*
+
+### Class: `PhysicsSystem`
+- `advanceUniverseState()`
+- `cleanUp()`
+- `updateGravBodyInstantiations()`
+- `adjustThrottleWhilePlanning()`
+- `updateTrajectories()`
+- `integrateUniversePhysics()`
+- `removeNewestSpawn()`
+- `handleCollisionEvents()`
+- `handleMacroMacroCollisions()`
+- `handleMacroParticleCollisions()`
+- `handleParticleParticleCollisions()`
+- `handleShipCollisions()`
+- `resolveShipContact()`
+- `handleDynamicCollision()`
+- `handleElasticCollisions()`
+- `handleAccretion()`
+- `promoteOversizedParticles()`
+- `substituteWithParticles()`
+- `substituteWithParticlesFromImpact()`
+- `liveParticleCount()`
+- `potentialParticleCount()`
+- `hasRoomForParticles()`
+- `recomputeAllForces()`
+- `addGravityBetweenGravBodies()`
+- `addGravityBetweenGravBodyPair()`
+- `addGravityBetweenShipAndBodies()`
+- `createMacroBody()`
+- `createParticleCluster()`
+- `applyShipInputPhysics()`
+- `cleanupGravBodies()`
+- `cleanupParticles()`
+- `cleanupMacroBodies()`
+- `startTrajectories()`
+- `clearTrajectories()`
+- `universeChangedSinceTraceStart()`
+- `advanceIntegratedTrajectories()`
+- `recordTrajectoryPoints()`
+- `updateSpawnPreviewTrajectory()`
+- `clearSpawnPreviewTrajectory()`
+- `makeSpawnPreviewBody()`
+
+---
+## Header: `Systems/Physics/GravitationalBodyPair.hpp`
 ### Class: `GravitationalBodyPair`
 - *No methods found*
 
 ---
-## Header: `Entities/VisualElements/TwinklingStars.hpp`
-### Class: `TwinklingStar`
+## Header: `Systems/Physics/Trajectories.hpp`
+### Class: `TracedPoint`
+- *No methods found*
+
+### Class: `Trajectories`
 - *No methods found*
 
 ---
-## Header: `Entities/Sound/SoundEffect.hpp`
-### Class: `SoundEffect`
-- *No methods found*
+## Header: `Systems/Physics/SpawnSettings.hpp`
+### Class: `SpawnSettings`
+- `setFlag()`
+- `flag()`
 
 ---
 ## Header: `Player/Starship.hpp`
 ### Class: `Starship`
-- `integratePosition()`
-- `applyVelocity()`
 - `applyRotation()`
+- `applyThrust()`
+- `adjustThrottle()`
+- `throttle()`
+- `applyVelocityVerletFirstHalfStep()`
+- `setGravityForce()`
+- `applyVelocityVerletSecondHalfStep()`
+- `center()`
+- `halfSize()`
+- `mass()`
+- `velocity()`
+- `applyImpulse()`
+- `moveBy()`
+- `boundingRadius()`
+- `setLastImpactEnergy()`
+- `lastImpactEnergy()`
 - `buildGeometry()`
 - `getPointingVector()`
+- `collisionPolygon()`
+- `movementThisTick()`
+- `rotatedOffset()`
 
 ---
 ## Header: `Player/Player.hpp`
