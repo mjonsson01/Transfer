@@ -52,6 +52,8 @@ class Game
     void limitFrameRate(Uint64 renderStart, Uint64 render_end, Uint64 perfFreq);
     // Turns the profiler's latest report into the F4 overlay's lines (and prints them while the overlay is shown)
     void publishProfilerReport();
+    // Sets the universe's world edges and reflective walls from the test-world constants (GameSystemConstants.hpp)
+    void setUpWorldEdges();
 
   private:
     // Systems and State

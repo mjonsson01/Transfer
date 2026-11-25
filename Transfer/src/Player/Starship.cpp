@@ -129,6 +129,39 @@ void Starship::moveBy(const DynamoEngine::Vector2D& offset)
     m_position += offset;
 }
 
+void Starship::bounceInsideWalls(const DynamoEngine::Vector2D& box_min, const DynamoEngine::Vector2D& box_max,
+                                 double restitution)
+{
+    const double reach = boundingRadius();
+    DynamoEngine::Vector2D center_now = center();
+    DynamoEngine::Vector2D push = {0.0, 0.0};
+    if (center_now.x_val - reach < box_min.x_val)
+    {
+        push.x_val = box_min.x_val + reach - center_now.x_val;
+        if (m_velocity.x_val < 0.0)
+            m_velocity.x_val = -m_velocity.x_val * restitution;
+    }
+    else if (center_now.x_val + reach > box_max.x_val)
+    {
+        push.x_val = box_max.x_val - reach - center_now.x_val;
+        if (m_velocity.x_val > 0.0)
+            m_velocity.x_val = -m_velocity.x_val * restitution;
+    }
+    if (center_now.y_val - reach < box_min.y_val)
+    {
+        push.y_val = box_min.y_val + reach - center_now.y_val;
+        if (m_velocity.y_val < 0.0)
+            m_velocity.y_val = -m_velocity.y_val * restitution;
+    }
+    else if (center_now.y_val + reach > box_max.y_val)
+    {
+        push.y_val = box_max.y_val - reach - center_now.y_val;
+        if (m_velocity.y_val > 0.0)
+            m_velocity.y_val = -m_velocity.y_val * restitution;
+    }
+    m_position += push;
+}
+
 double Starship::boundingRadius() const
 {
     double farthest = 0.0;

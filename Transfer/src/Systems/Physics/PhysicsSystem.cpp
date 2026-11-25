@@ -28,6 +28,56 @@ void PhysicsSystem::integrateUniversePhysics(UniverseState& universe_state)
     integrateVelocityVerletFirstHalfStep(universe_state);
     recomputeAllForces(universe_state);
     integrateVelocityVerletSecondHalfStep(universe_state);
+    bounceOffWorldWalls(universe_state); // part of motion, so the trajectory predictions bounce too
+}
+
+// One axis of a wall bounce: keeps the body's edge inside [min_edge, max_edge] and turns it back if it was heading out
+static void bounceInsideWalls(double& position, double& velocity, double radius, double min_edge, double max_edge)
+{
+    if (max_edge - min_edge <= 2.0 * radius)
+    {
+        position = (min_edge + max_edge) / 2.0; // wider than the world: park it in the middle
+        velocity = 0.0;
+        return;
+    }
+    if (position - radius < min_edge)
+    {
+        position = min_edge + radius;
+        if (velocity < 0.0)
+        {
+            velocity = -velocity * WORLD_WALL_RESTITUTION;
+        }
+    }
+    else if (position + radius > max_edge)
+    {
+        position = max_edge - radius;
+        if (velocity > 0.0)
+        {
+            velocity = -velocity * WORLD_WALL_RESTITUTION;
+        }
+    }
+}
+
+void PhysicsSystem::bounceOffWorldWalls(UniverseState& universe_state)
+{
+    if (!universe_state.reflective_walls)
+    {
+        return;
+    }
+    const DynamoEngine::Vector2D& low = universe_state.world_min_corner;
+    const DynamoEngine::Vector2D& high = universe_state.world_max_corner;
+    for (std::vector<GravitationalBody>* bodies : {&universe_state.macro_bodies, &universe_state.particles})
+    {
+        for (GravitationalBody& body : *bodies)
+        {
+            bounceInsideWalls(body.position.x_val, body.velocity.x_val, body.radius, low.x_val, high.x_val);
+            bounceInsideWalls(body.position.y_val, body.velocity.y_val, body.radius, low.y_val, high.y_val);
+        }
+    }
+    if (universe_state.has_ship)
+    {
+        universe_state.ship.bounceInsideWalls(low, high, WORLD_WALL_RESTITUTION);
+    }
 }
 
 void PhysicsSystem::cleanUp()

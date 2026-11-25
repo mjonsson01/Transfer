@@ -37,6 +37,7 @@ void Game::StartGame()
     // Initialize any other useful game_state variables here.
     game_state.SetPlaying(true);
     game_state.getUniverseStateMutable().has_ship = RUN_GAME_WITH_PLAYER_SHP;
+    setUpWorldEdges();
 
     // Default to starting in the level scene since other scenes are not
     // implemented yet.
@@ -54,6 +55,24 @@ void Game::StartGame()
     // End the game and clean up resources after exiting the loop
     Game::EndGame();
 }
+// The world's edges: the star field's extent (the normal game), or the small test world. Centred where the star field
+// is (the screen's centre at zoom 1). Runs after the RenderSystem measured the display (it sizes the star field).
+void Game::setUpWorldEdges()
+{
+    const CameraState& camera_state = game_state.getCameraState();
+    const DynamoEngine::Vector2D center = {SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0};
+    DynamoEngine::Vector2D half_size = {camera_state.max_display_width / (2.0 * MIN_ZOOM),
+                                        camera_state.max_display_height / (2.0 * MIN_ZOOM)};
+    if (USE_SMALL_TEST_WORLD)
+    {
+        half_size = {TEST_WORLD_WIDTH / 2.0, TEST_WORLD_HEIGHT / 2.0};
+    }
+    UniverseState& universe_state = game_state.getUniverseStateMutable();
+    universe_state.world_min_corner = center - half_size;
+    universe_state.world_max_corner = center + half_size;
+    universe_state.reflective_walls = REFLECTIVE_WORLD_WALLS;
+}
+
 // Tears down the 'systems' and cleans up allocated resources.
 void Game::EndGame()
 {

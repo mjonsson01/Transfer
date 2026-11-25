@@ -1390,9 +1390,26 @@ void RenderSystem::createDebugLineGPUBufferAndPipeline()
 void RenderSystem::buildDebugLines(const GameState& game_state, UIState& ui_state)
 {
     m_debug_line_vertices.clear();
+
+    // Reflective world walls: always outlined (not only with F3), so the box everything bounces in is visible
+    const UniverseState& universe_state = game_state.getUniverseState();
+    if (universe_state.reflective_walls)
+    {
+        const SDL_FColor WALL_COLOR = {1.0f, 0.35f, 0.35f, 0.8f};
+        const DynamoEngine::Vector2D& low = universe_state.world_min_corner;
+        const DynamoEngine::Vector2D& high = universe_state.world_max_corner;
+        const DynamoEngine::Vector2D corners[4] = {low, {high.x_val, low.y_val}, high, {low.x_val, high.y_val}};
+        for (int i = 0; i < 4; ++i)
+        {
+            const DynamoEngine::Vector2D& start = corners[i];
+            const DynamoEngine::Vector2D& end = corners[(i + 1) % 4];
+            addDebugLine(start, start, end, end, WALL_COLOR); // the walls never move: "one tick ago" = now
+        }
+    }
+
     if (!ui_state.getRenderDebug())
     {
-        return; // overlay is off (F3): nothing to draw
+        return; // overlay is off (F3): no hitboxes
     }
 
     // Planets: their collision circle is simply their radius (yellow)

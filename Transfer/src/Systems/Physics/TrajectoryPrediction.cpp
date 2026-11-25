@@ -213,6 +213,9 @@ void PhysicsSystem::updateSpawnPreviewTrajectory(const UniverseState& universe_s
         m_preview_universe_state.particles.clear();
         m_preview_universe_state.ship = universe_state.ship;
         m_preview_universe_state.has_ship = universe_state.has_ship;
+        m_preview_universe_state.world_min_corner = universe_state.world_min_corner; // so the preview bounces too
+        m_preview_universe_state.world_max_corner = universe_state.world_max_corner;
+        m_preview_universe_state.reflective_walls = universe_state.reflective_walls;
         m_preview_spawn_body = body;
         m_preview_ticks_done = 0;
         m_has_spawn_preview = true;

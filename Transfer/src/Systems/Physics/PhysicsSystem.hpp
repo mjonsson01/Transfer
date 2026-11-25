@@ -66,6 +66,8 @@ class PhysicsSystem
 
   private:
     void integrateUniversePhysics(UniverseState& universe_state);
+    // With reflective walls: keeps every body (and the ship) inside the world's edges, bouncing them back
+    void bounceOffWorldWalls(UniverseState& universe_state);
     // Removes the most recently spawned planet or cluster that still exists, with all of its debris (plain Delete)
     void removeNewestSpawn(UniverseState& universe_state);
 

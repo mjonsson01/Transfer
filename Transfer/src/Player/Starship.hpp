@@ -49,6 +49,9 @@ class Starship
     void applyImpulse(const DynamoEngine::Vector2D& impulse);
     // Moves the ship without touching its velocity (pushing it out of something it overlaps)
     void moveBy(const DynamoEngine::Vector2D& offset);
+    // Keeps the ship (its bounding circle) inside the box, turning its velocity back off any edge it was crossing
+    void bounceInsideWalls(const DynamoEngine::Vector2D& box_min, const DynamoEngine::Vector2D& box_max,
+                           double restitution);
     // Distance from the centre to the hitbox's farthest corner: nothing farther than this (plus its own radius)
     // can be touching the ship
     double boundingRadius() const;
