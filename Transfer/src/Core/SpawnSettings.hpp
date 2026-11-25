@@ -2,6 +2,16 @@
 
 #pragma once
 
+// The spawn panel's on/off settings, by name (for SpawnSettings::setFlag)
+enum class SpawnFlag
+{
+    Static,
+    Shatterable,
+    Accretable,
+    Bounce,
+    Ghost,
+};
+
 // What the next planet or cluster the player spawns will be like. The spawn panel (sliders and checkboxes) edits it and
 // PhysicsSystem's create functions read it. Nothing resets it after a spawn: a setting stays until the player
 // changes it.
@@ -29,8 +39,14 @@ struct SpawnSettings
     // (GravitationalBody::isCollidable = false). For a cluster: every particle.
     bool is_ghost = false;
 
-    // A macro ghost passes through planets and the ship, but still collides with debris (and a ghost cluster's
-    // particles still collide with each other). Gravity is unchanged (GravitationalBody::isMacroGhost). For a
-    // cluster: every particle. A full ghost (is_ghost) passes through everything either way.
-    bool is_macro_ghost = false;
+    // Switches one on/off setting (the spawn panel's checkboxes all go through here). Switching one ON switches off
+    // the settings it makes meaningless, so the panel never shows a combination that doesn't do what it says:
+    //   Ghost (never collides)    -> off: Bounce, Accretable, Shatterable (they only act in collisions)
+    //   Bounce (only ever bounces) -> off: Ghost, Accretable, Shatterable (a bounce never merges or shatters)
+    //   Accretable, Shatterable    -> off: Ghost, Bounce
+    //   Static                     -> works with everything
+    // Switching a setting OFF never switches anything back on.
+    void setFlag(SpawnFlag flag, bool on);
+    // Whether that setting is on (what its checkbox shows)
+    bool flag(SpawnFlag flag) const;
 };

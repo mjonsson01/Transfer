@@ -641,7 +641,7 @@ void PhysicsSystem::substituteWithParticles(GravitationalBody& original_body,
                                             uint32_t target_fragment_count)
 {
     size_t first_new_fragment = fragments_out.size();
-    layOutFragments(original_body, target_fragment_count, fragments_out);
+    layOutAndPopulateFragments(original_body, target_fragment_count, fragments_out);
 
     // Each fragment keeps roughly the original's velocity, randomly scaled so the pieces spread out
     for (size_t i = first_new_fragment; i < fragments_out.size(); ++i)
@@ -832,8 +832,8 @@ static inline void populateSpawnedBodyProperties(GravitationalBody& grav_body, c
     grav_body.isBounce = spawn_settings.is_bounce;
     grav_body.isCollidable = !spawn_settings.is_ghost;
     grav_body.isForceStatic = spawn_settings.is_force_static;
-    grav_body.isFragment = false; // not a child of a collision
-    grav_body.isMacroGhost = spawn_settings.is_macro_ghost;
+    grav_body.isFragment = false;   // not a child of a collision
+    grav_body.isMacroGhost = false; // no spawn setting for it (physics still honours the flag)
     grav_body.isPreview = false;
     grav_body.isShatterable = spawn_settings.is_shatterable;
     grav_body.isTransient = false;
@@ -921,10 +921,8 @@ void PhysicsSystem::createParticleCluster(UniverseState& universe_state, const S
         particles[i].isAccretable = spawn_settings.is_accretable;
         particles[i].isBounce = spawn_settings.is_bounce;
         particles[i].isCollidable = !spawn_settings.is_ghost;
-        particles[i].isMacroGhost = spawn_settings.is_macro_ghost;
     }
 }
-
 // --------- CLEANUP --------- //
 
 void PhysicsSystem::cleanupParticles(UniverseState& universe_state)

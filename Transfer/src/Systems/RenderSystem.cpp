@@ -735,7 +735,7 @@ void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertex_da
 
     // A cluster: show the particles it will be made of, laid out exactly as createParticleCluster will place them
     std::vector<GravitationalBody> preview_particles;
-    layOutFragments(preview_body, DEFAULT_FRAGMENT_COUNT, preview_particles);
+    layOutAndPopulateFragments(preview_body, DEFAULT_FRAGMENT_COUNT, preview_particles);
     for (GravitationalBody& particle : preview_particles)
     {
         particle.isPreview = true;

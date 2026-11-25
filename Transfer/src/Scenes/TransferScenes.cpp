@@ -47,7 +47,7 @@ constexpr float READOUT_LINE_HEIGHT = 27.0f;        // the top-left text lines (
 constexpr float SECTION_TITLE_GAP = 4.0f;           // between a section's title and its checkboxes
 constexpr float SPAWN_SECTION_SPACING = 40.0f;      // between neighbouring sections
 constexpr float CHECKBOX_ROW_SPACING = 8.0f;        // between the rows of a section with more than one row
-constexpr int SPAWN_PANEL_CHECKBOX_ROWS = 2;        // the tallest section's rows (Global has two)
+constexpr int SPAWN_PANEL_CHECKBOX_ROWS = 1;        // the tallest section's rows (all one row today)
 constexpr float SPAWN_PANEL_HEIGHT = SECTION_TITLE_HEIGHT + SECTION_TITLE_GAP +
                                      SPAWN_PANEL_CHECKBOX_ROWS * CHECKBOX_SIZE.y_val +
                                      (SPAWN_PANEL_CHECKBOX_ROWS - 1) * CHECKBOX_ROW_SPACING;
@@ -118,14 +118,15 @@ SliderMapping massMapping()
     return mapping;
 }
 
-// One spawn-panel checkbox bound to one SpawnSettings flag: it shows the flag every frame and flips it when clicked.
-// `setting` is a reference into ui_state's SpawnSettings, which outlives every scene, so the lambdas can keep it.
-void addSpawnCheckbox(UIRow& checkbox_row, const std::string& label, bool& setting)
+// One spawn-panel checkbox bound to one SpawnSettings flag: it shows the flag every frame and sets it when clicked.
+// `settings` is ui_state's SpawnSettings, which outlives every scene, so the lambdas can keep a reference to it.
+void addSpawnCheckbox(UIRow& checkbox_row, const std::string& label, SpawnSettings& settings, SpawnFlag flag)
 {
-    std::unique_ptr<UICheckbox> checkbox = std::make_unique<UICheckbox>(label, setting);
+    std::unique_ptr<UICheckbox> checkbox = std::make_unique<UICheckbox>(label, settings.flag(flag));
     checkbox->setPlacement({.size = CHECKBOX_SIZE});
-    checkbox->setCheckedSource([&setting]() { return setting; });
-    checkbox->setOnToggled([&setting](bool is_checked) { setting = is_checked; });
+    checkbox->setCheckedSource([&settings, flag]() { return settings.flag(flag); });
+    // Through setFlag, so checking one box unchecks the boxes it makes meaningless (they show it next frame)
+    checkbox->setOnToggled([&settings, flag](bool is_checked) { settings.setFlag(flag, is_checked); });
     checkbox_row.addChild(std::move(checkbox));
 }
 
@@ -284,21 +285,16 @@ std::unique_ptr<Scene> buildGameScene(UIState& ui_state, GameState& game_state)
     // Spawn panel, under the sliders: settings for the NEXT planet or cluster.
     // ui_state's SpawnSettings is the source of truth: each checkbox reads it every frame and writes it when clicked.
     SpawnSettings& spawn_settings = ui_state.spawnSettings();
-    // Global: settings for planets AND clusters, two rows (four in one row wouldn't fit next to the macro section)
-    std::unique_ptr<UIRow> collision_checkboxes = std::make_unique<UIRow>(CHECKBOX_SPACING);
-    addSpawnCheckbox(*collision_checkboxes, "Accretable", spawn_settings.is_accretable);
-    addSpawnCheckbox(*collision_checkboxes, "Bounce", spawn_settings.is_bounce);
-    std::unique_ptr<UIRow> ghost_checkboxes = std::make_unique<UIRow>(CHECKBOX_SPACING);
-    addSpawnCheckbox(*ghost_checkboxes, "Ghost", spawn_settings.is_ghost);
-    addSpawnCheckbox(*ghost_checkboxes, "Planet Ghost", spawn_settings.is_macro_ghost);
-    std::unique_ptr<UIColumn> global_checkboxes = std::make_unique<UIColumn>(CHECKBOX_ROW_SPACING);
-    global_checkboxes->addChild(std::move(collision_checkboxes));
-    global_checkboxes->addChild(std::move(ghost_checkboxes));
+    // Global: settings for planets AND clusters
+    std::unique_ptr<UIRow> global_checkboxes = std::make_unique<UIRow>(CHECKBOX_SPACING);
+    addSpawnCheckbox(*global_checkboxes, "Accretable", spawn_settings, SpawnFlag::Accretable);
+    addSpawnCheckbox(*global_checkboxes, "Bounce", spawn_settings, SpawnFlag::Bounce);
+    addSpawnCheckbox(*global_checkboxes, "Ghost", spawn_settings, SpawnFlag::Ghost);
 
     // Macro body: settings only planets have
     std::unique_ptr<UIRow> macro_checkboxes = std::make_unique<UIRow>(CHECKBOX_SPACING);
-    addSpawnCheckbox(*macro_checkboxes, "Static", spawn_settings.is_force_static);
-    addSpawnCheckbox(*macro_checkboxes, "Shatterable", spawn_settings.is_shatterable);
+    addSpawnCheckbox(*macro_checkboxes, "Static", spawn_settings, SpawnFlag::Static);
+    addSpawnCheckbox(*macro_checkboxes, "Shatterable", spawn_settings, SpawnFlag::Shatterable);
 
     std::unique_ptr<UIRow> spawn_panel = std::make_unique<UIRow>(SPAWN_SECTION_SPACING);
     spawn_panel->setPlacement({.align = UIAlign::BottomCenter, .margin = SPAWN_PANEL_BOTTOM_MARGIN});

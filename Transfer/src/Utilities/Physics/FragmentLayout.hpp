@@ -17,4 +17,5 @@ uint32_t survivableFragmentCount(const GravitationalBody& body, uint32_t max_cou
 // mass split evenly between them. Only the layout: velocities are left at 0, and `body` itself isn't changed.
 // Real clusters and debris (PhysicsSystem::substituteWithParticles) and the cluster spawn preview both use this, so
 // the preview always shows exactly where the particles will appear.
-void layOutFragments(const GravitationalBody& body, uint32_t max_count, std::vector<GravitationalBody>& fragments_out);
+void layOutAndPopulateFragments(const GravitationalBody& body, uint32_t max_count,
+                                std::vector<GravitationalBody>& fragments_out);

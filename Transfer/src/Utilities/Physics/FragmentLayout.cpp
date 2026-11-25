@@ -17,7 +17,8 @@ uint32_t survivableFragmentCount(const GravitationalBody& body, uint32_t max_cou
     return std::clamp(static_cast<uint32_t>(max_survivable * max_survivable), 1u, max_count);
 }
 
-void layOutFragments(const GravitationalBody& body, uint32_t max_count, std::vector<GravitationalBody>& fragments_out)
+void layOutAndPopulateFragments(const GravitationalBody& body, uint32_t max_count,
+                                std::vector<GravitationalBody>& fragments_out)
 {
     uint32_t num_particles = survivableFragmentCount(body, max_count);
 
@@ -41,8 +42,9 @@ void layOutFragments(const GravitationalBody& body, uint32_t max_count, std::vec
         p.position = pos_k;
         p.previousPosition = pos_k;
         p.isFragment = true;
-        p.isAccretable = true;
-        p.isCollidable = true;
+        p.isAccretable = body.isAccretable; // inherit body's accretable flags
+        p.isCollidable = body.isCollidable; // inherit body's collision flags.
+        // p.isForceState = body.isForceState; // gameplay decision, tbd.
         p.macroIdentifier = body.macroIdentifier;
         p.isParticle = true;
 

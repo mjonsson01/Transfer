@@ -403,9 +403,9 @@ Lambdas capture Game members by reference, which is safe because they outlive th
   MIN_SHATTER_SPEED) -- fine (option B). Ideas kept for later: shatter threshold relative to mutual escape speed; resting
   contact bounces forever (ELASTIC_LOSS_FACTOR 0.994). Harnesses: placement_separation_, heavy_overlap_.
 - **Cluster spawn preview (2026-10-10, applied by Marco, works in-game):** new free functions in
-  Utilities/Physics/FragmentLayout.hpp/.cpp: survivableFragmentCount (was a PhysicsSystem member) + layOutFragments (the Vogel
-  spiral, no velocities, body untouched). substituteWithParticles = layOutFragments + random velocities + mark deleted;
-  RenderSystem::appendPreviewBodies draws layOutFragments(preview_body) for a cluster, so the preview is EXACTLY the real
+  Utilities/Physics/FragmentLayout.hpp/.cpp: survivableFragmentCount (was a PhysicsSystem member) + layOutAndPopulateFragments (the Vogel
+  spiral, no velocities, body untouched). substituteWithParticles = layOutAndPopulateFragments + random velocities + mark deleted;
+  RenderSystem::appendPreviewBodies draws layOutAndPopulateFragments(preview_body) for a cluster, so the preview is EXACTLY the real
   cluster (harness: 0 difference). DEPRECATED_InputState::isPreviewingCluster (right button, on world; left wins if both);
   shift adds the velocity arrow for either. Right-click had NEVER previewed (checked history back to April) -- Marco thought
   it regressed. EngineConstants MAX_PREVIEW_BODIES = 800, INITIAL_UNIFIED_BODY_CAPACITY = MAX_LIVE_PARTICLES +
@@ -620,6 +620,15 @@ step = walkthrough, starting with the tracer class header.**
   Harnesses use Notes/drafts/Harnesses/HarnessInput.hpp (releaseSpawn, pressDelete, aimAtScreen, shipControls).
   GOTCHA seen: Marco's editor formatter reflowed long trailing comments in PlayerCommands INTO the code (fields
   vanished into comments). Comments on their own line above a field are safe.
+- **SPAWN PANEL CLEANUP (2026-11-25, Marco):** Planet Ghost checkbox REMOVED (SpawnSettings::is_macro_ghost gone;
+  physics still honours GravitationalBody::isMacroGhost, nothing sets it; the ghost_spawn_ harness sets it on bodies).
+  Exclusion rules in ONE place: enum class SpawnFlag {Static, Shatterable, Accretable, Bounce, Ghost} +
+  SpawnSettings::setFlag(flag, on) / flag(flag) (Core/SpawnSettings.cpp). Turning ON: Ghost -> off Bounce, Accretable,
+  Shatterable; Bounce -> off Ghost, Accretable, Shatterable; Accretable/Shatterable -> off Ghost, Bounce; Static
+  works with everything. Turning OFF never turns anything on. addSpawnCheckbox(row, label, settings, flag) binds
+  through it. Global section back to ONE row (Accretable, Bounce, Ghost; SPAWN_PANEL_CHECKBOX_ROWS = 1; the column-of-
+  rows support in makeSpawnSection stays). Harness spawn_settings_ checks the table. Marco renamed SpawnAim ->
+  SpawnProperties (PlayerInput.hpp) in his pass; HarnessInput.hpp follows.
 - **SHIP OPTIONAL (2026-11-25, Marco: off by default while he irons out other problems):** UniverseState::has_ship
   (default TRUE in the struct, so harnesses keep their ship); Game::StartGame sets it from RUN_GAME_WITH_PLAYER_SHP
   (GameSystemConstants, currently FALSE). Without the ship nothing touches it: handleShipCollisions,
