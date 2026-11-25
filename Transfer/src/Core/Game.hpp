@@ -48,13 +48,8 @@ class Game
     void RenderFrame();           // Renders the current frame to the screen including UI
     void PlayAudio();             // Plays audio based on the current game state and UI state
     // Helpers for Run() method
-    // void updateFPS(Uint32 renderEnd, Uint32 lastRender, float& fpsAccumulator,
-    //                float& currentFPS); // Rolling average frame calculation and update
-    void updateFPS(Uint64 renderEnd, Uint64 lastRender, float& fpsAccumulator, float& currentFPS);
-    // void limitFrameRate(Uint32 renderStart,
-    //                     Uint32 renderEnd); // Soft Clamps frame rate based on
-    //                                        // static Game System Constant value
-    void limitFrameRate(Uint64 renderStart, Uint64 renderEnd, Uint64 perfFreq);
+    void updateFPS(Uint64 render_end, Uint64 last_render, float& fps_accumulator, float& current_fps);
+    void limitFrameRate(Uint64 renderStart, Uint64 render_end, Uint64 perfFreq);
     // Turns the profiler's latest report into the F4 overlay's lines (and prints them while the overlay is shown)
     void publishProfilerReport();
 

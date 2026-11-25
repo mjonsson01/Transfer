@@ -237,41 +237,41 @@ void Game::RenderFrame()
 
 void Game::PlayAudio() { audioSystem.ProcessSystemAudioFrame(game_state, ui_state); }
 // --------- UTILITY METHODS FOR FPS --------- //
-void Game::updateFPS(Uint64 renderEnd, Uint64 lastRender, float& fpsAccumulator, float& currentFPS)
+void Game::updateFPS(Uint64 render_end, Uint64 last_render, float& fps_accumulator, float& current_fps)
 {
     static const Uint64 perf_freq = SDL_GetPerformanceFrequency();
 
     // Calculate the duration of this specific frame in seconds
-    float frameTimeSeconds = (float)(renderEnd - lastRender) / perf_freq;
+    float frameTimeSeconds = (float)(render_end - last_render) / perf_freq;
 
     // Accumulate the time in milliseconds for the update interval logic
-    fpsAccumulator += (frameTimeSeconds * 1000.0f);
+    fps_accumulator += (frameTimeSeconds * 1000.0f);
 
     // Update the average FPS every FPS_UPDATE_DELTA_MS (e.g., 500ms)
-    if (fpsAccumulator >= FPS_UPDATE_DELTA_MS)
+    if (fps_accumulator >= FPS_UPDATE_DELTA_MS)
     {
         // Avoid division by zero; cap minimum frame time to 1 microsecond
-        float safeFrameTime = std::max(frameTimeSeconds, 0.000001f);
-        float instantFPS = 1.0f / safeFrameTime;
+        float safe_frame_time = std::max(frameTimeSeconds, 0.000001f);
+        float instantFPS = 1.0f / safe_frame_time;
 
         // Exponential moving average for smoothing
-        currentFPS = (0.9f * currentFPS) + (0.1f * instantFPS);
+        current_fps = (0.9f * current_fps) + (0.1f * instantFPS);
 
         // Clamp for stability (prevents massive spikes from affecting the UI)
         float target_fps_max = static_cast<float>(TARGET_FPS) * 1.1f;
-        currentFPS = std::min(currentFPS, target_fps_max);
+        current_fps = std::min(current_fps, target_fps_max);
 
-        ui_state.setFPS(currentFPS);
-        fpsAccumulator = 0.0f;
+        ui_state.setFPS(current_fps);
+        fps_accumulator = 0.0f;
     }
 }
-void Game::limitFrameRate(Uint64 renderStart, Uint64 renderEnd, Uint64 perfFreq)
+void Game::limitFrameRate(Uint64 renderStart, Uint64 render_end, Uint64 perfFreq)
 {
     // 1. Calculate how many ticks our target frame duration is
     // (1.0 / TARGET_FPS) * perfFreq
     const Uint64 targetTicksPerFrame = perfFreq / TARGET_FPS;
 
-    Uint64 frameTicks = renderEnd - renderStart;
+    Uint64 frameTicks = render_end - renderStart;
 
     if (frameTicks < targetTicksPerFrame)
     {
