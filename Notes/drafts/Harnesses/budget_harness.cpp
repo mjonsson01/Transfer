@@ -3,18 +3,13 @@
 #include "Core/GameState.hpp"
 #include "Core/UIState.hpp"
 #include "Systems/PhysicsSystem.hpp"
+#include "HarnessInput.hpp"
 #include <algorithm>
 #include <cstdio>
 
 static void spawn(PhysicsSystem& physics, GameState& gs, UIState& ui, bool cluster, double x, double radius)
 {
-    DEPRECATED_InputState& in = ui.getMutableDEPRECATED_InputState();
-    in.selectedRadius = radius;
-    in.selectedMass = 1000.0;
-    in.mouseCurrPosition = {x, 0.0};
-    in.isCreatingParticleCluster = cluster;
-    in.isCreatingMacro = !cluster;
-    physics.updateGravBodyInstantiations(gs, ui);
+    releaseSpawn(physics, gs, ui, cluster, radius, 1000.0, {x, 0.0});
 }
 
 int main()
@@ -58,7 +53,7 @@ int main()
         size_t max_particles = 0, max_bodies = 0;
         for (int t = 0; t < 600; ++t)
         {
-            p.advanceUniverseState(gs.getUniverseStateMutable(), ui);
+            p.advanceUniverseState(gs.getUniverseStateMutable(), ShipControls());
             max_particles = std::max(max_particles, gs.getUniverseState().particles.size());
             max_bodies = std::max(max_bodies, gs.getUniverseState().particles.size() + gs.getUniverseState().macro_bodies.size());
         }

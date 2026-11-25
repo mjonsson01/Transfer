@@ -2,11 +2,15 @@
 
 #pragma once
 
-// What the next planet or cluster the player spawns will be like. The spawn panel's checkboxes edit it and
-// PhysicsSystem's create functions read it. Unlike DEPRECATED_InputState's isCreating... flags, nothing resets it
-// after a spawn: a setting stays until the player changes it.
+// What the next planet or cluster the player spawns will be like. The spawn panel (sliders and checkboxes) edits it and
+// PhysicsSystem's create functions read it. Nothing resets it after a spawn: a setting stays until the player
+// changes it.
 struct SpawnSettings
 {
+    // The radius and mass sliders (0 until the player moves them: nothing spawns with radius <= 1 or zero mass)
+    double radius = 0.0;
+    double mass = 0.0;
+
     // Force-static (GravitationalBody::isForceStatic): never pulled by gravity, an immovable wall in bounces, keeps its
     // velocity forever, and only ever absorbs much lighter bodies. Clusters ignore this setting
     bool is_force_static = false;

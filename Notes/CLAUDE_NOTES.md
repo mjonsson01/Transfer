@@ -141,10 +141,12 @@ tracer, DESIGN AGREED, nothing typed yet (see 'IN PROGRESS' at the top of sectio
 
 **Input** (`Systems/InputSystem`): SDL events → `DynamoEngine::SDLInputIntake` (free fn `translateSDLEvent`) → `DynamoEngine::InputState`
 (edges vs levels, `beginInputFrame`, focus-lost clears held keys) → **UI first**: `updateSceneUI` does setWindowSize, `updateElements(dt)` and
-`processInput` (the order matters), giving a `UIInputResult`. Then the game side: `UIInputConsumed = pointer_captured`,
-`translateGameInputs(game_state, ui_state, scenes)` / `translateMenuInputs`, writing into **`Core/DEPRECATED_InputState`**. That struct is still
-the bridge to physics and rendering (spawn flags, slider values, preview ghost) and goes away with the action map (E).
-Key bindings: Esc = pause/resume (requestSwitch), Backspace/Delete = clear, WASD = starship, left/right release = spawn macro/cluster,
+`processInput` (the order matters), giving a `UIInputResult`. Then the game side (a release on the UI, pointer_captured, spawns nothing):
+`translateGameInputs(game_state, ui_state, scenes, player_input, pointer_captured)` / `translateMenuInputs(scenes)`, writing into
+**`Core/PlayerInput`** (owned by Game, passed explicitly; since 2026-11-25, replacing DEPRECATED_InputState): ShipControls,
+is_aiming_spawn + SpawnAim (world space, computed once in InputSystem::aimSpawn), one-frame PlayerCommands cleared every frame.
+Key bindings: Esc = pause/resume (requestSwitch), Delete = undo newest spawn, Shift+Delete = clear, W/S = throttle up/down
+(holds), A/D = turn, P = planning, I = trace (planning), F3 = hitboxes, F4 = profiler, left/right release = spawn macro/cluster,
 Shift = initial velocity, middle mouse = pan, wheel = zoom, **Tab = cycle visor view** (`updateVisor` in the sim branch).
 
 **Scenes**: engine `SceneId = uint32_t`, `Scene` (SceneSettings{runs_simulation, draws_world} with presets menu()/simulation(), owns a
@@ -186,7 +188,7 @@ Lambdas capture Game members by reference, which is safe because they outlive th
 - Game:
   - FPS label (top-left).
   - Slider row (bottom-center): speed (linear), radius (linear), and mass (game-side `massMapping()`, a signed log curve).
-    The sliders write into DEPRECATED_InputState.
+    The sliders write into SpawnSettings (radius, mass) and UIState::setSimulationSpeed (since 2026-11-25).
   - **Visor dropdown, top-right**, wired to `camera_state.visor_view`.
 - Pause: "Resume" button.
 - TestVisual: runs the simulation and draws nothing.
@@ -601,6 +603,40 @@ step = walkthrough, starting with the tracer class header.**
   prediction must cut thrust (coast), or it thrusts forever.
 
 **Next candidates** (let Marco pick):
+- **DEPRECATED_InputState RETIRED (2026-11-25, branch FixInputState, implemented by Claude, Marco reviewing):**
+  24 of its 41 fields were dead. Replaced by Core/PlayerInput.hpp: ShipControls {thrust, rotation: +1/-1/0},
+  SpawnAim {is_cluster, with_velocity, world_position, world_velocity}, PlayerCommands {spawn + spawn_aim,
+  undo_newest_spawn, clear_all_bodies, toggle_trajectories} (InputSystem clears them EVERY frame: no more
+  resetTransientFlags), PlayerInput {is_aiming_spawn, spawn_aim, commands, ship}. Game owns m_player_input (Marco's
+  choice) and passes it: inputSystem.processSystemInputFrame(..., m_player_input, ...),
+  physicsSystem.updateGravBodyInstantiations(universe, player_input, spawn_settings), advanceUniverseState(universe,
+  m_player_input.ship), updateTrajectories(frame_seconds, universe, player_input, trajectories, ui_state),
+  renderFullFrame(game_state, ui_state, player_input, scene). The spawn position/velocity is computed ONCE
+  (InputSystem::aimSpawn); physics spawns no longer need the camera; populateSpawnedBodyProperties replaces
+  populateGravBodyPropertiesFromDEPRECATED_InputState. Sliders: SpawnSettings::radius/mass, UIState::setSimulationSpeed.
+  Starship::applyThrust/applyRotation take const ShipControls& (Starship no longer includes UIState).
+  VERIFIED as a pure refactor first: all 12 deterministic harnesses byte-identical to before (random ones: same outcomes).
+  One deliberate difference: A+D held together now cancel exactly (before: -0.05 then +0.05 rad).
+  Harnesses use Notes/drafts/Harnesses/HarnessInput.hpp (releaseSpawn, pressDelete, aimAtScreen, shipControls).
+  GOTCHA seen: Marco's editor formatter reflowed long trailing comments in PlayerCommands INTO the code (fields
+  vanished into comments). Comments on their own line above a field are safe.
+- **VELOCITY ARROW SIZE FIXED (2026-11-25, Marco's note):** buildVelocityVectorGeometry(start, end, zoom) sizes the
+  shaft (12 px), head length (30 px) and head width (36 px) in SCREEN pixels (divided by zoom; the shader multiplies by
+  zoom), and shrinks them proportionally when the drag is shorter than the head. appendPreviewBodies gets the zoom.
+  Render-only: harnesses can't see it, Marco to check on screen. REWORK item removed.
+- **THROTTLE WHILE PLANNING (2026-11-25, Marco's request):** W/S move the throttle while time is stopped, in REAL
+  time: Game::Run calls physicsSystem.adjustThrottleWhilePlanning(universe, player_input.ship, frame_seconds) before
+  updateTrajectories; Starship::adjustThrottle(direction, seconds) is shared with applyThrust (one tick of game time,
+  bit-identical to before). The throttle counts as an EDIT: universeChangedSinceTraceStart compares it (lines wipe,
+  press I again) and the placement preview restarts when it changes. Harness case 6: a planned 50% burn re-traced
+  matches the real game for 5401 ship points, 0 differ; the ship doesn't move while it's set. Possible follow-up
+  (Marco's call): re-trace automatically after a throttle change instead of waiting for I.
+- **THROTTLE (2026-11-25, Marco's design):** Starship::m_throttle 0..1, W raises / S lowers it at
+  THROTTLE_CHANGE_PER_SECOND (1.0 = off to full in 1 s of GAME time, per physics tick, so it freezes while planning),
+  it HOLDS when released, no reverse thrust (S only reaches 0). Thrust = nose x THRUST_ACCELERATION x throttle.
+  Predictions KEEP the current throttle (cutThrust removed: the prediction never runs applyThrust, so
+  m_thrust_acceleration stays at the current burn) -> harness 'burn exactness': 5401 ship points vs the real game, 0
+  differ. HUD: 'THROTTLE: 45%' under FPS. universe_refactor_baseline.txt REGENERATED for this intended change.
 - **FUTURE FEATURES requested by Marco 2026-11-24 (after the planning-mode PR):**
   - **CAMERA (Marco: 'really need to fix the game camera'):** C = recenter the camera on the player's ship, and toggle
     between FREE camera (today's behaviour: middle-mouse pan, wheel zoom) and SOFT-CENTERED camera (follows the ship
@@ -608,10 +644,19 @@ step = walkthrough, starting with the tracer class header.**
     render_alpha) moved by InputSystem::updateCamera (zoomAroundCursor, panCamera, clampCameraToStarField). Things to
     decide: does panning in soft mode drop back to free? follow the ship's INTERPOLATED (drawn) position, or jitter;
     how the star-field clamp interacts with following; zoom around the ship vs the cursor while following.
+  - **EDIT BODIES IN PLANNING MODE (Marco 2026-11-25):** drag planets to new positions while time is stopped, and
+    their VELOCITY ARROWS should stay visible in planning mode and be draggable too (edit a body's velocity after it
+    spawned). Fits the existing design: any edit already wipes the traced lines (universeChangedSinceTraceStart) and
+    the placement preview machinery could show the edited body's new path live. Needs: picking a body under the
+    cursor (world-space hit test), a drag state in PlayerInput (like SpawnAim), arrows drawn per body (the arrow size
+    bug in REWORK should be fixed first), and the edit applied by physics (UniverseState stays physics-owned).
+  - **SPAWN FLAG UI (Marco 2026-11-25):** an expandable dropdown for the body property flags instead of independent
+    checkboxes, so only meaningful combinations can be chosen. Goes with the REWORK 'Body property flags' item
+    (decide the precedence rules first).
   - **SPAWN PRESETS:** two quick-swap slots for the instantiation settings. Press-and-HOLD 1 = save the current settings
     into slot 1, hold 2 = save into slot 2; a short TAP of 1/2 = load that slot, so you flip between two setups
     instantly. What a preset holds: SpawnSettings (Static, Shatterable, Accretable, Bounce, Ghost, Planet Ghost) and
-    probably the radius + mass sliders (selectedRadius / selectedMass in DEPRECATED_InputState) -- Marco to confirm.
+    probably the radius + mass sliders (SpawnSettings::radius / mass since 2026-11-25, so ONE struct) -- Marco to confirm.
     Needs: hold-vs-tap detection (InputState has edges + levels; time a key held, e.g. > 0.5 s = save), sliders must
     SHOW loaded values (UISlider has setValue but no value source; the checkboxes already pull their SpawnSettings
     field every frame), some feedback that a save happened (sound / readout). Number keys must not clash with E
@@ -622,8 +667,8 @@ step = walkthrough, starting with the tracer class header.**
   Git gotcha: restaging on Windows drops the Mac scripts' executable bit (100755 -> 100644); fix with
   `git update-index --chmod=+x Scripts/Apple/*.sh` before committing.
 - Visor styling: row gaps, a selected-row look, a real "Realistic" coloring, then the actual Charge/Temperature views.
-- E: action map, i.e. rebindable keys that replace hard-coded scancodes. It will also retire DEPRECATED_InputState. All key bindings
-  live in `translateGameInputs` on purpose, to make E easy.
+- E: action map, i.e. rebindable keys that replace hard-coded scancodes. DEPRECATED_InputState is already gone (2026-11-25):
+  E maps keys onto PlayerCommands / ShipControls. All key bindings live in `translateGameInputs` on purpose, to make E easy.
 - G: keyboard focus (Tab will then conflict in menus; the visor hotkey only runs in simulation scenes, on purpose).
 - H: world-anchored UI.
 - R1–R4: rendering into the engine.
@@ -644,7 +689,7 @@ step = walkthrough, starting with the tracer class header.**
   - More spawn-panel checkboxes: Ghost + Planet Ghost DONE 2026-11-24 ('Global' is now 2 rows). Next one: one SpawnSettings
     field + one addSpawnCheckbox line; the Macro section still has room for a second row.
   - Despawn far-away debris to return particle budget (idea, Marco's call).
-  - Small tidy-ups: UIColumn into its own file; StarshipVertex's unused square_size/color; isPreviewingMacro naming (dies with E).
+  - Small tidy-ups: UIColumn into its own file; StarshipVertex's unused square_size/color.
 - **GPU PARTICLES (goal stated by Marco 2026-10-12, not started):** he wants HUNDREDS OF THOUSANDS of particles AND
   particle-particle gravity. He knows collisions are today's bottleneck. Claude's advice: GPU compute (SDL_GPU compute pipelines +
   shadercross), staged: (1) compute pass + render particles straight from a storage buffer, (2) brute-force N^2 self-gravity

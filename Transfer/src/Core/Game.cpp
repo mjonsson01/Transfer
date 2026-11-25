@@ -9,7 +9,7 @@
 #include <vector>
 
 Game::Game()
-    : game_state(), ui_state(), inputSystem(), physicsSystem(), renderSystem(game_state), audioSystem(), scenes(),
+    : game_state(), ui_state(), m_player_input(), inputSystem(), physicsSystem(), renderSystem(game_state), audioSystem(), scenes(),
       m_profiler(PROFILER_WINDOW_FRAMES)
 {
     addTransferScenes(scenes, ui_state, game_state);
@@ -138,9 +138,15 @@ void Game::Run()
 
         // 5. Planning mode's trajectory lines: once per frame in REAL time (they grow while the simulation is stopped)
         Uint64 trajectories_start = SDL_GetPerformanceCounter();
+        if (runs_simulation && ui_state.getIsPlanning())
+        {
+            // Time is stopped, but W/S still set up the burn (before the prediction, so it sees the new throttle)
+            physicsSystem.adjustThrottleWhilePlanning(game_state.getUniverseStateMutable(), m_player_input.ship,
+                                                      frame_seconds);
+        }
         if (runs_simulation)
         {
-            physicsSystem.updateTrajectories(frame_seconds, game_state.getUniverseState(), game_state.getCameraState(),
+            physicsSystem.updateTrajectories(frame_seconds, game_state.getUniverseState(), m_player_input,
                                              game_state.getTrajectoriesMutable(), ui_state);
         }
         Uint64 trajectories_end = SDL_GetPerformanceCounter();
@@ -205,20 +211,24 @@ void Game::publishProfilerReport()
 void Game::ProcessInput(float frame_seconds)
 {
     // Dispatch to Input System (which gives the current scene's UI the first look)
-    inputSystem.processSystemInputFrame(game_state, ui_state, scenes, frame_seconds);
+    inputSystem.processSystemInputFrame(game_state, ui_state, scenes, m_player_input, frame_seconds);
 }
 
 void Game::IntegratePhysicsFrame()
 {
     // Dispatch to Physics System
-    physicsSystem.advanceUniverseState(game_state.getUniverseStateMutable(), ui_state);
+    physicsSystem.advanceUniverseState(game_state.getUniverseStateMutable(), m_player_input.ship);
 }
 
-void Game::UpdateInstantiations() { physicsSystem.updateGravBodyInstantiations(game_state, ui_state); }
+void Game::UpdateInstantiations()
+{
+    physicsSystem.updateGravBodyInstantiations(game_state.getUniverseStateMutable(), m_player_input,
+                                               ui_state.spawnSettings());
+}
 void Game::RenderFrame()
 {
     // Dispatch to Render System -- renders the current scene's UI as well.
-    renderSystem.renderFullFrame(game_state, ui_state, scenes.currentScene());
+    renderSystem.renderFullFrame(game_state, ui_state, m_player_input, scenes.currentScene());
 }
 
 void Game::PlayAudio() { audioSystem.ProcessSystemAudioFrame(game_state, ui_state); }

@@ -78,7 +78,7 @@ InputSystem::~InputSystem() {}
 
 // --- SYSTEM-LEVEL METHOD --- //
 void InputSystem::processSystemInputFrame(GameState& game_state, UIState& ui_state, DynamoEngine::SceneManager& scenes,
-                                          float frame_seconds)
+                                          PlayerInput& player_input, float frame_seconds)
 {
     m_input.beginInputFrame();
     m_frame_events.clear(); // Clear the last frame's events
@@ -105,30 +105,52 @@ void InputSystem::processSystemInputFrame(GameState& game_state, UIState& ui_sta
     DynamoEngine::Scene& scene = scenes.currentScene();
     const DynamoEngine::UIInputResult ui_result = updateSceneUI(scene.ui(), game_state.getCameraState(), frame_seconds);
 
-    // Pass Engine State off into Transfer's meaning for current scene
-    DEPRECATED_InputState& legacy_state = ui_state.getMutableDEPRECATED_InputState();
-    legacy_state.resetTransientFlags();
-    legacy_state.UIInputConsumed = ui_result.pointer_captured;
+    // One-frame requests last exactly one frame: start every frame with none
+    player_input.commands = PlayerCommands();
 
     const bool runs_simulation = scene.settings().runs_simulation;
     if (runs_simulation)
     {
         updateCamera(game_state);
-        translateGameInputs(game_state, ui_state, scenes);
+        translateGameInputs(game_state, ui_state, scenes, player_input, ui_result.pointer_captured);
     }
     else
     {
-        translateMenuInputs(ui_state, scenes);
+        translateMenuInputs(scenes);
     }
 
     // A see-through preview follows the cursor while a spawn button is held down on the world (not on the UI):
     // left = the planet, right = the cluster's particles. If both are held, left wins (one preview at a time).
     const bool on_world = runs_simulation && !ui_result.pointer_captured;
-    legacy_state.isPreviewingMacro = on_world && m_input.isMouseButtonDown(DynamoEngine::MouseButton::Left);
-    legacy_state.isPreviewingParticleCluster =
-        on_world && m_input.isMouseButtonDown(DynamoEngine::MouseButton::Right) && !legacy_state.isPreviewingMacro;
-    legacy_state.isPreviewingWithInitialVelocity =
-        (legacy_state.isPreviewingMacro || legacy_state.isPreviewingParticleCluster) && m_input.isShiftDown();
+    const bool aiming_planet = on_world && m_input.isMouseButtonDown(DynamoEngine::MouseButton::Left);
+    const bool aiming_cluster =
+        on_world && m_input.isMouseButtonDown(DynamoEngine::MouseButton::Right) && !aiming_planet;
+    player_input.is_aiming_spawn = aiming_planet || aiming_cluster;
+    if (player_input.is_aiming_spawn)
+    {
+        player_input.spawn_aim = aimSpawn(aiming_cluster, m_input.isShiftDown(), game_state.getCameraState());
+    }
+}
+
+SpawnAim InputSystem::aimSpawn(bool is_cluster, bool with_velocity, const CameraState& camera_state) const
+{
+    // Screen positions as doubles first: the world math is done in doubles
+    const DynamoEngine::Vector2D cursor = m_input.mousePosition();
+    const DynamoEngine::Vector2D drag_start = m_mouse_drag_anchor;
+
+    SpawnAim aim;
+    aim.is_cluster = is_cluster;
+    aim.with_velocity = with_velocity;
+    if (with_velocity)
+    {
+        aim.world_position = ScreenToWorldCoordinates(drag_start, camera_state);
+        aim.world_velocity = (cursor - drag_start) / camera_state.zoom; // the drag, in world units per second
+    }
+    else
+    {
+        aim.world_position = ScreenToWorldCoordinates(cursor, camera_state);
+    }
+    return aim;
 }
 
 DynamoEngine::UIInputResult InputSystem::updateSceneUI(DynamoEngine::UIRoot& ui, const CameraState& camera_state,
@@ -177,86 +199,56 @@ void InputSystem::updateCamera(GameState& game_state)
     clampCameraToStarField(camera_state);
 }
 
-void InputSystem::copySharedPointerState(DEPRECATED_InputState& legacy_state)
+void InputSystem::translateMenuInputs(DynamoEngine::SceneManager& scenes)
 {
-    using DynamoEngine::MouseButton;
-
-    legacy_state.mouseCurrPosition = m_input.mousePosition();
-    legacy_state.isDragging = m_input.isAnyMouseButtonDown();
-    legacy_state.mouseDragStartPosition = m_mouse_drag_anchor;
-    legacy_state.isClickingLeftMouseButton = m_input.isMouseButtonDown(MouseButton::Left);
-    legacy_state.isClickingRightMouseButton = m_input.isMouseButtonDown(MouseButton::Right);
-    legacy_state.isClickingMiddleMouseButton = m_input.isMouseButtonDown(MouseButton::Middle);
-    legacy_state.isPressingShift = m_input.isShiftDown(); // either Shift now works, not just left
-    legacy_state.leftMouseButtonJustPressed = m_input.wasMouseButtonPressed(MouseButton::Left);
-    legacy_state.leftMouseButtonJustReleased = m_input.wasMouseButtonReleased(MouseButton::Left);
-}
-
-void InputSystem::translateMenuInputs(UIState& ui_state, DynamoEngine::SceneManager& scenes)
-{
-    DEPRECATED_InputState& legacy_state = ui_state.getMutableDEPRECATED_InputState();
-    copySharedPointerState(legacy_state);
-
     if (m_input.wasKeyPressed(SDL_SCANCODE_ESCAPE))
     {
         scenes.requestSwitch(TransferScene::Game);
-        legacy_state.resetFlagsForSceneChange();
     }
 }
 
-void InputSystem::translateGameInputs(GameState& game_state, UIState& ui_state, DynamoEngine::SceneManager& scenes)
+void InputSystem::translateGameInputs(GameState& game_state, UIState& ui_state, DynamoEngine::SceneManager& scenes,
+                                      PlayerInput& player_input, bool pointer_captured)
 {
     using DynamoEngine::MouseButton;
 
-    DEPRECATED_InputState& legacy_state = ui_state.getMutableDEPRECATED_InputState();
+    PlayerCommands& commands = player_input.commands;
 
-    // Clear the screen once per tap (was: every frame while the key was held)
+    // Delete / Backspace: undo the newest spawn; with Shift: clear everything. Once per tap.
     if (m_input.wasKeyPressed(SDL_SCANCODE_BACKSPACE) || m_input.wasKeyPressed(SDL_SCANCODE_DELETE))
     {
         if (m_input.isShiftDown())
         {
-            legacy_state.clearAllBodies();
+            commands.clear_all_bodies = true;
         }
         else
         {
-            legacy_state.undoNewestSpawn();
+            commands.undo_newest_spawn = true;
         }
-        legacy_state.resetTransientFlags();
         return;
     }
     if (m_input.wasKeyPressed(SDL_SCANCODE_ESCAPE))
     {
         scenes.requestSwitch(TransferScene::Pause);
-        legacy_state.resetFlagsForSceneChange();
         return;
     }
 
-    copySharedPointerState(legacy_state);
-
-    // Starship controls
+    // Starship controls: each pair counts only when exactly one of its two keys is held
     bool w_down = m_input.isKeyDown(SDL_SCANCODE_W);
     bool s_down = m_input.isKeyDown(SDL_SCANCODE_S);
     bool a_down = m_input.isKeyDown(SDL_SCANCODE_A);
     bool d_down = m_input.isKeyDown(SDL_SCANCODE_D);
-    legacy_state.isRequestingThrust = w_down != s_down; // exactly one of the pair (same as the old xor)
-    legacy_state.positiveThrust = w_down;
-    legacy_state.negativeThrust = s_down;
-    legacy_state.isRequestingRotation = d_down != a_down;
-    legacy_state.positiveRotation = a_down;
-    legacy_state.negativeRotation = d_down;
+    player_input.ship.thrust = (w_down != s_down) ? (w_down ? 1 : -1) : 0;
+    player_input.ship.rotation = (a_down != d_down) ? (a_down ? 1 : -1) : 0;
 
-    // Spawning happens on release: left = macro body, right = particle cluster. Shift adds initial velocity.
-    if (m_input.wasMouseButtonReleased(MouseButton::Left))
+    // Spawning happens on release, on the world (not on the UI): left = planet, right = particle cluster (left wins
+    // if both). Shift gives it an initial velocity.
+    bool left_released = m_input.wasMouseButtonReleased(MouseButton::Left);
+    bool right_released = m_input.wasMouseButtonReleased(MouseButton::Right);
+    if (!pointer_captured && (left_released || right_released))
     {
-        legacy_state.isCreatingCollidable = true;
-        legacy_state.isCreatingWithInitialVelocity = m_input.isShiftDown();
-        legacy_state.isCreatingMacro = true;
-    }
-    if (m_input.wasMouseButtonReleased(MouseButton::Right))
-    {
-        legacy_state.isCreatingCollidable = true;
-        legacy_state.isCreatingWithInitialVelocity = m_input.isShiftDown();
-        legacy_state.isCreatingParticleCluster = true;
+        commands.spawn = true;
+        commands.spawn_aim = aimSpawn(!left_released, m_input.isShiftDown(), game_state.getCameraState());
     }
 
     // F3: show or hide the debug overlay (hitboxes)
@@ -277,7 +269,7 @@ void InputSystem::translateGameInputs(GameState& game_state, UIState& ui_state, 
     // I, only while planning: trace the predicted trajectories, or clear them (PhysicsSystem::updateTrajectories)
     if (ui_state.getIsPlanning() && m_input.wasKeyPressed(SDL_SCANCODE_I))
     {
-        legacy_state.toggleTrajectoriesRequested = true;
+        commands.toggle_trajectories = true;
     }
     // Update the visor if necessary
     updateVisor(game_state.getCameraStateMutable());

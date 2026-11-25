@@ -8,8 +8,8 @@
 #include <unordered_map>
 
 // Custom Imports
-#include "Core/DEPRECATED_InputState.hpp"
 #include "Core/GameState.hpp"
+#include "Core/PlayerInput.hpp"
 #include "Core/UIState.hpp"
 #include "DynamoEngine/Debug/FrameProfiler.hpp"
 #include "DynamoEngine/Scenes/SceneManager.hpp"
@@ -62,6 +62,7 @@ class Game
     // Systems and State
     GameState game_state;        // Contains all game entities and their states
     UIState ui_state;            // Contains all UI related states
+    PlayerInput m_player_input;  // what the player is doing this frame: InputSystem writes it, the others read it
     InputSystem inputSystem;     // Manages all user input
     PhysicsSystem physicsSystem; // Manages physics calculations and Frame Updates
     RenderSystem renderSystem;   // Manages all rendering operations

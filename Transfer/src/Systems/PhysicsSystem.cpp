@@ -10,12 +10,12 @@ PhysicsSystem::PhysicsSystem()
 
 PhysicsSystem::~PhysicsSystem() {}
 
-void PhysicsSystem::advanceUniverseState(UniverseState& universe_state, UIState& ui_state)
+void PhysicsSystem::advanceUniverseState(UniverseState& universe_state, const ShipControls& ship_controls)
 {
     // First, handle collisions, then integrate, then update forces, then integrate again, then finally cleanup
     handleCollisionEvents(universe_state);
 
-    applyShipInputPhysics(universe_state, ui_state);
+    applyShipInputPhysics(universe_state, ship_controls);
 
     integrateUniversePhysics(universe_state);
 
@@ -35,42 +35,31 @@ void PhysicsSystem::cleanUp()
     // Any necessary cleanup code for the physics system
 }
 
-void PhysicsSystem::updateGravBodyInstantiations(GameState& game_state, UIState& ui_state)
+void PhysicsSystem::updateGravBodyInstantiations(UniverseState& universe_state, const PlayerInput& player_input,
+                                                 const SpawnSettings& spawn_settings)
 {
-    DEPRECATED_InputState& input_state = ui_state.getMutableDEPRECATED_InputState();
-    UniverseState& universe_state = game_state.getUniverseStateMutable();
-    if (!input_state.UIInputConsumed)
+    const PlayerCommands& commands = player_input.commands;
+    if (commands.spawn)
     {
-        if (input_state.isCreatingMacro)
+        if (commands.spawn_aim.is_cluster)
         {
-            createMacroBody(
-                universe_state, game_state.getCameraState(), input_state,
-                ui_state.spawnSettings()); // can inline replace with other create* methods for test. isCreatingMacro
-                                           // should eventually be unique to just creating planets, etc.
-            input_state.resetTransientFlags();
+            createParticleCluster(universe_state, commands.spawn_aim, spawn_settings);
         }
-        else if (input_state.isCreatingParticleCluster)
+        else
         {
-            createParticleCluster(universe_state, game_state.getCameraState(), input_state, ui_state.spawnSettings());
-            input_state.resetTransientFlags();
+            createMacroBody(universe_state, commands.spawn_aim, spawn_settings);
         }
-    }
-    else
-    {
-        // run limiters?
     }
     // Undo the newest spawn (plain Delete)
-    if (input_state.removeNewestSpawn)
+    if (commands.undo_newest_spawn)
     {
         removeNewestSpawn(universe_state);
-        input_state.removeNewestSpawn = false;
     }
-    // Check if all Gravitational Bodies are supposed to be wiped
-    if (input_state.clearAll)
+    // Wipe every body (Shift + Delete)
+    if (commands.clear_all_bodies)
     {
         universe_state.macro_bodies.clear();
         universe_state.particles.clear();
-        input_state.clearAll = false;
     }
 }
 void PhysicsSystem::removeNewestSpawn(UniverseState& universe_state)
@@ -816,19 +805,17 @@ void PhysicsSystem::addGravityBetweenGravBodyPair(GravitationalBody& firstBody, 
 
 // --------- GRAVITATIONAL BODY CREATION --------- //
 
-static inline void populateGravBodyPropertiesFromDEPRECATED_InputState(GravitationalBody& grav_body,
-                                                                       const CameraState& camera_state,
-                                                                       DEPRECATED_InputState& input_state,
-                                                                       const SpawnSettings& spawn_settings)
+// Fills in a new planet (or a cluster's template body) from where it was aimed and the spawn panel's settings
+static inline void populateSpawnedBodyProperties(GravitationalBody& grav_body, const SpawnAim& spawn_aim,
+                                                 const SpawnSettings& spawn_settings)
 {
-    // Default sets, position may be overwrriten if isCreatingWithInitialVelocity set to true
-    grav_body.mass = input_state.selectedMass;
+    grav_body.mass = spawn_settings.mass;
     grav_body.invMass = 1 / grav_body.mass;
-    grav_body.radius = input_state.selectedRadius;
-    grav_body.position = ScreenToWorldCoordinates(input_state.mouseCurrPosition, camera_state);
+    grav_body.radius = spawn_settings.radius;
+    grav_body.position = spawn_aim.world_position;
     grav_body.previousPosition = grav_body.position;
+    grav_body.velocity = spawn_aim.world_velocity; // 0 unless it was aimed with Shift
 
-    // Flags (will be moved to control from within the input_state)
     // Type flag
     grav_body.isMacro = true;
 
@@ -849,42 +836,30 @@ static inline void populateGravBodyPropertiesFromDEPRECATED_InputState(Gravitati
     grav_body.isGravStar = false;
     grav_body.isMoon = false;
     grav_body.isPlanet = true; // Default for now until I implement procedural texture generation.
-
-    if (input_state.isCreatingWithInitialVelocity)
-    {
-        grav_body.position = ScreenToWorldCoordinates(input_state.mouseDragStartPosition, camera_state);
-        grav_body.previousPosition = grav_body.position;
-        grav_body.velocity = (input_state.mouseCurrPosition - input_state.mouseDragStartPosition) / camera_state.zoom;
-    }
 }
 
-bool PhysicsSystem::makeSpawnPreviewBody(const CameraState& camera_state, const DEPRECATED_InputState& input_state,
-                                         const SpawnSettings& spawn_settings, GravitationalBody& body_out) const
+bool PhysicsSystem::makeSpawnPreviewBody(const SpawnAim& spawn_aim, const SpawnSettings& spawn_settings,
+                                         GravitationalBody& body_out) const
 {
     // Same refusals as createMacroBody (the particle budget aside: a refused spawn simply won't happen)
-    if (input_state.selectedRadius <= 1.0 || firstWithinEpsilonOfSecond(input_state.selectedMass, 0.0))
+    if (spawn_settings.radius <= 1.0 || firstWithinEpsilonOfSecond(spawn_settings.mass, 0.0))
     {
         return false;
     }
-    // While dragging, "with a velocity" is the preview flag; createMacroBody sees the same choice as the creating
-    // flag on release. A copy, so the real input state isn't touched.
-    DEPRECATED_InputState release_input = input_state;
-    release_input.isCreatingWithInitialVelocity = input_state.isPreviewingWithInitialVelocity;
-
     body_out = GravitationalBody();
-    populateGravBodyPropertiesFromDEPRECATED_InputState(body_out, camera_state, release_input, spawn_settings);
+    populateSpawnedBodyProperties(body_out, spawn_aim, spawn_settings);
     return true;
 }
 
-void PhysicsSystem::createMacroBody(UniverseState& universe_state, const CameraState& camera_state,
-                                    DEPRECATED_InputState& input_state, const SpawnSettings& spawn_settings)
+void PhysicsSystem::createMacroBody(UniverseState& universe_state, const SpawnAim& spawn_aim,
+                                    const SpawnSettings& spawn_settings)
 {
     std::vector<GravitationalBody>& macro_bodies = universe_state.macro_bodies;
-    if (input_state.selectedRadius <= 1.0)
+    if (spawn_settings.radius <= 1.0)
     {
         return;
     }
-    if (firstWithinEpsilonOfSecond((input_state.selectedMass), 0.0))
+    if (firstWithinEpsilonOfSecond(spawn_settings.mass, 0.0))
     {
         return;
     }
@@ -899,30 +874,28 @@ void PhysicsSystem::createMacroBody(UniverseState& universe_state, const CameraS
     GravitationalBody macro_body;
     macro_body.macroIdentifier = new_macro_body_id;
 
-    // Pass flags from input_state as possible.
-    populateGravBodyPropertiesFromDEPRECATED_InputState(macro_body, camera_state, input_state, spawn_settings);
+    populateSpawnedBodyProperties(macro_body, spawn_aim, spawn_settings);
 
     // Now with populated flags, nudge particles out?
     macro_bodies.push_back(macro_body);
 }
 
-void PhysicsSystem::createParticleCluster(UniverseState& universe_state, const CameraState& camera_state,
-                                          DEPRECATED_InputState& input_state, const SpawnSettings& spawn_settings)
+void PhysicsSystem::createParticleCluster(UniverseState& universe_state, const SpawnAim& spawn_aim,
+                                          const SpawnSettings& spawn_settings)
 {
     std::vector<GravitationalBody>& particles = universe_state.particles;
-    if (input_state.selectedRadius <= 1.0)
+    if (spawn_settings.radius <= 1.0)
     {
         return;
     }
-    if (firstWithinEpsilonOfSecond((input_state.selectedMass), 0.0))
+    if (firstWithinEpsilonOfSecond(spawn_settings.mass, 0.0))
     {
         return;
     }
 
     GravitationalBody macro_body;
 
-    // Pass flags from input_state as possible.
-    populateGravBodyPropertiesFromDEPRECATED_InputState(macro_body, camera_state, input_state, spawn_settings);
+    populateSpawnedBodyProperties(macro_body, spawn_aim, spawn_settings);
 
     // Load limit: refuse the whole cluster rather than add part of it (needs the radius, so it comes after populate)
     if (!hasRoomForParticles(universe_state, survivableFragmentCount(macro_body, DEFAULT_FRAGMENT_COUNT)))
@@ -979,10 +952,16 @@ void PhysicsSystem::cleanupMacroBodies(UniverseState& universe_state)
     particles.erase(new_end, particles.end());
 }
 
-void PhysicsSystem::applyShipInputPhysics(UniverseState& universe_state, UIState& ui_state)
+void PhysicsSystem::adjustThrottleWhilePlanning(UniverseState& universe_state, const ShipControls& ship_controls,
+                                                float frame_seconds)
 {
-    universe_state.ship.applyRotation(ui_state);
-    universe_state.ship.applyThrust(ui_state);
+    universe_state.ship.adjustThrottle(ship_controls.thrust, frame_seconds);
+}
+
+void PhysicsSystem::applyShipInputPhysics(UniverseState& universe_state, const ShipControls& ship_controls)
+{
+    universe_state.ship.applyRotation(ship_controls);
+    universe_state.ship.applyThrust(ship_controls);
 }
 
 bool PhysicsSystem::hasRoomForParticles(const UniverseState& universe_state, size_t new_particle_count) const

@@ -3,7 +3,7 @@
 #pragma once
 
 // Custom Imports
-#include "Core/DEPRECATED_InputState.hpp"
+#include "Core/PlayerInput.hpp"
 #include "Core/GameState.hpp"
 #include "Core/SpawnSettings.hpp"
 #include "Core/Trajectories.hpp"
@@ -48,16 +48,21 @@ class PhysicsSystem
 
     // Method to update Physics System. Handles all physics interactions and
     // body instantiations for one physics frame
-    void advanceUniverseState(UniverseState& universe_state, UIState& ui_state);
+    void advanceUniverseState(UniverseState& universe_state, const ShipControls& ship_controls);
     // Helper method called in the destructor to clear up physics-related
     // contents
     void cleanUp();
-    void updateGravBodyInstantiations(GameState& game_state, UIState& ui_state);
+    // This frame's spawn, undo and clear requests (PlayerInput::commands), with the spawn panel's settings
+    void updateGravBodyInstantiations(UniverseState& universe_state, const PlayerInput& player_input,
+                                      const SpawnSettings& spawn_settings);
+    // Planning mode stops time, but W/S still set up the burn: moves the ship's throttle in REAL time (frame_seconds)
+    void adjustThrottleWhilePlanning(UniverseState& universe_state, const ShipControls& ship_controls,
+                                     float frame_seconds);
     // Once per FRAME (not per tick). Planning mode: handles the I request, wipes the lines when the universe was
     // edited, and grows them. Outside planning mode: clears them. Defined in Systems/Physics/TrajectoryPrediction.cpp
-    // The camera is for the placement preview (it turns the mouse position into a world position)
-    void updateTrajectories(float frame_seconds, const UniverseState& universe_state, const CameraState& camera_state,
-                            Trajectories& trajectories, UIState& ui_state);
+    // `player_input` gives the I request and the spawn being aimed (for the placement preview)
+    void updateTrajectories(float frame_seconds, const UniverseState& universe_state, const PlayerInput& player_input,
+                            Trajectories& trajectories, const UIState& ui_state);
 
   private:
     void integrateUniversePhysics(UniverseState& universe_state);
@@ -109,15 +114,13 @@ class PhysicsSystem
     void addGravityBetweenShipAndBodies(UniverseState& universe_state);
 
     // --- Gravitational Body Creation Mechanisms ---
-    void createMacroBody(UniverseState& universe_state, const CameraState& camera_state,
-                         DEPRECATED_InputState& input_state,
-                         const SpawnSettings& spawn_settings); // Creates a Macro Gravitational Body
+    void createMacroBody(UniverseState& universe_state, const SpawnAim& spawn_aim, const SpawnSettings& spawn_settings); // Creates a Macro Gravitational Body
                                                                // with the user-defined attributes
-    void createParticleCluster(UniverseState& universe_state, const CameraState& camera_state,
-                               DEPRECATED_InputState& input_state, const SpawnSettings& spawn_settings);
+    void createParticleCluster(UniverseState& universe_state, const SpawnAim& spawn_aim,
+                               const SpawnSettings& spawn_settings);
 
     // --- Player Physics ---
-    void applyShipInputPhysics(UniverseState& universe_state, UIState& ui_state);
+    void applyShipInputPhysics(UniverseState& universe_state, const ShipControls& ship_controls);
     // --- Cleanup ---
     void cleanupGravBodies(UniverseState& universe_state);  // calls the subcleaners in succession
     void cleanupParticles(UniverseState& universe_state);   // Clears any Particles from the screen flagged
@@ -139,13 +142,13 @@ class PhysicsSystem
     // the planet changes (the mouse moved), then grows as fast as MAX_PREVIEW_MILLISECONDS_PER_FRAME allows.
     // The preview universe has NO debris (it would make every restart slow): it ignores particle clouds, the traced
     // lines don't.
-    void updateSpawnPreviewTrajectory(const UniverseState& universe_state, const CameraState& camera_state,
-                                      Trajectories& trajectories, UIState& ui_state);
+    void updateSpawnPreviewTrajectory(const UniverseState& universe_state, const PlayerInput& player_input,
+                                      const SpawnSettings& spawn_settings, Trajectories& trajectories);
     void clearSpawnPreviewTrajectory(Trajectories& trajectories);
     // The planet a left-button release would spawn right now (defined in PhysicsSystem.cpp next to createMacroBody,
     // built by the same function, so the preview can never disagree with the real spawn). False if none would spawn.
-    bool makeSpawnPreviewBody(const CameraState& camera_state, const DEPRECATED_InputState& input_state,
-                              const SpawnSettings& spawn_settings, GravitationalBody& body_out) const;
+    bool makeSpawnPreviewBody(const SpawnAim& spawn_aim, const SpawnSettings& spawn_settings,
+                              GravitationalBody& body_out) const;
 
     // --- Data Members ---
     UniformParticleGrid particleGrid;

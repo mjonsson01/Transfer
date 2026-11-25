@@ -3,7 +3,6 @@
 #include "Scenes/TransferScenes.hpp"
 
 // Custom Imports
-#include "Core/DEPRECATED_InputState.hpp"
 #include "DynamoEngine/UI/Widgets/UIButton.hpp"
 #include "DynamoEngine/UI/Widgets/UICheckbox.hpp"
 #include "DynamoEngine/UI/Widgets/UIDropdown.hpp"
@@ -199,12 +198,21 @@ std::unique_ptr<Scene> buildStartMenuScene(SceneManager& scenes, UIState& ui_sta
 std::unique_ptr<Scene> buildGameScene(UIState& ui_state, GameState& game_state)
 {
     std::unique_ptr<Scene> scene = makeScene(SceneSettings::simulation(), ui_state);
-    DEPRECATED_InputState& choices = ui_state.getMutableDEPRECATED_InputState(); // where the slider values go
 
-    // Top-left, one line each: the FPS counter, then the planning mode readout under it
+    // Top-left, one line each: the FPS counter, the throttle, then the planning mode readouts
     std::unique_ptr<UILabel> fps_label = std::make_unique<UILabel>("FPS: ");
     fps_label->setPlacement({.size = {0.0f, READOUT_LINE_HEIGHT}});
     fps_label->setTextSource([&ui_state]() { return "FPS: " + std::to_string(static_cast<int>(ui_state.getFPS())); });
+
+    // The ship's throttle: it holds when W/S are released, so it needs to be visible
+    std::unique_ptr<UILabel> throttle_label = std::make_unique<UILabel>("");
+    throttle_label->setPlacement({.size = {0.0f, READOUT_LINE_HEIGHT}});
+    throttle_label->setTextSource(
+        [&game_state]()
+        {
+            int percent = static_cast<int>(std::lround(game_state.getUniverseState().ship.throttle() * 100.0));
+            return "THROTTLE: " + std::to_string(percent) + "%";
+        });
 
     std::unique_ptr<UILabel> planning_label = std::make_unique<UILabel>("");
     planning_label->setPlacement({.size = {0.0f, READOUT_LINE_HEIGHT}});
@@ -217,6 +225,7 @@ std::unique_ptr<Scene> buildGameScene(UIState& ui_state, GameState& game_state)
     std::unique_ptr<UIColumn> readouts = std::make_unique<UIColumn>(0.0f);
     readouts->setPlacement({.align = UIAlign::TopLeft, .margin = 10.0f});
     readouts->addChild(std::move(fps_label));
+    readouts->addChild(std::move(throttle_label));
     readouts->addChild(std::move(planning_label));
     readouts->addChild(std::move(preview_label));
 
@@ -256,16 +265,16 @@ std::unique_ptr<Scene> buildGameScene(UIState& ui_state, GameState& game_state)
         "Simulation Speed", SliderMapping::linear(MIN_TIME_SCALE_FACTOR, MAX_TIME_SCALE_FACTOR),
         REGULAR_TIME_SCALE_FACTOR);
     speed_slider->setPlacement({.size = SLIDER_SIZE});
-    speed_slider->setOnValueChanged([&choices](double value) { choices.selectedSimSpeedScale = value; });
+    speed_slider->setOnValueChanged([&ui_state](double value) { ui_state.setSimulationSpeed(value); });
 
     std::unique_ptr<UISlider> radius_slider =
         std::make_unique<UISlider>("Radius", SliderMapping::linear(0.0, MAX_RADIUS - 100.0), 0.0);
     radius_slider->setPlacement({.size = SLIDER_SIZE});
-    radius_slider->setOnValueChanged([&choices](double value) { choices.selectedRadius = value; });
+    radius_slider->setOnValueChanged([&ui_state](double value) { ui_state.spawnSettings().radius = value; });
 
     std::unique_ptr<UISlider> mass_slider = std::make_unique<UISlider>("Mass", massMapping(), 0.0);
     mass_slider->setPlacement({.size = SLIDER_SIZE});
-    mass_slider->setOnValueChanged([&choices](double value) { choices.selectedMass = value; });
+    mass_slider->setOnValueChanged([&ui_state](double value) { ui_state.spawnSettings().mass = value; });
 
     // Spawn panel, under the sliders: settings for the NEXT planet or cluster.
     // ui_state's SpawnSettings is the source of truth: each checkbox reads it every frame and writes it when clicked.

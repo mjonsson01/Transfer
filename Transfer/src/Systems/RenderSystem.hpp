@@ -11,6 +11,7 @@
 // Custom Imports
 #include "Core/CameraState.hpp"
 #include "Core/GameState.hpp"
+#include "Core/PlayerInput.hpp"
 #include "Core/UIState.hpp"
 #include "DynamoEngine/Rendering/FontAtlas.hpp"
 #include "DynamoEngine/Rendering/UIVertex.hpp"
@@ -47,7 +48,9 @@ class RenderSystem
     ~RenderSystem(); // make sure to teardown destructor and m_window
 
     // Main Loop Rendering Function, renders engine state and the current scene's UI
-    void renderFullFrame(GameState& game_state, UIState& ui_state, const DynamoEngine::Scene& scene);
+    // `player_input`: for the see-through preview of a spawn being aimed
+    void renderFullFrame(GameState& game_state, UIState& ui_state, const PlayerInput& player_input,
+                         const DynamoEngine::Scene& scene);
 
     // Main Cleanup method (tears down all the SDL components)
     void cleanUp();
@@ -129,14 +132,16 @@ class RenderSystem
                          SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf);
     void renderNonGameFrame(const DynamoEngine::UIRoot& ui, SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf);
 
-    void appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertex_data, UIState& ui_state,
-                             const CameraState& camera_state);
+    // The see-through body (or cluster) that would spawn on release, while a spawn is being aimed
+    void appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertex_data, const PlayerInput& player_input,
+                             const SpawnSettings& spawn_settings, double zoom);
 
     void renderBodies(GameState& game_state, UIState& ui_state, SDL_GPURenderPass* pass,
                       SDL_GPUCommandBuffer* cmdbuf); // Renders all the gravitational
                                                      // bodies (both Macro and Particle)
 
-    void uploadUnifiedBodies(GameState& game_state, UIState& ui_state, SDL_GPUCommandBuffer* cmdbuf);
+    void uploadUnifiedBodies(GameState& game_state, UIState& ui_state, const PlayerInput& player_input,
+                             SDL_GPUCommandBuffer* cmdbuf);
     // (Re)creates both body buffers to hold `capacity` bodies, releasing the old ones.
     // Returns false if the GPU couldn't provide the memory; nothing may be uploaded then.
     bool createUnifiedBodyBuffers(uint32_t capacity);
@@ -203,7 +208,9 @@ class RenderSystem
 
     CameraConstants buildCameraConstants(const CameraState& camera_state, const DynamoEngine::Vector2D& offset);
     // Utility Rendering Helper Functions
-    void buildVelocityVectorGeometry(DynamoEngine::Vector2D lineStart, DynamoEngine::Vector2D lineEnd);
+    // The spawn velocity arrow from lineStart to lineEnd (world space). Its thickness and head are sized in SCREEN
+    // pixels (divided by `zoom`), so the arrow looks the same at any zoom; only its length follows the drag.
+    void buildVelocityVectorGeometry(DynamoEngine::Vector2D lineStart, DynamoEngine::Vector2D lineEnd, double zoom);
     void uploadVelocityVectorVertices(SDL_GPUCommandBuffer* cmdbuf);
     void renderVelocityVectors(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf, const CameraState& camera_state);
     SDL_Color getColorForProperty(const GravitationalBody& body);

@@ -26,9 +26,9 @@ static bool sameVector(const DynamoEngine::Vector2D& a, const DynamoEngine::Vect
 }
 
 void PhysicsSystem::updateTrajectories(float frame_seconds, const UniverseState& universe_state,
-                                       const CameraState& camera_state, Trajectories& trajectories, UIState& ui_state)
+                                       const PlayerInput& player_input, Trajectories& trajectories,
+                                       const UIState& ui_state)
 {
-    DEPRECATED_InputState& input_state = ui_state.getMutableDEPRECATED_InputState();
 
     // Leaving planning mode makes the lines vanish: once time runs, they no longer describe the future
     if (!ui_state.getIsPlanning())
@@ -38,17 +38,15 @@ void PhysicsSystem::updateTrajectories(float frame_seconds, const UniverseState&
             clearTrajectories(trajectories);
         }
         clearSpawnPreviewTrajectory(trajectories);
-        input_state.toggleTrajectoriesRequested = false;
         return;
     }
 
     // The placement preview runs on its own, with or without the traced lines
-    updateSpawnPreviewTrajectory(universe_state, camera_state, trajectories, ui_state);
+    updateSpawnPreviewTrajectory(universe_state, player_input, ui_state.spawnSettings(), trajectories);
 
     // I: start a trace from the universe as it is now, or clear the lines that are there
-    if (input_state.toggleTrajectoriesRequested)
+    if (player_input.commands.toggle_trajectories)
     {
-        input_state.toggleTrajectoriesRequested = false;
         if (trajectories.status == TraceStatus::Idle)
         {
             startTrajectories(universe_state, trajectories);
@@ -78,8 +76,8 @@ void PhysicsSystem::updateTrajectories(float frame_seconds, const UniverseState&
 
 void PhysicsSystem::startTrajectories(const UniverseState& universe_state, Trajectories& trajectories)
 {
+    // The ship keeps its current throttle: the line shows where it goes if you hold this burn
     m_prediction_universe_state = universe_state;
-    m_prediction_universe_state.ship.cutThrust();
     m_trace_start_universe_state = universe_state;
     m_trace_time_accumulator = 0.0f;
     m_trace_ticks_done = 0;
@@ -125,8 +123,10 @@ bool PhysicsSystem::universeChangedSinceTraceStart(const UniverseState& universe
             return true;
         }
     }
+    // The throttle counts too: it can be changed while planning, and the prediction keeps it
     return !sameVector(universe_state.ship.center(), start.ship.center()) ||
-           !sameVector(universe_state.ship.velocity(), start.ship.velocity());
+           !sameVector(universe_state.ship.velocity(), start.ship.velocity()) ||
+           universe_state.ship.throttle() != start.ship.throttle();
 }
 
 void PhysicsSystem::advanceIntegratedTrajectories(float frame_seconds, Trajectories& trajectories)
@@ -182,13 +182,12 @@ void PhysicsSystem::recordTrajectoryPoints(Trajectories& trajectories)
     trajectories.ship_path.push_back({m_prediction_universe_state.ship.center(), trajectories.clock});
 }
 
-void PhysicsSystem::updateSpawnPreviewTrajectory(const UniverseState& universe_state, const CameraState& camera_state,
-                                                 Trajectories& trajectories, UIState& ui_state)
+void PhysicsSystem::updateSpawnPreviewTrajectory(const UniverseState& universe_state, const PlayerInput& player_input,
+                                                 const SpawnSettings& spawn_settings, Trajectories& trajectories)
 {
-    const DEPRECATED_InputState& input_state = ui_state.getDEPRECATED_InputState();
     GravitationalBody body;
-    if (!input_state.isPreviewingMacro ||
-        !makeSpawnPreviewBody(camera_state, input_state, ui_state.spawnSettings(), body))
+    const bool is_aiming_planet = player_input.is_aiming_spawn && !player_input.spawn_aim.is_cluster;
+    if (!is_aiming_planet || !makeSpawnPreviewBody(player_input.spawn_aim, spawn_settings, body))
     {
         clearSpawnPreviewTrajectory(trajectories); // not placing a planet (or none would spawn)
         return;
@@ -196,9 +195,11 @@ void PhysicsSystem::updateSpawnPreviewTrajectory(const UniverseState& universe_s
 
     // A different planet than last frame (moved, new velocity, other size or mass...): start again from the beginning
     const GravitationalBody& last = m_preview_spawn_body;
+    // (or the throttle was changed while planning: the preview's ship keeps the throttle it started with)
     bool changed = !m_has_spawn_preview || !sameVector(body.position, last.position) ||
                    !sameVector(body.velocity, last.velocity) || body.mass != last.mass || body.radius != last.radius ||
-                   body.isForceStatic != last.isForceStatic;
+                   body.isForceStatic != last.isForceStatic ||
+                   universe_state.ship.throttle() != m_preview_universe_state.ship.throttle();
     if (changed)
     {
         // The planets and the ship, plus the planet being placed. NO debris, on purpose: the preview restarts every
@@ -208,7 +209,6 @@ void PhysicsSystem::updateSpawnPreviewTrajectory(const UniverseState& universe_s
         m_preview_universe_state.macro_bodies.push_back(body);
         m_preview_universe_state.particles.clear();
         m_preview_universe_state.ship = universe_state.ship;
-        m_preview_universe_state.ship.cutThrust();
         m_preview_spawn_body = body;
         m_preview_ticks_done = 0;
         m_has_spawn_preview = true;

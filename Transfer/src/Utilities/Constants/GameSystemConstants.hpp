@@ -19,9 +19,10 @@ constexpr int FPS_UPDATE_DELTA_MS = 250;
 
 // Time scaling factors to control rendering speed without changing the Physics
 // System behaviors
-const double MIN_TIME_SCALE_FACTOR = 0.0;     // negative is allowed and runs only due to alpha interpolation
+const double MIN_TIME_SCALE_FACTOR = 0.1;     // negative is allowed and runs only due to alpha interpolation. Prevent 0
+                                              // speed on slider since we now have Planning mode
 const double REGULAR_TIME_SCALE_FACTOR = 1.0; // 1x speed
-const double MAX_TIME_SCALE_FACTOR = 2.0;     // 2x speed
+const double MAX_TIME_SCALE_FACTOR = 3.0;     // 3x speed
 
 // Vertical and horizontal resolutions (starting resolution)
 

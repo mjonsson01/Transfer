@@ -196,7 +196,8 @@ SDL_GPUShader* RenderSystem::LoadShader(SDL_GPUDevice* device, const char* base_
 }
 // --------- RENDER FULL FRAME METHOD --------- //
 
-void RenderSystem::renderFullFrame(GameState& game_state, UIState& ui_state, const DynamoEngine::Scene& scene)
+void RenderSystem::renderFullFrame(GameState& game_state, UIState& ui_state, const PlayerInput& player_input,
+                                   const DynamoEngine::Scene& scene)
 {
 
     // Re-bake the text whenever the UI scale or the display's pixel density changes (m_window resized, or moved to a
@@ -217,7 +218,7 @@ void RenderSystem::renderFullFrame(GameState& game_state, UIState& ui_state, con
         uploadDebugLines(cmdbuf);
         buildTrajectoryLines(game_state, ui_state);
         uploadTrajectoryLines(cmdbuf);
-        uploadUnifiedBodies(game_state, ui_state, cmdbuf);
+        uploadUnifiedBodies(game_state, ui_state, player_input, cmdbuf);
         uploadStarship(game_state, ui_state, cmdbuf);
     }
     uploadUIVertices(scene.ui(), cmdbuf);
@@ -273,7 +274,8 @@ void RenderSystem::renderNonGameFrame(const DynamoEngine::UIRoot& ui, SDL_GPURen
 {
     renderUIElements(pass, cmdbuf, ui);
 }
-void RenderSystem::uploadUnifiedBodies(GameState& game_state, UIState& ui_state, SDL_GPUCommandBuffer* cmdbuf)
+void RenderSystem::uploadUnifiedBodies(GameState& game_state, UIState& ui_state, const PlayerInput& player_input,
+                                       SDL_GPUCommandBuffer* cmdbuf)
 {
     m_unified_body_vertices.clear();
 
@@ -298,7 +300,7 @@ void RenderSystem::uploadUnifiedBodies(GameState& game_state, UIState& ui_state,
         }
     }
 
-    appendPreviewBodies(m_unified_body_vertices, ui_state, game_state.getCameraState());
+    appendPreviewBodies(m_unified_body_vertices, player_input, ui_state.spawnSettings(), game_state.getCameraState().zoom);
     uploadVelocityVectorVertices(cmdbuf);
 
     // Emergency only: the particle budget should make this impossible. If a rule change ever breaks it, grow the
@@ -696,35 +698,29 @@ void RenderSystem::renderUIElements(SDL_GPURenderPass* pass, SDL_GPUCommandBuffe
     SDL_BindGPUFragmentSamplers(pass, 0, &texBinding, 1);
     SDL_DrawGPUPrimitives(pass, (uint32_t)m_ui_vertices.size(), 1, 0, 0);
 }
-void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertex_data, UIState& ui_state,
-                                       const CameraState& camera_state)
+void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertex_data, const PlayerInput& player_input,
+                                       const SpawnSettings& spawn_settings, double zoom)
 {
-    DEPRECATED_InputState& input_state = ui_state.getMutableDEPRECATED_InputState();
     velocityVectorVertices.clear();
-    if (!input_state.isPreviewingMacro && !input_state.isPreviewingParticleCluster)
+    if (!player_input.is_aiming_spawn)
     {
         return;
     }
 
-    // The body that will spawn: the chosen size and mass, at the cursor (or at the drag start, with an arrow to the
-    // cursor, when it's being given a velocity)
+    // The body that will spawn: the chosen size and mass, where InputSystem aimed it (with an arrow along its
+    // velocity when it's being given one)
+    const SpawnAim& aim = player_input.spawn_aim;
     GravitationalBody preview_body = {};
-    preview_body.mass = input_state.selectedMass;
-    preview_body.radius = input_state.selectedRadius;
-    if (input_state.isPreviewingWithInitialVelocity)
-    {
-        preview_body.position = ScreenToWorldCoordinates(input_state.mouseDragStartPosition, camera_state);
-
-        DynamoEngine::Vector2D arrow_end = ScreenToWorldCoordinates(input_state.mouseCurrPosition, camera_state);
-        buildVelocityVectorGeometry(preview_body.position, arrow_end);
-    }
-    else
-    {
-        preview_body.position = ScreenToWorldCoordinates(input_state.mouseCurrPosition, camera_state);
-    }
+    preview_body.mass = spawn_settings.mass;
+    preview_body.radius = spawn_settings.radius;
+    preview_body.position = aim.world_position;
     preview_body.previousPosition = preview_body.position; // to prevent alpha interpolation artifacts
+    if (aim.with_velocity)
+    {
+        buildVelocityVectorGeometry(aim.world_position, aim.world_position + aim.world_velocity, zoom);
+    }
 
-    if (input_state.isPreviewingMacro)
+    if (!aim.is_cluster)
     {
         preview_body.isPreview = true;
         vertex_data.push_back(preview_body.toUnifiedVertex());
@@ -1216,7 +1212,8 @@ void RenderSystem::createStarshipGPUBufferAndPipeline()
     SDL_ReleaseGPUShader(m_gpu, frag_shader);
 }
 
-void RenderSystem::buildVelocityVectorGeometry(DynamoEngine::Vector2D lineStart, DynamoEngine::Vector2D lineEnd)
+void RenderSystem::buildVelocityVectorGeometry(DynamoEngine::Vector2D lineStart, DynamoEngine::Vector2D lineEnd,
+                                               double zoom)
 {
     velocityVectorVertices.clear();
 
@@ -1232,9 +1229,23 @@ void RenderSystem::buildVelocityVectorGeometry(DynamoEngine::Vector2D lineStart,
     float px = -dy;
     float py = dx;
 
-    const float thickness = 12.0f;
-    const float arrow_length = 30.0f;
-    const float arrow_width = 36.0f;
+    // Sizes on screen, in pixels. The vertices are in world space and the shader multiplies them by zoom, so dividing
+    // by zoom here keeps the arrow the same thickness at any zoom.
+    const float THICKNESS_PX = 12.0f;
+    const float HEAD_LENGTH_PX = 30.0f;
+    const float HEAD_WIDTH_PX = 36.0f;
+    const float world_per_px = static_cast<float>(1.0 / zoom);
+    float thickness = THICKNESS_PX * world_per_px;
+    float arrow_length = HEAD_LENGTH_PX * world_per_px;
+    float arrow_width = HEAD_WIDTH_PX * world_per_px;
+    // A drag shorter than the head: shrink the whole arrow's width and head to fit, keeping its proportions
+    if (arrow_length > length)
+    {
+        float shrink = length / arrow_length;
+        thickness *= shrink;
+        arrow_length *= shrink;
+        arrow_width *= shrink;
+    }
     float half_T = thickness / 2.0f;
 
     // Shorten the shaft so the arrowhead has room at the tip
