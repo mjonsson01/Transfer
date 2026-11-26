@@ -43,7 +43,18 @@ RenderSystem::RenderSystem(GameState& game_state)
 #endif
     m_gpu = SDL_CreateGPUDevice(formats, true, nullptr);
     if (m_gpu)
+    {
         SDL_ClaimWindowForGPUDevice(m_gpu, m_window);
+        if (SDL_WindowSupportsGPUPresentMode(m_gpu, m_window, SDL_GPU_PRESENTMODE_IMMEDIATE))
+        {
+            SDL_SetGPUSwapchainParameters(m_gpu, m_window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR,
+                                          SDL_GPU_PRESENTMODE_IMMEDIATE);
+        }
+        else
+        {
+            SDL_Log("IMMEDIATE present mode not supported: vsync stays on");
+        }
+    }
     // 2. Resource/Font Setup
     UIFontRegular = TTF_OpenFont(Utilities::GetResourcePath("Fonts/SpaceMono-Regular.ttf").c_str(), UI_FONT_SIZE);
 
@@ -732,8 +743,7 @@ void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertex_da
     preview_body.previousPosition = preview_body.position; // to prevent alpha interpolation artifacts
     if (aim.with_velocity)
     {
-        buildVelocityVectorGeometry(aim.world_position, aim.world_position + aim.world_velocity,
-                                    world_units_per_point);
+        buildVelocityVectorGeometry(aim.world_position, aim.world_position + aim.world_velocity, world_units_per_point);
     }
 
     if (!aim.is_cluster)
@@ -1709,8 +1719,7 @@ void RenderSystem::buildTrajectoryLines(const GameState& game_state, const UISta
         TrajectoryStyle preview_style = {will_be_static ? TRAJECTORY_STATIC_COLOR : TRAJECTORY_PREVIEW_COLOR, false};
         appendTrajectorySegments(preview_path, 0, preview_path[0].position, preview_style, m_trajectory_frame_vertices);
         if (time_marks)
-            appendTrajectoryTimeMarks(preview_path, preview_style, world_units_per_point,
-                                      m_trajectory_frame_vertices);
+            appendTrajectoryTimeMarks(preview_path, preview_style, world_units_per_point, m_trajectory_frame_vertices);
     }
 }
 

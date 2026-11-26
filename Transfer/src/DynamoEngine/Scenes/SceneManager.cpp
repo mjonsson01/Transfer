@@ -24,6 +24,7 @@ void SceneManager::addScene(SceneId id, std::unique_ptr<Scene> scene)
 
 void SceneManager::requestSwitch(SceneId id)
 {
+    // SDL_Log("SceneManager: request switch to scene id %u", id);
     if (!hasScene(id))
     {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SceneManager: no scene is registered with id %u", id);

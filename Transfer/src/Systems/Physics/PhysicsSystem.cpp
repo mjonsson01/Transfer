@@ -983,16 +983,16 @@ void PhysicsSystem::addGravityBetweenGravBodies(UniverseState& universe_state)
 
     // Particle-Particle gravity.
     // TODO: Review? -- Works now with elastic collision fix, need to majorly optimize
-    {
-        DynamoEngine::ProfileScope timer(m_profiler, m_profile.debris_debris_gravity, m_profiling_real_tick);
-        for (size_t i = 0; i < num_particles; ++i)
-        {
-            for (size_t j = i + 1; j < num_particles; ++j)
-            {
-                addGravityBetweenGravBodyPair(particles[i], particles[j]);
-            }
-        }
-    }
+    // {
+    //     DynamoEngine::ProfileScope timer(m_profiler, m_profile.debris_debris_gravity, m_profiling_real_tick);
+    //     for (size_t i = 0; i < num_particles; ++i)
+    //     {
+    //         for (size_t j = i + 1; j < num_particles; ++j)
+    //         {
+    //             addGravityBetweenGravBodyPair(particles[i], particles[j]);
+    //         }
+    //     }
+    // }
 }
 void PhysicsSystem::addGravityBetweenShipAndBodies(UniverseState& universe_state)
 {
