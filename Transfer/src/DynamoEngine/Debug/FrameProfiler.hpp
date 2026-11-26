@@ -63,4 +63,28 @@ class FrameProfiler
     std::vector<SectionReport> m_report;
     bool m_has_new_report = false;
 };
+
+// Times one block of code into a profiler section: the clock starts where the ProfileScope is declared, and the time
+// is recorded when the enclosing { } block ends (C++ destroys the object there, and its destructor records it).
+//     {
+//         ProfileScope timer(profiler, gravity_section);
+//         ...the code being timed...
+//     } // <- recorded here
+// With `enabled` false it records nothing (e.g. to time only some calls of a function used in several places).
+class ProfileScope
+{
+  public:
+    ProfileScope(FrameProfiler& profiler, int section, bool enabled = true);
+    ~ProfileScope();
+
+    // One timer per block: copying one would record the same time twice
+    ProfileScope(const ProfileScope&) = delete;
+    ProfileScope& operator=(const ProfileScope&) = delete;
+
+  private:
+    FrameProfiler& m_profiler;
+    int m_section;
+    bool m_enabled;
+    Uint64 m_start;
+};
 } // namespace DynamoEngine

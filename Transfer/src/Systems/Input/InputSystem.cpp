@@ -35,44 +35,6 @@ void panCamera(CameraState& camera_state, DynamoEngine::Vector2D screen_delta)
     camera_state.offset += screen_delta / camera_state.zoom;
     camera_state.twinkling_star_offset += (screen_delta / camera_state.zoom) * STAR_PARALLAX_FACTOR;
 }
-// Keeps the view's centre where the view stays inside a rectangle (centre +- half size, world units). When the view
-// is bigger than the rectangle, the view is centred on it.
-void clampViewToRectangle(DynamoEngine::Vector2D& offset_to_clamp, DynamoEngine::Vector2D rectangle_center,
-                          double rectangle_half_width, double rectangle_half_height, double view_half_width,
-                          double view_half_height)
-{
-    double slack_x = std::max(0.0, rectangle_half_width - view_half_width);
-    double slack_y = std::max(0.0, rectangle_half_height - view_half_height);
-
-    DynamoEngine::Vector2D view_center_world = {view_half_width - offset_to_clamp.x_val,
-                                                view_half_height - offset_to_clamp.y_val};
-    view_center_world.x_val =
-        std::clamp(view_center_world.x_val, rectangle_center.x_val - slack_x, rectangle_center.x_val + slack_x);
-    view_center_world.y_val =
-        std::clamp(view_center_world.y_val, rectangle_center.y_val - slack_y, rectangle_center.y_val + slack_y);
-
-    offset_to_clamp.x_val = view_half_width - view_center_world.x_val;
-    offset_to_clamp.y_val = view_half_height - view_center_world.y_val;
-}
-
-// The camera can't pan past the world's edges; the star field's own (parallax) pan can't pass the star field's edges
-void clampCameraToWorld(CameraState& camera_state, const UniverseState& universe_state)
-{
-    double view_half_width = (camera_state.window_width / 2.0) / camera_state.zoom;
-    double view_half_height = (camera_state.window_height / 2.0) / camera_state.zoom;
-
-    const DynamoEngine::Vector2D world_center = (universe_state.world_min_corner + universe_state.world_max_corner) / 2.0;
-    const DynamoEngine::Vector2D world_half_size =
-        (universe_state.world_max_corner - universe_state.world_min_corner) / 2.0;
-    clampViewToRectangle(camera_state.offset, world_center, world_half_size.x_val, world_half_size.y_val,
-                         view_half_width, view_half_height);
-
-    double star_field_half_width = camera_state.max_display_width / (2.0 * MIN_ZOOM);
-    double star_field_half_height = camera_state.max_display_height / (2.0 * MIN_ZOOM);
-    DynamoEngine::Vector2D star_field_center = {SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0};
-    clampViewToRectangle(camera_state.twinkling_star_offset, star_field_center, star_field_half_width,
-                         star_field_half_height, view_half_width, view_half_height);
-}
 
 } // namespace
 
@@ -119,12 +81,12 @@ void InputSystem::processSystemInputFrame(GameState& game_state, UIState& ui_sta
     const bool runs_simulation = scene.settings().runs_simulation;
     if (runs_simulation)
     {
-        updateCamera(game_state);
+        updateCamera(game_state, frame_seconds);
         translateGameInputs(game_state, ui_state, scenes, player_input, ui_result.pointer_captured);
     }
     else
     {
-        translateMenuInputs(scenes);
+        translateMenuInputs(ui_state, scenes);
     }
 
     // A see-through preview follows the cursor while a spawn button is held down on the world (not on the UI):
@@ -189,7 +151,7 @@ void InputSystem::trackDragAnchor(const DynamoEngine::InputEvent& event)
     }
 }
 // --- CAMERA UPDATE --- //
-void InputSystem::updateCamera(GameState& game_state)
+void InputSystem::updateCamera(GameState& game_state, float frame_seconds)
 {
     using DynamoEngine::MouseButton;
     CameraState& camera_state = game_state.getCameraStateMutable();
@@ -204,14 +166,39 @@ void InputSystem::updateCamera(GameState& game_state)
         panCamera(camera_state, m_input.mousePositionDeltaThisFrame());
     }
 
-    clampCameraToWorld(camera_state, game_state.getUniverseState());
+    // Arrow keys pan too (trackpads have no middle button). A drag moves the world WITH the mouse, so looking right
+    // means moving the world left: the screen delta is the opposite of the arrow's direction.
+    DynamoEngine::Vector2D arrow_direction = {0.0, 0.0};
+    if (m_input.isKeyDown(SDL_SCANCODE_RIGHT))
+        arrow_direction.x_val += 1.0;
+    if (m_input.isKeyDown(SDL_SCANCODE_LEFT))
+        arrow_direction.x_val -= 1.0;
+    if (m_input.isKeyDown(SDL_SCANCODE_DOWN))
+        arrow_direction.y_val += 1.0;
+    if (m_input.isKeyDown(SDL_SCANCODE_UP))
+        arrow_direction.y_val -= 1.0;
+    if (arrow_direction.x_val != 0.0 || arrow_direction.y_val != 0.0)
+    {
+        // The speed is in UI points per second: it grows with the window like the UI does, so panning across the
+        // screen takes the same time on a small window and a big one
+        const double window_scale =
+            DynamoEngine::UIRoot::fitScale({camera_state.window_width, camera_state.window_height});
+        const double pan_speed = CAMERA_KEY_PAN_SPEED * window_scale;
+        panCamera(camera_state, arrow_direction * (-pan_speed * frame_seconds));
+    }
+
+    const UniverseState& universe_state = game_state.getUniverseState();
+    camera_state.debug_view_push_back =
+        keepViewInsideWorld(camera_state, universe_state.world_min_corner, universe_state.world_max_corner);
 }
 
-void InputSystem::translateMenuInputs(DynamoEngine::SceneManager& scenes)
+void InputSystem::translateMenuInputs(const UIState& ui_state, DynamoEngine::SceneManager& scenes)
 {
     if (m_input.wasKeyPressed(SDL_SCANCODE_ESCAPE))
     {
-        scenes.requestSwitch(TransferScene::Game);
+        // From the pause menu: back to the scene that was paused. From the start menu: into the game.
+        bool is_paused = scenes.currentSceneId() == TransferScene::Pause;
+        scenes.requestSwitch(is_paused ? ui_state.getResumeScene() : TransferScene::Game);
     }
 }
 
@@ -237,6 +224,7 @@ void InputSystem::translateGameInputs(GameState& game_state, UIState& ui_state, 
     }
     if (m_input.wasKeyPressed(SDL_SCANCODE_ESCAPE))
     {
+        ui_state.setResumeScene(scenes.currentSceneId()); // the pause menu returns here
         scenes.requestSwitch(TransferScene::Pause);
         return;
     }
@@ -264,10 +252,17 @@ void InputSystem::translateGameInputs(GameState& game_state, UIState& ui_state, 
     {
         ui_state.setRenderDebug(!ui_state.getRenderDebug());
     }
-    // F4: show or hide the profiler (how long each system takes: average and 1% low)
+    // F4: the frame profiler (each system); F5: the physics profiler (each part of the tick). The other key switches
+    // over, the same key again hides it.
     if (m_input.wasKeyPressed(SDL_SCANCODE_F4))
     {
-        ui_state.setShowProfiler(!ui_state.getShowProfiler());
+        bool showing = ui_state.getProfilerOverlay() == ProfilerOverlay::Frame;
+        ui_state.setProfilerOverlay(showing ? ProfilerOverlay::Off : ProfilerOverlay::Frame);
+    }
+    if (m_input.wasKeyPressed(SDL_SCANCODE_F5))
+    {
+        bool showing = ui_state.getProfilerOverlay() == ProfilerOverlay::Physics;
+        ui_state.setProfilerOverlay(showing ? ProfilerOverlay::Off : ProfilerOverlay::Physics);
     }
     // P: planning mode on/off (time stops; leaving it resumes at the speed slider's value)
     if (m_input.wasKeyPressed(SDL_SCANCODE_P))

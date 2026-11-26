@@ -36,7 +36,7 @@ void Game::StartGame()
 {
     // Initialize any other useful game_state variables here.
     game_state.SetPlaying(true);
-    game_state.getUniverseStateMutable().has_ship = RUN_GAME_WITH_PLAYER_SHP;
+    game_state.getUniverseStateMutable().has_ship = RUN_GAME_WITH_PLAYER_SHIP;
     setUpWorldEdges();
 
     // Default to starting in the level scene since other scenes are not
@@ -55,22 +55,19 @@ void Game::StartGame()
     // End the game and clean up resources after exiting the loop
     Game::EndGame();
 }
-// The world's edges: the star field's extent (the normal game), or the small test world. Centred where the star field
-// is (the screen's centre at zoom 1). Runs after the RenderSystem measured the display (it sizes the star field).
+// The world's edges: the star field's extent, centered where the star field is (the screen's center at zoom 1).
+// Runs after the RenderSystem measured the display (it sizes the star field). The camera can't pan past them; the
+// test scene can make them reflective walls (REFLECTIVE_WORLD_WALLS) while it is active.
 void Game::setUpWorldEdges()
 {
     const CameraState& camera_state = game_state.getCameraState();
     const DynamoEngine::Vector2D center = {SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0};
-    DynamoEngine::Vector2D half_size = {camera_state.max_display_width / (2.0 * MIN_ZOOM),
-                                        camera_state.max_display_height / (2.0 * MIN_ZOOM)};
-    if (USE_SMALL_TEST_WORLD)
-    {
-        half_size = {TEST_WORLD_WIDTH / 2.0, TEST_WORLD_HEIGHT / 2.0};
-    }
+    const DynamoEngine::Vector2D half_size = {camera_state.max_display_width / (2.0 * MIN_ZOOM),
+                                              camera_state.max_display_height / (2.0 * MIN_ZOOM)};
     UniverseState& universe_state = game_state.getUniverseStateMutable();
     universe_state.world_min_corner = center - half_size;
     universe_state.world_max_corner = center + half_size;
-    universe_state.reflective_walls = REFLECTIVE_WORLD_WALLS;
+    universe_state.reflective_walls = false;
 }
 
 // Tears down the 'systems' and cleans up allocated resources.
@@ -200,32 +197,67 @@ void Game::Run()
         {
             Game::publishProfilerReport();
         }
+        physicsSystem.endProfilerFrame();
+        if (physicsSystem.profiler().takeNewReport())
+        {
+            Game::publishPhysicsProfilerReport();
+        }
+    }
+}
+
+// One profiler report as overlay lines: the body counts, a header, then one row per section. The columns line up in
+// the monospaced UI font (SpaceMono). `title` names the report in its header.
+static std::vector<std::string>
+profilerReportLines(const char* title, const std::vector<DynamoEngine::FrameProfiler::SectionReport>& report,
+                    const UniverseState& universe_state)
+{
+    std::vector<std::string> lines;
+    char line[128];
+    // How busy the universe is right now (sampled when the report is made, so it refreshes with the timings)
+    std::snprintf(line, sizeof(line), "Particles: %zu   Planets: %zu", universe_state.particles.size(),
+                  universe_state.macro_bodies.size());
+    lines.push_back(line);
+    std::snprintf(line, sizeof(line), "%-19s %8s %8s %8s", title, "avg", "1% low", "worst");
+    lines.push_back(line);
+    for (const DynamoEngine::FrameProfiler::SectionReport& section : report)
+    {
+        std::snprintf(line, sizeof(line), "%-19s %8.3f %8.3f %8.3f", section.name.c_str(), section.average_ms,
+                      section.one_percent_low_ms, section.worst_ms);
+        lines.push_back(line);
+    }
+    return lines;
+}
+
+// Also to the console while that overlay is on, so the numbers can be copied out
+static void printProfilerLines(const std::vector<std::string>& lines, size_t window_frames)
+{
+    std::printf("--- %zu frames ---\n", window_frames);
+    for (const std::string& text : lines)
+    {
+        std::printf("%s\n", text.c_str());
     }
 }
 
 void Game::publishProfilerReport()
 {
-    // One line per section, columns lined up for the monospaced UI font (SpaceMono)
-    std::vector<std::string> lines;
-    char line[128];
-    std::snprintf(line, sizeof(line), "%-13s %8s %8s %8s", "Profiler (ms)", "avg", "1% low", "worst");
-    lines.push_back(line);
-    for (const DynamoEngine::FrameProfiler::SectionReport& section : m_profiler.report())
+    std::vector<std::string> lines =
+        profilerReportLines("Frame (ms)", m_profiler.report(), game_state.getUniverseState());
+    ui_state.setFrameProfilerLines(lines);
+    if (ui_state.getProfilerOverlay() == ProfilerOverlay::Frame)
     {
-        std::snprintf(line, sizeof(line), "%-13s %8.3f %8.3f %8.3f", section.name.c_str(), section.average_ms,
-                      section.one_percent_low_ms, section.worst_ms);
-        lines.push_back(line);
+        printProfilerLines(lines, m_profiler.windowFrames());
     }
-    ui_state.setProfilerLines(lines);
+}
 
-    // Also to the console while the overlay is on, so numbers can be copied out
-    if (ui_state.getShowProfiler())
+void Game::publishPhysicsProfilerReport()
+{
+    DynamoEngine::FrameProfiler& physics_profiler = physicsSystem.profiler();
+    std::vector<std::string> lines =
+        profilerReportLines("Physics/frame (ms)", physics_profiler.report(), game_state.getUniverseState());
+    ui_state.setPhysicsProfilerLines(lines);
+    if (ui_state.getProfilerOverlay() == ProfilerOverlay::Physics)
     {
-        std::printf("--- %zu frames ---\n", m_profiler.windowFrames());
-        for (const std::string& text : lines)
-        {
-            std::printf("%s\n", text.c_str());
-        }
+        printProfilerLines(lines, physics_profiler.windowFrames());
     }
 }
 

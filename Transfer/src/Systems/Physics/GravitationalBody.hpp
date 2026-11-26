@@ -50,7 +50,7 @@ struct GravitationalBody
     bool isAccretable = false;  // allows body to be absorbed into another
     bool isCollidable = false;  // makes the body a ghost
     bool isMacroGhost = false;  // a ghost to macro bodies and the ship, but still collides with
-                                // particles (debris). Physics honours it; nothing sets it right now.
+                                // particles (debris). Physics honors it; nothing sets it right now.
     bool isPreview = false;
     bool visible = true; // particles and macros should be visible by default
                          // but if instantiated specifically for collision

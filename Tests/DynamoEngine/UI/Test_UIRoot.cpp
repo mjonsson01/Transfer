@@ -74,6 +74,48 @@ TEST(UIRoot, ScaleGrowsWithThewindow_height)
     EXPECT_TRUE(VectorsNear(root.uiSpaceSize(), {1280.0f, 720.0f}, 1e-4f)); // same layout space as 720p
 }
 
+TEST(UIRoot, TallerWindowFitsTheWidth)
+{
+    // A 16:10-ish window (a MacBook in fullscreen): width is the tight direction, so the scale follows it and the
+    // extra height becomes extra UI space at the top and bottom
+    UIRoot root;
+    root.setWindowSize({1512.0f, 982.0f});
+    EXPECT_FLOAT_EQ(root.uiScale(), 1512.0f / 1280.0f);
+    EXPECT_FLOAT_EQ(root.uiSpaceSize().x_val, 1280.0f);
+    EXPECT_GT(root.uiSpaceSize().y_val, 720.0f);
+}
+
+TEST(UIRoot, WiderWindowFitsTheHeight)
+{
+    // An ultrawide window: height is the tight direction, the extra width becomes extra UI space at the sides
+    UIRoot root;
+    root.setWindowSize({3440.0f, 1440.0f});
+    EXPECT_FLOAT_EQ(root.uiScale(), 2.0f);
+    EXPECT_TRUE(VectorsNear(root.uiSpaceSize(), {1720.0f, 720.0f}, 1e-4f));
+}
+
+TEST(UIRoot, DesignSizedElementFitsInAnyWindowShape)
+{
+    // Anything that fits in 1280 x 720 must fit in every window, whatever its shape
+    const Vector2F window_sizes[] = {{1280.0f, 720.0f}, {1512.0f, 982.0f}, {800.0f, 800.0f}, {3440.0f, 1440.0f}};
+    for (const Vector2F& window_size : window_sizes)
+    {
+        UIRoot root;
+        root.setWindowSize(window_size);
+        auto panel = std::make_unique<UIElement>();
+        panel->setPlacement({.align = UIAlign::BottomCenter, .size = {1280.0f, 720.0f}, .margin = 0.0f});
+        UIElement& added = root.addChild(std::move(panel));
+
+        root.updateElements(0.016f);
+
+        const Vector2F space = root.uiSpaceSize();
+        EXPECT_GE(added.rect().x, -1e-3f);
+        EXPECT_GE(added.rect().y, -1e-3f);
+        EXPECT_LE(added.rect().x + added.rect().w, space.x_val + 1e-3f);
+        EXPECT_LE(added.rect().y + added.rect().h, space.y_val + 1e-3f);
+    }
+}
+
 TEST(UIRoot, PlayerScaleMultipliesTheAutoFit)
 {
     UIRoot root;
@@ -93,6 +135,10 @@ TEST(UIRoot, MinimizedWindowDoesNotDivideByZero)
 {
     UIRoot root;
     root.setWindowSize({0.0f, 0.0f});
+    EXPECT_GT(root.uiScale(), 0.0f);
+    root.setWindowSize({1280.0f, 0.0f}); // only one side collapsed
+    EXPECT_GT(root.uiScale(), 0.0f);
+    root.setWindowSize({0.0f, 720.0f});
     EXPECT_GT(root.uiScale(), 0.0f);
 }
 

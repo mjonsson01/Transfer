@@ -190,7 +190,9 @@ Lambdas capture Game members by reference, which is safe because they outlive th
   `setZIndex` (siblings only); `requestSound(UISound)` bubbles up to the root. Overridables: `update(dt)`, `draw(builder) const`
   (self only), `onMousePressed` (return true = "this press is mine"), `onMouseDragged`, `onMouseReleased(pos, released_inside)`,
   `onMouseEntered`, **`onMouseHover(pos)`** (every frame while hovered), `onMouseExited`.
-- `UIRoot`: UI scale = (window height / `UI_REFERENCE_HEIGHT` 720) × player scale. It works in UI space: `uiSpaceSize()` and `screenToUISpace()`.
+- `UIRoot`: UI scale = `UIRoot::fitScale(window)` × player scale, fitScale = min(width / `UI_REFERENCE_WIDTH` 1280, height / `UI_REFERENCE_HEIGHT` 720)
+  (since 2026-11-26; was height only), so the 1280 x 720 design space ALWAYS fits: extra space appears at the sides (ultrawide) or top/bottom
+  (16:10, Mac fullscreen). fitScale is static so world overlays can use it too. It works in UI space: `uiSpaceSize()` and `screenToUISpace()`.
   It rebuilds layout and draw order every frame. Draw order = tree order (parent first, siblings by z), then stable-sorted by layer. Hit test =
   reverse draw order. `processInput` handles hover, offers a press top-down until one returns true, then capture/drag/release (left button only).
   `cancelPointerInput`, `setSoundHandler`, `topmostElementAt`, `elementsInDrawOrder`.
@@ -327,20 +329,20 @@ Lambdas capture Game members by reference, which is safe because they outlive th
     rejects; never misses a real neighbour. Not a bug. Idea for Marco: despawn far-away particles to return budget.
 - **Ship sprite (2026-10-09, `Bugfixes` after commit 58742d5, typed by Marco in walkthrough mode, seen working in-game):**
   Marco's Procreate drawing exported as `Transfer/Assets/Visual/Ships/FutureShip.png` (2048x2048 RGBA, transparent, nose up,
-  centred; the .procreate source stays OUT of Assets/ because everything there is bundled). RenderSystem::loadSpriteTexture(path
+  centered; the .procreate source stays OUT of Assets/ because everything there is bundled). RenderSystem::loadSpriteTexture(path
   under Assets/): SDL_LoadPNG (built into SDL 3.4, no SDL_image) -> SDL_ConvertSurface RGBA32 -> SDL_PremultiplySurfaceAlpha ->
   texture R8G8B8A8, usage SAMPLER|COLOR_TARGET (COLOR_TARGET is REQUIRED by SDL_GenerateMipmapsForGPUTexture: verified by SDL's
   debug assert), num_levels = halvings + 1 (2048 -> 12) -> upload level 0 -> generate mipmaps outside any pass. Returns nullptr +
   logs if missing; renderStarship then skips (Marco's choice). m_sprite_sampler: linear + mipmap LINEAR + clamp, max_lod = 1000
   (default 0 = never leaves level 0). Starship::buildGeometry = one textured square (6 verts, u right / v down, v=0 = nose) of side
-  shipSize (Marco set 150; the 50 placeholder looked tiny), centred where the old box was. Shaders: vert passes uv; frag samples
+  shipSize (Marco set 150; the 50 placeholder looked tiny), centered where the old box was. Shaders: vert passes uv; frag samples
   t0/s0 space2. Pipeline: frag 1 sampler, blend src = ONE (premultiplied). Draw order now stars -> bodies -> ship -> arrow -> UI
   (Marco: ship above bodies; he plans physics so they never overlap). Old buildGeometry kept commented out by Marco (to delete).
   Open quiz: what the ship would look like zoomed in vs out without the mipmap generation call.
 - **Ship physics, DONE (2026-10-09, `Bugfixes`, typed by Marco step by step, 'works great' in-game).** Marco's decisions: convex POLYGON hitbox, BOUNCE on impact (pushed
   out = never overlaps, loses energy), ONE-WAY gravity (planets pull the ship, not back), rotation player-only (no spin physics).
   Plan: (1) DynamoEngine/Physics/Collision2D: `CircleContact circleVsConvexPolygon(center, radius, polygon)` -> {touching,
-  normal (polygon -> circle, unit), depth}; inside-centre case = nearest edge's outward normal, depth r + d; outside r - d;
+  normal (polygon -> circle, unit), depth}; inside-center case = nearest edge's outward normal, depth r + d; outside r - d;
   exactly touching = not touching; outward normals flipped using the corner average (any winding). DONE: typed by Marco,
   Tests/DynamoEngine/Physics/Test_Collision2D.cpp 9 tests (Claude wrote the last 3 at Marco's request and FIXED his
   squareReversed(), which wasn't reversed: the winding mutation then went uncaught). Mutation-checked, TidyEngine 36 files clean.
@@ -631,6 +633,93 @@ step = walkthrough, starting with the tracer class header.**
   prediction must cut thrust (coast), or it thrusts forever.
 
 **Next candidates** (let Marco pick):
+- **CAMERA LIMIT CHECK RESOLVED + RENAMES (2026-11-25):** Marco's F3 readout showed the limit WORKS: at zoom 0.01 his
+  world (MacBook desktop 1512 x 982 points / MIN_ZOOM = 151,200 x 98,200 around (640, 360)) leaves the view (1280 x
+  720 window / 0.01 = 128,000 x 72,000) only x [-10,960, 12,240], y [-12,740, 13,460]; he was parked at (12,240,
+  -12,740). Claude's earlier '~32.6k' assumed a 1920 x 1080 display: always compute from HIS screen. What he
+  really expected: WORLD SIZE as the master setting (zoom-out limited to where the world fills the window, star field
+  sized to cover the world) instead of MIN_ZOOM sizing everything. Agreed to fold that into the camera rework.
+  Renames (Marco: 'clamp' terminology unclear): Camera/CameraClamp -> Camera/CameraLimits, clampCameraToWorld ->
+  keepViewInsideWorld, clampViewToRectangle -> keepViewInsideRectangle, CameraState::debug_last_clamp_correction ->
+  debug_view_push_back (still TEMPORARY with the F3 readout, which now says 'pushed back by'), harness
+  camera_clamp_ -> camera_limits_. US ENGLISH from now on (memory transfer-us-english): swept colour/neighbouring/
+  normalised from src, HLSL and harnesses (Marco had already done centre -> center).
+- **REDUCED TEST WORLD REMOVED (2026-11-25, Marco):** it only moved the world-edge rectangle (camera limit + optional
+  walls); physics has no size limit and the star field stays full size, so the collision box covers the use case.
+  Gone: USE_SMALL_TEST_WORLD, TEST_WORLD_WIDTH/HEIGHT, the TestVisualScene world save/restore, the grey 'small world'
+  outline. Kept: UniverseState world corners (= the star field's extent; the camera clamp uses them) and
+  REFLECTIVE_WORLD_WALLS (test scene only, red outline at the star field's edge). Older notes above that mention the
+  small test world describe the removed version.
+  MARCO OBSERVED (2026-11-25): with the small test world on, the camera was NOT stopped, contrary to Claude's
+  code-reading claim ('the view locks to the world's center'). Not investigated (feature removed). The same
+  clampCameraToWorld still guards the star-field edge: if the camera ever pans past the star field, look there
+  (and check which build/scene was running). Don't describe camera behaviour as fact without running it.
+  FOLLOW-UP (same day): clamp moved to Camera/CameraClamp.hpp/.cpp (free function clampCameraToWorld(camera,
+  world_min, world_max) returning the correction); camera_clamp_harness proves the MATH is right. TEMPORARY F3
+  readout (TransferScenes addSandboxUI: CAMERA center/zoom/view + WORLD edges + 'clamp moved', from
+  CameraState::debug_last_clamp_correction) to see it live. Prime suspect for what Marco saw: the star layer's own
+  offset (twinkling_star_offset) is only clamped to the star field, so stars keep sliding while the world is locked.
+  Remove the readout + debug_last_clamp_correction once confirmed.
+  Marco is on a TRACKPAD (no middle button, and the engine only carries VERTICAL scroll = zoom), so he could not
+  pan at all. Added: arrow keys pan (InputSystem::updateCamera(game_state, frame_seconds), CAMERA_KEY_PAN_SPEED 900
+  UI points/s since 2026-11-26). Future (his call): trackpad-native camera = two-finger swipe pans, pinch zooms; needs horizontal
+  wheel (+ pinch) support in SDLInputIntake/InputState and changes zoom for mouse users. Belongs with the camera work.
+- **F5 PHYSICS PROFILER (2026-11-25):** engine DynamoEngine::ProfileScope (FrameProfiler.hpp: RAII timer, records into a
+  section when its { } block ends; `enabled` false = records nothing; 3 googletests, 151/151, tidy 40 clean).
+  PhysicsSystem owns m_profiler (PROFILER_WINDOW_FRAMES) + ProfilerSections, rows: Coll: planets / planet-debris /
+  debris grid / debris pairs / ship, Verlet 1st half, Grav: planets / debris / ship, Verlet 2nd half, Walls & box,
+  Cleanup, Whole tick, Prediction. One ProfileScope line at the top of each timed function, gated by
+  m_profiling_real_tick (true only inside advanceUniverseState) so predictions running the same functions on copies
+  don't pollute the rows; Prediction has its own always-on row (updateTrajectories). Per FRAME, summed over ticks.
+  Game calls physicsSystem.endProfilerFrame() + publishPhysicsProfilerReport. UIState::ProfilerOverlay {Off, Frame,
+  Physics}: F4/F5 switch between them (both wouldn't fit), same key hides. MAX_PROFILER_LINES 17. Shared formatting:
+  profilerReportLines() in Game.cpp. First measurement (20 planets + 8000 particles, 2 ticks/frame, O2): whole tick
+  3.36 ms/frame = debris pairs 1.45, debris gravity 0.78, planet-debris 0.56, grid build 0.49, the rest ~0.1.
+- **UI FITS ANY WINDOW SHAPE + PROFILER MOVED (2026-11-26, Marco: F5 overlapped the sliders; Mac fullscreen clipped
+  the slider row's edge; 'anywhere absolute px values are used ... should be modified'):** cause: UIRoot scaled by
+  window HEIGHT only, so Mac fullscreen 1512 x 982 gave a UI space of ~1108 x 720 and the 1150-wide slider row didn't
+  fit. FIX (engine): UIRoot::fitScale = min(w / 1280, h / 720) (UI_REFERENCE_WIDTH added to GlobalConstants); 3 new
+  googletests (TallerWindowFitsTheWidth, WiderWindowFitsTheHeight, DesignSizedElementFitsInAnyWindowShape), 154/154,
+  tidy 40 clean. Profiler overlay (F4/F5) moved out of the top-left readouts into a TOP-RIGHT column: visor dropdown,
+  8-point gap, then MAX_PROFILER_LINES labels PROFILER_TEXT_WIDTH 520 wide (46-char lines of 18 pt Space Mono, which
+  is monospaced at 0.612 em = 11 points/char). A static_assert in TransferScenes.cpp checks the column ends above the
+  slider row at 1280 x 720 (513 < 543), the tightest the UI space ever gets. World overlays that were fixed SCREEN px
+  now grow with the window like the UI (sizes in 'UI points'): spawn velocity arrow (THICKNESS/HEAD_*_POINTS) and
+  trajectory time marks (RenderSystem.cpp worldUnitsPerUIPoint(camera) = fitScale / zoom), and arrow-key pan speed
+  (CAMERA_KEY_PAN_SPEED now UI points/s). Deliberately NOT scaled: how much WORLD a bigger window shows (normal for a
+  world view; part of the camera/world-size rework), star sizes (world space), 1 px debug lines. Known small
+  overlap: with F3 AND F5 on, the temporary 'WORLD: ... pushed back by' line runs ~3 characters under the profiler
+  column; goes away when that temporary readout is removed.
+- **Small-world constants clarification (Marco, 2026-11-25):** USE_SMALL_TEST_WORLD / REFLECTIVE_WORLD_WALLS apply ONLY in
+  the TestVisual scene since the collision-box change (the game scene always uses the star-field world). Without
+  REFLECTIVE_WORLD_WALLS the small world only limits the camera; bodies can still leave it.
+  Marco then found TEST_WORLD_WIDTH/HEIGHT 'did nothing': applied, but invisible (no outline without walls) and at
+  zoom 0.35 the window shows ~3657 x 2057 world px, so any smaller world just locks the camera to its center. FIX:
+  buildDebugLines outlines the world edge whenever reflective (red) OR smaller than the star field (grey, derived
+  from the sizes, no flag).
+- **F4 PROFILER, FASTER (2026-11-25):** PROFILER_WINDOW_FRAMES 300 -> 60 (refreshes every second); the first overlay
+  line is 'Particles: N   Planets: M', sampled when each report is made. With < 100 frames per window the '1% low'
+  equals the slowest frame (= 'worst'); if both fast refresh AND a meaningful 1% low are wanted, FrameProfiler needs a
+  rolling window (report every N frames over the last M) -- offered, not done.
+- **TEST TOOLS: WORLD EDGES + COLLISION BOX (2026-11-25, Marco's request, to push collision density to a known
+  upper bound before the 10x particle work):** UniverseState::world_min_corner/world_max_corner + reflective_walls
+  (Game::setUpWorldEdges = the star field's extent, walls off; the camera clamp (InputSystem clampCameraToWorld)
+  uses them; the star layer still clamps to the star field) and has_collision_box + collision_box_min/max_corner.
+  Walls run at the END of integrateUniversePhysics (bounceOffWorldWalls, bounceOffCollisionBox), so the I trace and
+  the placement preview bounce too (the preview copies walls + box: it builds its own universe). WALL_RESTITUTION 1.
+  The box is TWO-SIDED: a body whose center was inside stays inside, one from outside bounces off the outside.
+  GOTCHA found by the harness: handleElasticCollisions' push-apart sets previousPosition = position, so the box
+  can't judge sides by previousPosition after collisions: advanceUniverseState remembers every position BEFORE
+  handleCollisionEvents (rememberCollisionBoxSides) and runs bounceOffCollisionBox(BoxSides::BeforeCollisions) right
+  after; inside the integrator it uses BoxSides::StartOfStep (previousPosition from the Verlet first half).
+  Before the fix a crammed 800-particle cluster leaked up to 141 particles; after: 0. Drawn as lines (always, not
+  only F3): world walls red, box cyan. TestVisual is now the TEST SANDBOX: TestVisualScene (TransferScenes.cpp) has
+  the game's UI (addSandboxUI, shared with the game scene), a 'TEST SCENE' label, and onEnter puts a
+  TEST_COLLISION_BOX_WIDTH x HEIGHT box (2000 x 2000) around the current view and, if USE_SMALL_TEST_WORLD, shrinks
+  the world around it (+ REFLECTIVE_WORLD_WALLS); onExit removes the box and restores the saved world. Start menu has
+  a 'Test Scene' button; Esc/Resume return to the scene that was paused (UIState::getResumeScene). Known: the two
+  scenes have separate slider widgets (knobs can show stale values if both are used; they can't be switched between
+  without a restart today). Harness world_walls_. Marco's constant name RUN_GAME_WITH_PLAYER_SHIP has a typo (SHP).
 - **DEPRECATED_InputState RETIRED (2026-11-25, branch FixInputState, implemented by Claude, Marco reviewing):**
   24 of its 41 fields were dead. Replaced by Core/PlayerInput.hpp: ShipControls {thrust, rotation: +1/-1/0},
   SpawnProperties {is_cluster, with_velocity, world_position, world_velocity}, PlayerCommands {spawn + spawn_aim,
@@ -649,7 +738,7 @@ step = walkthrough, starting with the tracer class header.**
   GOTCHA seen: Marco's editor formatter reflowed long trailing comments in PlayerCommands INTO the code (fields
   vanished into comments). Comments on their own line above a field are safe.
 - **SPAWN PANEL CLEANUP (2026-11-25, Marco):** Planet Ghost checkbox REMOVED (SpawnSettings::is_macro_ghost gone;
-  physics still honours GravitationalBody::isMacroGhost, nothing sets it; the ghost_spawn_ harness sets it on bodies).
+  physics still honors GravitationalBody::isMacroGhost, nothing sets it; the ghost_spawn_ harness sets it on bodies).
   Exclusion rules in ONE place: enum class SpawnFlag {Static, Shatterable, Accretable, Bounce, Ghost} +
   SpawnSettings::setFlag(flag, on) / flag(flag) (Core/SpawnSettings.cpp). Turning ON: Ghost -> off Bounce, Accretable,
   Shatterable; Bounce -> off Ghost, Accretable, Shatterable; Accretable/Shatterable -> off Ghost, Bounce; Static
@@ -658,11 +747,11 @@ step = walkthrough, starting with the tracer class header.**
   rows support in makeSpawnSection stays). Harness spawn_settings_ checks the table. Marco renamed SpawnAim ->
   SpawnProperties (PlayerInput.hpp) in his pass; HarnessInput.hpp follows.
 - **SHIP OPTIONAL (2026-11-25, Marco: off by default while he irons out other problems):** UniverseState::has_ship
-  (default TRUE in the struct, so harnesses keep their ship); Game::StartGame sets it from RUN_GAME_WITH_PLAYER_SHP
+  (default TRUE in the struct, so harnesses keep their ship); Game::StartGame sets it from RUN_GAME_WITH_PLAYER_SHIP
   (GameSystemConstants, currently FALSE). Without the ship nothing touches it: handleShipCollisions,
   addGravityBetweenShipAndBodies, applyShipInputPhysics, adjustThrottleWhilePlanning, both Verlet halves, the ship
   trajectory line, uploadStarship, the F3 hitbox and the THROTTLE readout all check has_ship. The placement preview
-  copies has_ship. To bring the ship back: set RUN_GAME_WITH_PLAYER_SHP = true (a key/setting later if wanted).
+  copies has_ship. To bring the ship back: set RUN_GAME_WITH_PLAYER_SHIP = true (a key/setting later if wanted).
 - **VELOCITY ARROW SIZE FIXED (2026-11-25, Marco's note):** buildVelocityVectorGeometry(start, end, zoom) sizes the
   shaft (12 px), head length (30 px) and head width (36 px) in SCREEN pixels (divided by zoom; the shader multiplies by
   zoom), and shrinks them proportionally when the drag is shorter than the head. appendPreviewBodies gets the zoom.

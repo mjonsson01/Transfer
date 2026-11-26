@@ -31,7 +31,7 @@ void UICheckbox::update(float delta_seconds)
 
 SDL_FRect UICheckbox::boxRect() const
 {
-    // A square, vertically centred, with the same gap to the left edge as above and below it
+    // A square, vertically centered, with the same gap to the left edge as above and below it
     const float side = m_rect.h * BOX_SIZE_FRACTION;
     const float gap = (m_rect.h - side) / 2.0f;
     return SDL_FRect{m_rect.x + gap, m_rect.y + gap, side, side};
@@ -59,7 +59,7 @@ void UICheckbox::draw(UIGeometryBuilder& builder) const
                         CHECK_COLOR);
     }
 
-    // The label starts one gap to the right of the box, vertically centred in the row
+    // The label starts one gap to the right of the box, vertically centered in the row
     const float gap = box.x - m_rect.x;
     const Vector2F label_top_left = {box.x + box.w + gap, m_rect.y + ((m_rect.h - builder.fontHeight()) / 2.0f)};
     builder.addText(m_label, label_top_left, LABEL_COLOR);

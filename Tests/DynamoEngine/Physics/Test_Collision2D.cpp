@@ -98,7 +98,7 @@ TEST_F(Collision2DTest, WindingDoesNotMatter)
 TEST_F(Collision2DTest, TriangleSlantedEdge)
 {
     // The slanted edge runs from (10, 0) to (0, 10): the line x + y = 10. Its outward direction is (1, 1) / sqrt(2).
-    // The centre (6, 6) is (6 + 6 - 10) / sqrt(2) = sqrt(2) beyond it, so the radius-2 circle overlaps by 2 - sqrt(2).
+    // The center (6, 6) is (6 + 6 - 10) / sqrt(2) = sqrt(2) beyond it, so the radius-2 circle overlaps by 2 - sqrt(2).
     CircleContact contact = circleVsConvexPolygon(Vector2D(6.0, 6.0), 2.0, triangle());
 
     const double half_root_two = std::sqrt(2.0) / 2.0;

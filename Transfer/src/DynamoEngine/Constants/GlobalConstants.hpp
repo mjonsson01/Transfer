@@ -7,7 +7,9 @@ namespace DynamoEngine
 // Near-zero comparison epsilon.
 constexpr double EPSILON = 1e-8;
 
-// The window height the UI is designed at. The UI scales up and down from here with the window height.
+// The window size the UI is designed at (UI points). The UI scales up and down from here so that this whole
+// 1280 x 720 area always fits inside the window, whatever its shape (see UIRoot::uiScale).
+constexpr float UI_REFERENCE_WIDTH = 1280.0f;
 constexpr float UI_REFERENCE_HEIGHT = 720.0f;
 
 // Hardcoded Pi

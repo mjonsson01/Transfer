@@ -63,14 +63,20 @@ void UIRoot::setPlayerScale(float player_scale)
     }
 }
 
-float UIRoot::uiScale() const
+float UIRoot::fitScale(Vector2F window_size)
 {
-    if (m_window_size.y_val <= 0.0f) // minimized window: keep a usable scale instead of dividing by zero later
+    // Minimized window: keep a usable scale instead of dividing by zero later
+    if (window_size.x_val <= 0.0f || window_size.y_val <= 0.0f)
     {
-        return m_player_scale;
+        return 1.0f;
     }
-    return (m_window_size.y_val / UI_REFERENCE_HEIGHT) * m_player_scale;
+    // How much the 1280 x 720 design space could grow in each direction; the smaller one is the one that fits
+    const float width_fit = window_size.x_val / UI_REFERENCE_WIDTH;
+    const float height_fit = window_size.y_val / UI_REFERENCE_HEIGHT;
+    return std::min(width_fit, height_fit);
 }
+
+float UIRoot::uiScale() const { return fitScale(m_window_size) * m_player_scale; }
 
 Vector2F UIRoot::uiSpaceSize() const { return m_window_size / uiScale(); }
 

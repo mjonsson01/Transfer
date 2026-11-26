@@ -75,7 +75,7 @@ int main()
     }
     { // 5. why scenario 4 shattered before: impact speed of a ship dropped 7 px above that planet
         double g = 1e9 / (260.0 * 260.0);
-        printf("5 drop: surface gravity of a 1e9 planet at the ship's centre ~%.0f px/s^2; falling 7 px gives ~%.0f px/s (shatter at %.0f)\n",
+        printf("5 drop: surface gravity of a 1e9 planet at the ship's center ~%.0f px/s^2; falling 7 px gives ~%.0f px/s (shatter at %.0f)\n",
                g, std::sqrt(2 * g * 7), MIN_SHATTER_SPEED);
     }
     { // 4. resting: ship dropped from just above a heavy planet, gravity keeps pulling it in for 4 s
@@ -85,7 +85,7 @@ int main()
         Starship& s = gs.getUniverseStateMutable().ship; placeShip(s, {0, -260}, {0, 0}); // tail fin ~7 px above the surface
         double worst = 0, last_speed = 0;
         for (int t = 0; t < 480; ++t) { p.advanceUniverseState(gs.getUniverseStateMutable(), ShipControls()); worst = std::max(worst, worstOverlap(gs)); last_speed = s.m_velocity.magnitude(); }
-        printf("4 resting: planets left %zu, worst overlap %.3f px, ship speed after 4 s %.2f px/s, ship centre y %.2f\n",
+        printf("4 resting: planets left %zu, worst overlap %.3f px, ship speed after 4 s %.2f px/s, ship center y %.2f\n",
                gs.getUniverseState().macro_bodies.size(), worst, last_speed, s.center().y_val);
     }
 }

@@ -13,7 +13,7 @@ int main()
     for (int step = 0; step < 130; ++step) // 130 x 0.05 rad = a full turn and a bit
     {
         p = ship.collisionPolygon();
-        DynamoEngine::Vector2D center = (p[0] + p[3]) / 2.0;                      // wingtips' midpoint, on the centre line
+        DynamoEngine::Vector2D center = (p[0] + p[3]) / 2.0;                      // wingtips' midpoint, on the center line
         DynamoEngine::Vector2D nose = (p[1] + p[2]) / 2.0;
         DynamoEngine::Vector2D facing = (nose - center).normalize();
         DynamoEngine::Vector2D pointing = ship.getPointingVector();

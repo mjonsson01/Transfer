@@ -6,6 +6,10 @@
 // Custom Imports
 #include "DynamoEngine/Debug/FrameProfiler.hpp"
 
+// Standard Library Imports
+#include <chrono>
+#include <thread>
+
 using namespace DynamoEngine;
 
 // --------- TESTS --------- //
@@ -136,4 +140,49 @@ TEST(FrameProfiler, EachWindowStartsFromScratch)
     }
     ASSERT_TRUE(profiler.takeNewReport());
     EXPECT_DOUBLE_EQ(profiler.report()[0].average_ms, 1.0); // the second window only
+}
+
+TEST(ProfileScope, RecordsTheBlocksTimeWhenTheBlockEnds)
+{
+    FrameProfiler profiler(1);
+    int section = profiler.addSection("Sleep");
+    {
+        ProfileScope timer(profiler, section);
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    profiler.endFrame();
+    ASSERT_TRUE(profiler.takeNewReport());
+    EXPECT_GE(profiler.report()[0].average_ms, 4.0); // slept 5 ms (sleeps can only run long, never short)
+}
+
+TEST(ProfileScope, DisabledRecordsNothing)
+{
+    FrameProfiler profiler(1);
+    int section = profiler.addSection("Sleep");
+    {
+        ProfileScope timer(profiler, section, false);
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+    profiler.endFrame();
+    ASSERT_TRUE(profiler.takeNewReport());
+    EXPECT_DOUBLE_EQ(profiler.report()[0].average_ms, 0.0);
+}
+
+TEST(ProfileScope, NestedScopesEachRecordTheirOwnSection)
+{
+    FrameProfiler profiler(1);
+    int outer = profiler.addSection("Outer");
+    int inner = profiler.addSection("Inner");
+    {
+        ProfileScope outer_timer(profiler, outer);
+        {
+            ProfileScope inner_timer(profiler, inner);
+            std::this_thread::sleep_for(std::chrono::milliseconds(3));
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(3));
+    }
+    profiler.endFrame();
+    ASSERT_TRUE(profiler.takeNewReport());
+    EXPECT_GE(profiler.report()[1].average_ms, 2.5);                              // inner: its own 3 ms
+    EXPECT_GE(profiler.report()[0].average_ms, profiler.report()[1].average_ms); // outer includes inner
 }

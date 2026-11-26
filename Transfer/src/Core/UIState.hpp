@@ -6,6 +6,7 @@
 #include <SDL3/SDL.h>
 
 // Custom Imports
+#include "DynamoEngine/Scenes/Scene.hpp"
 #include "Systems/Physics/SpawnSettings.hpp"
 #include "Systems/Audio/MusicModeEnum.hpp"
 #include "Constants/GameSystemConstants.hpp"
@@ -14,6 +15,14 @@
 #include <queue>
 #include <string>
 #include <vector>
+
+// Which profiler the overlay shows (only one at a time: both together wouldn't fit on screen)
+enum class ProfilerOverlay
+{
+    Off,
+    Frame,   // F4
+    Physics, // F5
+};
 
 class UIState
 {
@@ -54,11 +63,17 @@ class UIState
     // Time marks on the trajectory lines (every TRAJECTORY_TIME_MARK_SECONDS); will become a setting
     bool getShowTrajectoryTimeMarks() const { return m_show_trajectory_time_marks; }
     void setShowTrajectoryTimeMarks(bool show) { m_show_trajectory_time_marks = show; }
-    // F4 profiler overlay: on/off, and the lines it shows (Game writes them after every profiler window)
-    bool getShowProfiler() const { return m_show_profiler; }
-    void setShowProfiler(bool show) { m_show_profiler = show; }
-    const std::vector<std::string>& profilerLines() const { return m_profiler_lines; }
-    void setProfilerLines(const std::vector<std::string>& lines) { m_profiler_lines = lines; }
+    // The profiler overlay: off, F4 (the whole frame, system by system) or F5 (the physics tick, function by
+    // function). Game writes each one's lines after every profiler window.
+    ProfilerOverlay getProfilerOverlay() const { return m_profiler_overlay; }
+    void setProfilerOverlay(ProfilerOverlay overlay) { m_profiler_overlay = overlay; }
+    const std::vector<std::string>& frameProfilerLines() const { return m_frame_profiler_lines; }
+    void setFrameProfilerLines(const std::vector<std::string>& lines) { m_frame_profiler_lines = lines; }
+    const std::vector<std::string>& physicsProfilerLines() const { return m_physics_profiler_lines; }
+    void setPhysicsProfilerLines(const std::vector<std::string>& lines) { m_physics_profiler_lines = lines; }
+    // The scene Esc paused (Resume and Esc in the pause menu go back to it)
+    DynamoEngine::SceneId getResumeScene() const { return m_resume_scene; }
+    void setResumeScene(DynamoEngine::SceneId scene) { m_resume_scene = scene; }
     bool getIsPlanning() const { return m_is_planning; }
     void setIsPlanning(bool is_planning) { m_is_planning = is_planning; }
 
@@ -77,7 +92,9 @@ class UIState
     std::queue<std::string> pendingSoundEffects;
 
     bool m_show_trajectory_time_marks = true;
-    bool m_show_profiler = false;
-    std::vector<std::string> m_profiler_lines;
+    ProfilerOverlay m_profiler_overlay = ProfilerOverlay::Off;
+    std::vector<std::string> m_frame_profiler_lines;
+    std::vector<std::string> m_physics_profiler_lines;
+    DynamoEngine::SceneId m_resume_scene = 0; // set every time a simulation scene is paused
     bool m_is_planning = false; // P: time stops, and I can trace trajectories
 };

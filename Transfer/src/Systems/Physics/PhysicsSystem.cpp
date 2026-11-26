@@ -3,32 +3,65 @@
 #include "PhysicsSystem.hpp"
 #include "Systems/Physics/PhysicsConstants.hpp"
 
-PhysicsSystem::PhysicsSystem()
+PhysicsSystem::PhysicsSystem() : m_profiler(PROFILER_WINDOW_FRAMES)
 {
-    // Initialize physics system variables if needed
+    // The F5 overlay's rows, in this order
+    m_profile.planet_collisions = m_profiler.addSection("Coll: planets");
+    m_profile.planet_debris_collisions = m_profiler.addSection("Coll: planet-debris");
+    m_profile.debris_grid = m_profiler.addSection("Coll: debris grid");
+    m_profile.debris_pairs = m_profiler.addSection("Coll: debris pairs");
+    m_profile.ship_collisions = m_profiler.addSection("Coll: ship");
+    m_profile.verlet_first_half = m_profiler.addSection("Verlet 1st half");
+    m_profile.planet_gravity = m_profiler.addSection("Grav: planets");
+    m_profile.debris_gravity = m_profiler.addSection("Grav: debris");
+    m_profile.ship_gravity = m_profiler.addSection("Grav: ship");
+    m_profile.verlet_second_half = m_profiler.addSection("Verlet 2nd half");
+    m_profile.walls_and_box = m_profiler.addSection("Walls & box");
+    m_profile.cleanup = m_profiler.addSection("Cleanup");
+    m_profile.whole_tick = m_profiler.addSection("Whole tick");
+    m_profile.prediction = m_profiler.addSection("Prediction");
 }
+
+void PhysicsSystem::endProfilerFrame() { m_profiler.endFrame(); }
 
 PhysicsSystem::~PhysicsSystem() {}
 
 void PhysicsSystem::advanceUniverseState(UniverseState& universe_state, const ShipControls& ship_controls)
 {
-    // First, handle collisions, then integrate, then update forces, then integrate again, then finally cleanup
-    handleCollisionEvents(universe_state);
+    // Only the real tick feeds the F5 profile: the trajectory predictions run the same functions on copies
+    m_profiling_real_tick = true;
+    {
+        DynamoEngine::ProfileScope tick_timer(m_profiler, m_profile.whole_tick);
+        // Collisions, the ship's controls, then motion (Verlet + forces + walls), then cleanup.
+        // Collisions push overlapping bodies apart and could shove one across the collision box's edge, so remember
+        // which side everything was on before them, and put anything shoved across back on its side right after
+        rememberCollisionBoxSides(universe_state);
+        handleCollisionEvents(universe_state);
+        bounceOffCollisionBox(universe_state, BoxSides::BeforeCollisions);
 
-    applyShipInputPhysics(universe_state, ship_controls);
+        applyShipInputPhysics(universe_state, ship_controls);
 
-    integrateUniversePhysics(universe_state);
+        integrateUniversePhysics(universe_state);
 
-    cleanupGravBodies(universe_state);
+        cleanupGravBodies(universe_state);
+    } // the whole tick is recorded here, before profiling is switched off again
+    m_profiling_real_tick = false;
 }
 
 void PhysicsSystem::integrateUniversePhysics(UniverseState& universe_state)
 {
     // Update forces (grav, later will add electromagnetic)
-    integrateVelocityVerletFirstHalfStep(universe_state);
+    {
+        DynamoEngine::ProfileScope timer(m_profiler, m_profile.verlet_first_half, m_profiling_real_tick);
+        integrateVelocityVerletFirstHalfStep(universe_state);
+    }
     recomputeAllForces(universe_state);
-    integrateVelocityVerletSecondHalfStep(universe_state);
-    bounceOffWorldWalls(universe_state); // part of motion, so the trajectory predictions bounce too
+    {
+        DynamoEngine::ProfileScope timer(m_profiler, m_profile.verlet_second_half, m_profiling_real_tick);
+        integrateVelocityVerletSecondHalfStep(universe_state);
+    }
+    bounceOffWorldWalls(universe_state); // walls are part of motion, so the trajectory predictions bounce too
+    bounceOffCollisionBox(universe_state, BoxSides::StartOfStep);
 }
 
 // One axis of a wall bounce: keeps the body's edge inside [min_edge, max_edge] and turns it back if it was heading out
@@ -45,7 +78,7 @@ static void bounceInsideWalls(double& position, double& velocity, double radius,
         position = min_edge + radius;
         if (velocity < 0.0)
         {
-            velocity = -velocity * WORLD_WALL_RESTITUTION;
+            velocity = -velocity * WALL_RESTITUTION;
         }
     }
     else if (position + radius > max_edge)
@@ -53,13 +86,14 @@ static void bounceInsideWalls(double& position, double& velocity, double radius,
         position = max_edge - radius;
         if (velocity > 0.0)
         {
-            velocity = -velocity * WORLD_WALL_RESTITUTION;
+            velocity = -velocity * WALL_RESTITUTION;
         }
     }
 }
 
 void PhysicsSystem::bounceOffWorldWalls(UniverseState& universe_state)
 {
+    DynamoEngine::ProfileScope timer(m_profiler, m_profile.walls_and_box, m_profiling_real_tick);
     if (!universe_state.reflective_walls)
     {
         return;
@@ -76,7 +110,109 @@ void PhysicsSystem::bounceOffWorldWalls(UniverseState& universe_state)
     }
     if (universe_state.has_ship)
     {
-        universe_state.ship.bounceInsideWalls(low, high, WORLD_WALL_RESTITUTION);
+        universe_state.ship.bounceInsideWalls(low, high, WALL_RESTITUTION);
+    }
+}
+
+// A body against the collision box's edges, from whichever side it was on at the start of the tick (`previous`)
+static void bounceOffBox(DynamoEngine::Vector2D& position, DynamoEngine::Vector2D& velocity,
+                         const DynamoEngine::Vector2D& previous, double radius, const DynamoEngine::Vector2D& box_min,
+                         const DynamoEngine::Vector2D& box_max)
+{
+    const bool was_inside = previous.x_val >= box_min.x_val && previous.x_val <= box_max.x_val &&
+                            previous.y_val >= box_min.y_val && previous.y_val <= box_max.y_val;
+    if (was_inside)
+    {
+        bounceInsideWalls(position.x_val, velocity.x_val, radius, box_min.x_val, box_max.x_val);
+        bounceInsideWalls(position.y_val, velocity.y_val, radius, box_min.y_val, box_max.y_val);
+        return;
+    }
+
+    // From outside: if it now overlaps the box, push it back out through the side it came from
+    const bool overlaps = position.x_val + radius > box_min.x_val && position.x_val - radius < box_max.x_val &&
+                          position.y_val + radius > box_min.y_val && position.y_val - radius < box_max.y_val;
+    if (!overlaps)
+    {
+        return;
+    }
+    if (previous.x_val < box_min.x_val)
+    {
+        position.x_val = box_min.x_val - radius;
+        if (velocity.x_val > 0.0)
+            velocity.x_val = -velocity.x_val * WALL_RESTITUTION;
+    }
+    else if (previous.x_val > box_max.x_val)
+    {
+        position.x_val = box_max.x_val + radius;
+        if (velocity.x_val < 0.0)
+            velocity.x_val = -velocity.x_val * WALL_RESTITUTION;
+    }
+    else if (previous.y_val < box_min.y_val)
+    {
+        position.y_val = box_min.y_val - radius;
+        if (velocity.y_val > 0.0)
+            velocity.y_val = -velocity.y_val * WALL_RESTITUTION;
+    }
+    else
+    {
+        position.y_val = box_max.y_val + radius;
+        if (velocity.y_val < 0.0)
+            velocity.y_val = -velocity.y_val * WALL_RESTITUTION;
+    }
+}
+
+void PhysicsSystem::rememberCollisionBoxSides(const UniverseState& universe_state)
+{
+    DynamoEngine::ProfileScope timer(m_profiler, m_profile.walls_and_box, m_profiling_real_tick);
+    m_box_sides_macro_bodies.clear();
+    m_box_sides_particles.clear();
+    if (!universe_state.has_collision_box)
+    {
+        return;
+    }
+    for (const GravitationalBody& body : universe_state.macro_bodies)
+    {
+        m_box_sides_macro_bodies.push_back(body.position);
+    }
+    for (const GravitationalBody& body : universe_state.particles)
+    {
+        m_box_sides_particles.push_back(body.position);
+    }
+}
+
+// Each body against the box, judged from `remembered` (BeforeCollisions) or from its previousPosition (StartOfStep).
+// Bodies added since the sides were remembered (new debris) are judged from where they are.
+static void bounceListOffBox(std::vector<GravitationalBody>& bodies,
+                             const std::vector<DynamoEngine::Vector2D>& remembered, bool use_remembered,
+                             const DynamoEngine::Vector2D& box_min, const DynamoEngine::Vector2D& box_max)
+{
+    for (size_t i = 0; i < bodies.size(); ++i)
+    {
+        GravitationalBody& body = bodies[i];
+        DynamoEngine::Vector2D side_reference = body.previousPosition;
+        if (use_remembered)
+        {
+            side_reference = (i < remembered.size()) ? remembered[i] : body.position;
+        }
+        bounceOffBox(body.position, body.velocity, side_reference, body.radius, box_min, box_max);
+    }
+}
+
+void PhysicsSystem::bounceOffCollisionBox(UniverseState& universe_state, BoxSides sides)
+{
+    DynamoEngine::ProfileScope timer(m_profiler, m_profile.walls_and_box, m_profiling_real_tick);
+    if (!universe_state.has_collision_box)
+    {
+        return;
+    }
+    const DynamoEngine::Vector2D& box_min = universe_state.collision_box_min_corner;
+    const DynamoEngine::Vector2D& box_max = universe_state.collision_box_max_corner;
+    const bool use_remembered = (sides == BoxSides::BeforeCollisions);
+    bounceListOffBox(universe_state.macro_bodies, m_box_sides_macro_bodies, use_remembered, box_min, box_max);
+    bounceListOffBox(universe_state.particles, m_box_sides_particles, use_remembered, box_min, box_max);
+    if (universe_state.has_ship)
+    {
+        universe_state.ship.bounceOffBox(box_min, box_max, WALL_RESTITUTION);
     }
 }
 
@@ -190,6 +326,7 @@ size_t PhysicsSystem::liveParticleCount(const UniverseState& universe_state) con
 
 void PhysicsSystem::handleMacroMacroCollisions(UniverseState& universe_state)
 {
+    DynamoEngine::ProfileScope timer(m_profiler, m_profile.planet_collisions, m_profiling_real_tick);
     std::vector<GravitationalBody>& macro_body_list = universe_state.macro_bodies;
     size_t num_macro_bodies = macro_body_list.size();
 
@@ -229,6 +366,7 @@ void PhysicsSystem::handleMacroMacroCollisions(UniverseState& universe_state)
 
 void PhysicsSystem::handleMacroParticleCollisions(UniverseState& universe_state)
 {
+    DynamoEngine::ProfileScope timer(m_profiler, m_profile.planet_debris_collisions, m_profiling_real_tick);
     std::vector<GravitationalBody>& particles = universe_state.particles;
     std::vector<GravitationalBody>& macro_bodies = universe_state.macro_bodies;
 
@@ -268,7 +406,11 @@ void PhysicsSystem::handleParticleParticleCollisions(UniverseState& universe_sta
 {
     std::vector<GravitationalBody>& particles = universe_state.particles;
 
-    particleGrid.build(particles);
+    {
+        DynamoEngine::ProfileScope timer(m_profiler, m_profile.debris_grid, m_profiling_real_tick);
+        particleGrid.build(particles);
+    }
+    DynamoEngine::ProfileScope timer(m_profiler, m_profile.debris_pairs, m_profiling_real_tick); // the rest
 
     std::vector<size_t> candidates;
     size_t num_particles = particles.size();
@@ -306,6 +448,7 @@ void PhysicsSystem::handleParticleParticleCollisions(UniverseState& universe_sta
 }
 void PhysicsSystem::handleShipCollisions(UniverseState& universe_state)
 {
+    DynamoEngine::ProfileScope timer(m_profiler, m_profile.ship_collisions, m_profiling_real_tick);
     if (!universe_state.has_ship)
     {
         return;
@@ -755,21 +898,27 @@ void PhysicsSystem::addGravityBetweenGravBodies(UniverseState& universe_state)
     size_t num_particles = particles.size();
 
     // Macro-Macro gravity
-    for (size_t i = 0; i < num_macro_bodies; i++)
     {
-        for (size_t j = i + 1; j < num_macro_bodies; ++j)
+        DynamoEngine::ProfileScope timer(m_profiler, m_profile.planet_gravity, m_profiling_real_tick);
+        for (size_t i = 0; i < num_macro_bodies; i++)
         {
-            addGravityBetweenGravBodyPair(macro_bodies[i], macro_bodies[j]);
+            for (size_t j = i + 1; j < num_macro_bodies; ++j)
+            {
+                addGravityBetweenGravBodyPair(macro_bodies[i], macro_bodies[j]);
+            }
         }
     }
 
     // Particle-Macro gravity. Particles still don't gravitate with each other -- that stays
     // an explicit simplification (would be O(n^2) or need Barnes-Hut, both out of scope here).
-    for (size_t i = 0; i < num_particles; ++i)
     {
-        for (size_t j = 0; j < num_macro_bodies; ++j)
+        DynamoEngine::ProfileScope timer(m_profiler, m_profile.debris_gravity, m_profiling_real_tick);
+        for (size_t i = 0; i < num_particles; ++i)
         {
-            addGravityBetweenGravBodyPair(particles[i], macro_bodies[j]);
+            for (size_t j = 0; j < num_macro_bodies; ++j)
+            {
+                addGravityBetweenGravBodyPair(particles[i], macro_bodies[j]);
+            }
         }
     }
 
@@ -784,6 +933,7 @@ void PhysicsSystem::addGravityBetweenGravBodies(UniverseState& universe_state)
 }
 void PhysicsSystem::addGravityBetweenShipAndBodies(UniverseState& universe_state)
 {
+    DynamoEngine::ProfileScope timer(m_profiler, m_profile.ship_gravity, m_profiling_real_tick);
     // Two-way gravity between the ship and every planet (Newton's third law): the same pull acts on both, in
     // opposite directions. The ship is so much lighter than any planet that planets barely notice it.
     if (!universe_state.has_ship)
@@ -807,7 +957,7 @@ void PhysicsSystem::addGravityBetweenShipAndBodies(UniverseState& universe_state
         double softened_distance = std::sqrt(direction.squareMagnitude() + softening * softening);
         double softened_distance_cubed = softened_distance * softened_distance * softened_distance;
 
-        // The pull on the ship, toward the planet (direction isn't normalised: its length r is folded into r^3)
+        // The pull on the ship, toward the planet (direction isn't normalized: its length r is folded into r^3)
         DynamoEngine::Vector2D force =
             direction * (GRAVITATIONAL_CONSTANT * ship.mass() * body.mass / softened_distance_cubed);
         total_force_on_ship += force;
@@ -883,7 +1033,7 @@ static inline void populateSpawnedBodyProperties(GravitationalBody& grav_body, c
     grav_body.isCollidable = !spawn_settings.is_ghost;
     grav_body.isForceStatic = spawn_settings.is_force_static;
     grav_body.isFragment = false;   // not a child of a collision
-    grav_body.isMacroGhost = false; // no spawn setting for it (physics still honours the flag)
+    grav_body.isMacroGhost = false; // no spawn setting for it (physics still honors the flag)
     grav_body.isPreview = false;
     grav_body.isShatterable = spawn_settings.is_shatterable;
     grav_body.isTransient = false;
@@ -1042,6 +1192,7 @@ size_t PhysicsSystem::potentialParticleCount(const UniverseState& universe_state
 
 void PhysicsSystem::cleanupGravBodies(UniverseState& universe_state)
 {
+    DynamoEngine::ProfileScope timer(m_profiler, m_profile.cleanup, m_profiling_real_tick);
     cleanupMacroBodies(universe_state);
     cleanupParticles(universe_state);
 }

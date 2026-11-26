@@ -132,9 +132,10 @@ class RenderSystem
                          SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf);
     void renderNonGameFrame(const DynamoEngine::UIRoot& ui, SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf);
 
-    // The see-through body (or cluster) that would spawn on release, while a spawn is being aimed
+    // The see-through body (or cluster) that would spawn on release, while a spawn is being aimed.
+    // `world_units_per_point`: see worldUnitsPerUIPoint in RenderSystem.cpp (sizes the velocity arrow).
     void appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertex_data, const PlayerInput& player_input,
-                             const SpawnSettings& spawn_settings, double zoom);
+                             const SpawnSettings& spawn_settings, double world_units_per_point);
 
     void renderBodies(GameState& game_state, UIState& ui_state, SDL_GPURenderPass* pass,
                       SDL_GPUCommandBuffer* cmdbuf); // Renders all the gravitational
@@ -168,7 +169,7 @@ class RenderSystem
     void createTrajectoryLineBuffersAndPipeline();
     // Collects this frame's NEW traced segments, and rebuilds the per-frame lines (preview, time marks, tips)
     void buildTrajectoryLines(const GameState& game_state, const UIState& ui_state);
-    // How a path is drawn: its colour, and whether new pieces fade in (traced lines) or not (the live preview)
+    // How a path is drawn: its color, and whether new pieces fade in (traced lines) or not (the live preview)
     struct TrajectoryStyle
     {
         SDL_FColor color;
@@ -179,8 +180,9 @@ class RenderSystem
     // ticks, even while time is stopped).
     void appendTrajectorySegments(const TracedPath& path, size_t first_point, const DynamoEngine::Vector2D& start_previous,
                                   const TrajectoryStyle& style, std::vector<TrajectoryLineVertex>& vertices_out);
-    // A short line across the path every TRAJECTORY_TIME_MARK_SECONDS; `zoom` keeps them the same size on screen
-    void appendTrajectoryTimeMarks(const TracedPath& path, const TrajectoryStyle& style, float zoom,
+    // A short line across the path every TRAJECTORY_TIME_MARK_SECONDS. `world_units_per_point` (see
+    // worldUnitsPerUIPoint in RenderSystem.cpp) keeps them the same size on screen at any zoom, growing with the window.
+    void appendTrajectoryTimeMarks(const TracedPath& path, const TrajectoryStyle& style, double world_units_per_point,
                                    std::vector<TrajectoryLineVertex>& vertices_out);
     // The bright front of a line that is still being traced: its newest segments, brightest at the tip
     void appendTrajectoryTip(const TracedPath& path, std::vector<TrajectoryLineVertex>& vertices_out);
@@ -208,9 +210,11 @@ class RenderSystem
 
     CameraConstants buildCameraConstants(const CameraState& camera_state, const DynamoEngine::Vector2D& offset);
     // Utility Rendering Helper Functions
-    // The spawn velocity arrow from lineStart to lineEnd (world space). Its thickness and head are sized in SCREEN
-    // pixels (divided by `zoom`), so the arrow looks the same at any zoom; only its length follows the drag.
-    void buildVelocityVectorGeometry(DynamoEngine::Vector2D lineStart, DynamoEngine::Vector2D lineEnd, double zoom);
+    // The spawn velocity arrow from lineStart to lineEnd (world space). Its thickness and head are sized in UI points
+    // (times `world_units_per_point`, see worldUnitsPerUIPoint in RenderSystem.cpp), so the arrow looks the same at
+    // any zoom and grows with the window like the UI; only its length follows the drag.
+    void buildVelocityVectorGeometry(DynamoEngine::Vector2D lineStart, DynamoEngine::Vector2D lineEnd,
+                                     double world_units_per_point);
     void uploadVelocityVectorVertices(SDL_GPUCommandBuffer* cmdbuf);
     void renderVelocityVectors(SDL_GPURenderPass* pass, SDL_GPUCommandBuffer* cmdbuf, const CameraState& camera_state);
     SDL_Color getColorForProperty(const GravitationalBody& body);

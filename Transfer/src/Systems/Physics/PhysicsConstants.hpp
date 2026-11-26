@@ -33,8 +33,9 @@ constexpr double MIN_SHATTER_SPEED = 400.0;                  // in px/s (in worl
 // 1 = no energy lost). 0.2 keeps a fifth of the speed, 4% of the impact energy: a dull thud. The rest is the
 // impact energy that damage will be calculated from.
 constexpr double SHIP_RESTITUTION = 0.2;
-// The share of its speed a body keeps when it bounces off a reflective world wall (1 = a perfect mirror)
-constexpr double WORLD_WALL_RESTITUTION = 1.0;
+// The share of its speed a body keeps when it bounces off a wall: a reflective world edge or the test scene's
+// collision box (1 = a perfect mirror)
+constexpr double WALL_RESTITUTION = 1.0;
 
 // Inactive for now, used if we reenable particle particle accretion and promotion
 constexpr double MIN_PARTICLE_PARTICLE_ACCRETION_THRESHOLD_RATIO = 8.0;

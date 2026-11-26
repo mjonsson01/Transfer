@@ -9,6 +9,7 @@
 #include "Systems/Physics/Trajectories.hpp"
 #include "Core/UIState.hpp"
 #include "Systems/Physics/UniverseState.hpp"
+#include "DynamoEngine/Debug/FrameProfiler.hpp"
 #include "DynamoEngine/Math/Vector2.hpp"
 #include "DynamoEngine/Physics/Collision2D.hpp"
 #include "Systems/Physics/GravitationalBody.hpp"
@@ -52,6 +53,10 @@ class PhysicsSystem
     // Helper method called in the destructor to clear up physics-related
     // contents
     void cleanUp();
+    // F5: how long each part of the physics tick takes, per frame (summed over that frame's ticks). Game calls
+    // endProfilerFrame once per frame; after each window, profiler().takeNewReport() is true and report() has rows.
+    void endProfilerFrame();
+    DynamoEngine::FrameProfiler& profiler() { return m_profiler; }
     // This frame's spawn, undo and clear requests (PlayerInput::commands), with the spawn panel's settings
     void updateGravBodyInstantiations(UniverseState& universe_state, const PlayerInput& player_input,
                                       const SpawnSettings& spawn_settings);
@@ -68,6 +73,18 @@ class PhysicsSystem
     void integrateUniversePhysics(UniverseState& universe_state);
     // With reflective walls: keeps every body (and the ship) inside the world's edges, bouncing them back
     void bounceOffWorldWalls(UniverseState& universe_state);
+    // How the collision box tells which side of it a body is on: where the body started this physics step
+    // (previousPosition, set by the Verlet first half: right inside the integrator), or where it was before this
+    // tick's collision pass (rememberCollisionBoxSides: the collision push-apart resets previousPosition)
+    enum class BoxSides
+    {
+        StartOfStep,
+        BeforeCollisions,
+    };
+    // With a collision box: its edges are walls, from inside and from outside
+    void bounceOffCollisionBox(UniverseState& universe_state, BoxSides sides);
+    // Before the collision pass: where every body is (= which side of the box it ended the last tick on)
+    void rememberCollisionBoxSides(const UniverseState& universe_state);
     // Removes the most recently spawned planet or cluster that still exists, with all of its debris (plain Delete)
     void removeNewestSpawn(UniverseState& universe_state);
 
@@ -159,6 +176,33 @@ class PhysicsSystem
     // Fragments created during this tick's collision passes. Appended to the particles vector only after all three
     // passes are done, so nothing is ever added to particles while a loop is iterating over it.
     std::vector<GravitationalBody> m_pending_fragments;
+
+    // F5 profile: one section per timed part (numbers from m_profiler.addSection, in the constructor)
+    DynamoEngine::FrameProfiler m_profiler;
+    struct ProfilerSections
+    {
+        int planet_collisions = 0;
+        int planet_debris_collisions = 0;
+        int debris_grid = 0;  // building the particle grid (twice per tick)
+        int debris_pairs = 0; // checking and resolving the particle pairs it finds (twice per tick)
+        int ship_collisions = 0;
+        int verlet_first_half = 0;
+        int planet_gravity = 0;
+        int debris_gravity = 0;
+        int ship_gravity = 0;
+        int verlet_second_half = 0;
+        int walls_and_box = 0;
+        int cleanup = 0;
+        int whole_tick = 0;
+        int prediction = 0; // the trajectory trace + placement preview (once per frame)
+    };
+    ProfilerSections m_profile;
+    // True only during advanceUniverseState: the predictions run the same functions on copies, and must not be counted
+    bool m_profiling_real_tick = false;
+
+    // rememberCollisionBoxSides: every body's position before this tick's collision pass (empty without a box)
+    std::vector<DynamoEngine::Vector2D> m_box_sides_macro_bodies;
+    std::vector<DynamoEngine::Vector2D> m_box_sides_particles;
 
     // Trajectory prediction
     UniverseState m_prediction_universe_state;  // the copy being stepped forward

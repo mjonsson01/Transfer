@@ -29,6 +29,8 @@ void PhysicsSystem::updateTrajectories(float frame_seconds, const UniverseState&
                                        const PlayerInput& player_input, Trajectories& trajectories,
                                        const UIState& ui_state)
 {
+    // Its own F5 row (always on): the functions it runs on the prediction copies don't feed the real tick's rows
+    DynamoEngine::ProfileScope timer(m_profiler, m_profile.prediction);
 
     // Leaving planning mode makes the lines vanish: once time runs, they no longer describe the future
     if (!ui_state.getIsPlanning())
@@ -216,6 +218,9 @@ void PhysicsSystem::updateSpawnPreviewTrajectory(const UniverseState& universe_s
         m_preview_universe_state.world_min_corner = universe_state.world_min_corner; // so the preview bounces too
         m_preview_universe_state.world_max_corner = universe_state.world_max_corner;
         m_preview_universe_state.reflective_walls = universe_state.reflective_walls;
+        m_preview_universe_state.has_collision_box = universe_state.has_collision_box;
+        m_preview_universe_state.collision_box_min_corner = universe_state.collision_box_min_corner;
+        m_preview_universe_state.collision_box_max_corner = universe_state.collision_box_max_corner;
         m_preview_spawn_body = body;
         m_preview_ticks_done = 0;
         m_has_spawn_preview = true;

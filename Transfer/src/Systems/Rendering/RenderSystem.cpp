@@ -7,6 +7,15 @@
 namespace
 {
 constexpr float UI_FONT_SIZE = 18.0f; // UI points
+
+// World units per UI point, for the things drawn over the world at a fixed size on screen (the spawn velocity arrow,
+// the trajectory time marks). Their sizes are written in UI points (screen points at 1280 x 720): dividing by zoom
+// keeps them the same size at any zoom, and the UI's fit scale makes them grow with the window exactly like the UI.
+double worldUnitsPerUIPoint(const CameraState& camera_state)
+{
+    const float fit_scale = DynamoEngine::UIRoot::fitScale({camera_state.window_width, camera_state.window_height});
+    return fit_scale / camera_state.zoom;
+}
 } // namespace
 
 // Constructor: Initializes SDL Window and GPU
@@ -302,7 +311,7 @@ void RenderSystem::uploadUnifiedBodies(GameState& game_state, UIState& ui_state,
     }
 
     appendPreviewBodies(m_unified_body_vertices, player_input, ui_state.spawnSettings(),
-                        game_state.getCameraState().zoom);
+                        worldUnitsPerUIPoint(game_state.getCameraState()));
     uploadVelocityVectorVertices(cmdbuf);
 
     // Emergency only: the particle budget should make this impossible. If a rule change ever breaks it, grow the
@@ -532,7 +541,7 @@ SDL_GPUTexture* RenderSystem::loadSpriteTexture(const std::string& asset_path)
         return nullptr;
     }
 
-    // 3. Premultiply (colour *= alpha), so filtering never blends the black of transparent pixels into the edges
+    // 3. Premultiply (color *= alpha), so filtering never blends the black of transparent pixels into the edges
     SDL_PremultiplySurfaceAlpha(image, false);
 
     // 4. One mip level per halving of the larger side, plus the full-size image itself (2048 -> 12 levels)
@@ -705,7 +714,7 @@ void RenderSystem::renderUIElements(SDL_GPURenderPass* pass, SDL_GPUCommandBuffe
     SDL_DrawGPUPrimitives(pass, (uint32_t)m_ui_vertices.size(), 1, 0, 0);
 }
 void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertex_data, const PlayerInput& player_input,
-                                       const SpawnSettings& spawn_settings, double zoom)
+                                       const SpawnSettings& spawn_settings, double world_units_per_point)
 {
     velocityVectorVertices.clear();
     if (!player_input.is_aiming_spawn)
@@ -723,7 +732,8 @@ void RenderSystem::appendPreviewBodies(std::vector<UnifiedBodyVertex>& vertex_da
     preview_body.previousPosition = preview_body.position; // to prevent alpha interpolation artifacts
     if (aim.with_velocity)
     {
-        buildVelocityVectorGeometry(aim.world_position, aim.world_position + aim.world_velocity, zoom);
+        buildVelocityVectorGeometry(aim.world_position, aim.world_position + aim.world_velocity,
+                                    world_units_per_point);
     }
 
     if (!aim.is_cluster)
@@ -1185,7 +1195,7 @@ void RenderSystem::createStarshipGPUBufferAndPipeline()
     color_target.format = SDL_GetGPUSwapchainTextureFormat(m_gpu, m_window);
     color_target.blend_state.enable_blend = true;
 
-    // Premultiplied alpha (the sprite's colours were already multiplied by alpha when it was loaded), so the
+    // Premultiplied alpha (the sprite's colors were already multiplied by alpha when it was loaded), so the
     // source is added as-is (ONE) instead of being multiplied by its alpha a second time
     color_target.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE;
     color_target.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
@@ -1219,7 +1229,7 @@ void RenderSystem::createStarshipGPUBufferAndPipeline()
 }
 
 void RenderSystem::buildVelocityVectorGeometry(DynamoEngine::Vector2D lineStart, DynamoEngine::Vector2D lineEnd,
-                                               double zoom)
+                                               double world_units_per_point)
 {
     velocityVectorVertices.clear();
 
@@ -1235,15 +1245,16 @@ void RenderSystem::buildVelocityVectorGeometry(DynamoEngine::Vector2D lineStart,
     float px = -dy;
     float py = dx;
 
-    // Sizes on screen, in pixels. The vertices are in world space and the shader multiplies them by zoom, so dividing
-    // by zoom here keeps the arrow the same thickness at any zoom.
-    const float THICKNESS_PX = 6.0f;
-    const float HEAD_LENGTH_PX = 15.0f;
-    const float HEAD_WIDTH_PX = 18.0f;
-    const float world_per_px = static_cast<float>(1.0 / zoom);
-    float thickness = THICKNESS_PX * world_per_px;
-    float arrow_length = HEAD_LENGTH_PX * world_per_px;
-    float arrow_width = HEAD_WIDTH_PX * world_per_px;
+    // Sizes on screen, in UI points (screen points at 1280 x 720). The vertices are in world space and the shader
+    // multiplies them by zoom, so world_units_per_point (1 / zoom, times the window's fit scale) keeps the arrow the
+    // same thickness at any zoom and grows it with the window like the UI.
+    const float THICKNESS_POINTS = 6.0f;
+    const float HEAD_LENGTH_POINTS = 15.0f;
+    const float HEAD_WIDTH_POINTS = 18.0f;
+    const float world_per_point = static_cast<float>(world_units_per_point);
+    float thickness = THICKNESS_POINTS * world_per_point;
+    float arrow_length = HEAD_LENGTH_POINTS * world_per_point;
+    float arrow_width = HEAD_WIDTH_POINTS * world_per_point;
     // A drag shorter than the head: shrink the whole arrow's width and head to fit, keeping its proportions
     if (arrow_length > length)
     {
@@ -1391,7 +1402,7 @@ void RenderSystem::buildDebugLines(const GameState& game_state, UIState& ui_stat
 {
     m_debug_line_vertices.clear();
 
-    // Reflective world walls: always outlined (not only with F3), so the box everything bounces in is visible
+    // Reflective world walls: always outlined (not only with F3), so the edges everything bounces off are visible
     const UniverseState& universe_state = game_state.getUniverseState();
     if (universe_state.reflective_walls)
     {
@@ -1404,6 +1415,19 @@ void RenderSystem::buildDebugLines(const GameState& game_state, UIState& ui_stat
             const DynamoEngine::Vector2D& start = corners[i];
             const DynamoEngine::Vector2D& end = corners[(i + 1) % 4];
             addDebugLine(start, start, end, end, WALL_COLOR); // the walls never move: "one tick ago" = now
+        }
+    }
+
+    // The collision box (test scene): always outlined, in its own color
+    if (universe_state.has_collision_box)
+    {
+        const SDL_FColor BOX_COLOR = {0.3f, 0.9f, 1.0f, 0.9f};
+        const DynamoEngine::Vector2D& low = universe_state.collision_box_min_corner;
+        const DynamoEngine::Vector2D& high = universe_state.collision_box_max_corner;
+        const DynamoEngine::Vector2D corners[4] = {low, {high.x_val, low.y_val}, high, {low.x_val, high.y_val}};
+        for (int i = 0; i < 4; ++i)
+        {
+            addDebugLine(corners[i], corners[i], corners[(i + 1) % 4], corners[(i + 1) % 4], BOX_COLOR);
         }
     }
 
@@ -1518,7 +1542,8 @@ static constexpr float TRAJECTORY_FADE_START_ALPHA = 0.1f;                      
 static constexpr float TRAJECTORY_FADE_IN_SECONDS = 0.75f;                          // real seconds from new to settled
 static constexpr int TRAJECTORY_TIP_SEGMENTS = 3; // how much of the front is drawn bright (at most 8: see
                                                   // the MAX_TRAJECTORY_FRAME_VERTICES check)
-static constexpr float TRAJECTORY_TIME_MARK_HALF_LENGTH_PX = 5.0f; // each time mark sticks out this far on screen
+static constexpr float TRAJECTORY_TIME_MARK_HALF_LENGTH_POINTS = 5.0f; // each time mark sticks out this far on
+                                                                       // screen (UI points)
 
 // The TrajectoryLine vertex shader's second uniform buffer: must match its TrajectoryConstants, field for field
 struct TrajectoryShaderConstants
@@ -1625,7 +1650,7 @@ void RenderSystem::buildTrajectoryLines(const GameState& game_state, const UISta
     m_trajectory_frame_vertices.clear();
     const Trajectories& trajectories = game_state.getTrajectories();
     const UniverseState& universe_state = game_state.getUniverseState();
-    const float zoom = game_state.getCameraState().zoom;
+    const double world_units_per_point = worldUnitsPerUIPoint(game_state.getCameraState());
     const bool time_marks = ui_state.getShowTrajectoryTimeMarks();
 
     if (trajectories.status == TraceStatus::Idle)
@@ -1651,13 +1676,13 @@ void RenderSystem::buildTrajectoryLines(const GameState& game_state, const UISta
         {
             const TracedPath& path = trajectories.macro_body_paths[i];
             const GravitationalBody& body = universe_state.macro_bodies[i];
-            // A static body ignores every force: its line is a straight drift, so it gets its own colour
+            // A static body ignores every force: its line is a straight drift, so it gets its own color
             TrajectoryStyle style = {body.isForceStatic ? TRAJECTORY_STATIC_COLOR : TRAJECTORY_MACRO_COLOR, true};
             appendTrajectorySegments(path, m_trajectory_points_uploaded[i], body.previousPosition, style,
                                      m_trajectory_new_vertices);
             m_trajectory_points_uploaded[i] = path.size();
             if (time_marks)
-                appendTrajectoryTimeMarks(path, style, zoom, m_trajectory_frame_vertices);
+                appendTrajectoryTimeMarks(path, style, world_units_per_point, m_trajectory_frame_vertices);
             if (is_tracing)
                 appendTrajectoryTip(path, m_trajectory_frame_vertices);
         }
@@ -1670,7 +1695,7 @@ void RenderSystem::buildTrajectoryLines(const GameState& game_state, const UISta
                                  m_trajectory_new_vertices);
         ship_points_uploaded = ship_path.size();
         if (time_marks)
-            appendTrajectoryTimeMarks(ship_path, ship_style, zoom, m_trajectory_frame_vertices);
+            appendTrajectoryTimeMarks(ship_path, ship_style, world_units_per_point, m_trajectory_frame_vertices);
         if (is_tracing)
             appendTrajectoryTip(ship_path, m_trajectory_frame_vertices);
     }
@@ -1684,7 +1709,8 @@ void RenderSystem::buildTrajectoryLines(const GameState& game_state, const UISta
         TrajectoryStyle preview_style = {will_be_static ? TRAJECTORY_STATIC_COLOR : TRAJECTORY_PREVIEW_COLOR, false};
         appendTrajectorySegments(preview_path, 0, preview_path[0].position, preview_style, m_trajectory_frame_vertices);
         if (time_marks)
-            appendTrajectoryTimeMarks(preview_path, preview_style, zoom, m_trajectory_frame_vertices);
+            appendTrajectoryTimeMarks(preview_path, preview_style, world_units_per_point,
+                                      m_trajectory_frame_vertices);
     }
 }
 
@@ -1706,13 +1732,14 @@ void RenderSystem::appendTrajectorySegments(const TracedPath& path, size_t first
     }
 }
 
-void RenderSystem::appendTrajectoryTimeMarks(const TracedPath& path, const TrajectoryStyle& style, float zoom,
+void RenderSystem::appendTrajectoryTimeMarks(const TracedPath& path, const TrajectoryStyle& style,
+                                             double world_units_per_point,
                                              std::vector<TrajectoryLineVertex>& vertices_out)
 {
     // Points are evenly spaced in time, so the marks spread out where the body is fast and bunch up where it's slow
     const size_t points_per_mark = static_cast<size_t>(
         std::lround(TRAJECTORY_TIME_MARK_SECONDS * INV_PHYSICS_TIME_STEP / TRAJECTORY_TICKS_PER_POINT));
-    const double half_length = TRAJECTORY_TIME_MARK_HALF_LENGTH_PX / zoom; // world units, constant on screen
+    const double half_length = TRAJECTORY_TIME_MARK_HALF_LENGTH_POINTS * world_units_per_point; // in world units
     for (size_t k = points_per_mark; k < path.size(); k += points_per_mark)
     {
         // The path's direction here (from the point before to the point after), turned a quarter turn

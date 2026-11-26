@@ -56,8 +56,8 @@ CircleContact circleVsConvexPolygon(const Vector2D& circle_center, double circle
         const Vector2D& a = polygon[i];
         const Vector2D& b = polygon[(i + 1) % polygon.size()]; // the last corner connects back to the first
 
-        // This edge's outward normal: perpendicular to the edge, flipped if it points toward the polygon's centre.
-        // Working it out from the centre is what makes either corner order (winding) work.
+        // This edge's outward normal: perpendicular to the edge, flipped if it points toward the polygon's center.
+        // Working it out from the center is what makes either corner order (winding) work.
         Vector2D edge = b - a;
         Vector2D outward_normal = Vector2D(edge.y_val, -edge.x_val).normalize();
         if (outward_normal.dot(polygon_center - a) > 0.0)
@@ -65,7 +65,7 @@ CircleContact circleVsConvexPolygon(const Vector2D& circle_center, double circle
             outward_normal = outward_normal * -1.0;
         }
 
-        // Convex polygon: the circle's centre is outside if it's on the outer side of ANY edge
+        // Convex polygon: the circle's center is outside if it's on the outer side of ANY edge
         if (outward_normal.dot(circle_center - a) > 0.0)
         {
             center_is_inside = false;
@@ -86,7 +86,7 @@ CircleContact circleVsConvexPolygon(const Vector2D& circle_center, double circle
 
     if (center_is_inside)
     {
-        // Deep hit: the centre has crossed into the polygon, so push it back out through the nearest edge.
+        // Deep hit: the center has crossed into the polygon, so push it back out through the nearest edge.
         // It must travel back to that edge (distance) AND a full radius beyond it to stop overlapping.
         contact.touching = true;
         contact.normal = closest_edge_outward_normal;

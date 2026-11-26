@@ -96,4 +96,17 @@ void FrameProfiler::buildReport()
         m_report.push_back(section_report);
     }
 }
+
+ProfileScope::ProfileScope(FrameProfiler& profiler, int section, bool enabled)
+    : m_profiler(profiler), m_section(section), m_enabled(enabled), m_start(SDL_GetPerformanceCounter())
+{
+}
+
+ProfileScope::~ProfileScope()
+{
+    if (m_enabled)
+    {
+        m_profiler.record(m_section, FrameProfiler::millisecondsBetween(m_start, SDL_GetPerformanceCounter()));
+    }
+}
 } // namespace DynamoEngine

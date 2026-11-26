@@ -46,7 +46,7 @@ int main()
         UIState ui;
         PhysicsSystem p;
         for (int i = 0; i < 100; ++i)
-            spawn(p, gs, ui, false, i * 90.0, 50.0); // neighbours overlap
+            spawn(p, gs, ui, false, i * 90.0, 50.0); // neighbors overlap
         auto& macros = gs.getUniverseStateMutable().macro_bodies;
         for (size_t i = 0; i < macros.size(); ++i)
             macros[i].velocity = {(i % 2 == 0) ? 3000.0 : -3000.0, 0.0};

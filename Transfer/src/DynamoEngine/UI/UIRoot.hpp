@@ -31,7 +31,14 @@ class UIRoot : public UIElement
     // The player's UI scale setting from the options menu (1.0 = normal, 1.5 = 50% bigger)
     void setPlayerScale(float player_scale);
 
-    // Final scale = (window height / 720) * player scale. The UI is designed at 720p and grows with the window.
+    // How much the UI's 1280 x 720 design space grows to fit a window of this size: the smaller of
+    // (window width / 1280) and (window height / 720), so that whole space always fits in the window. A window wider
+    // than 16:9 gets extra UI space at the sides, a taller one (16:10, Mac fullscreen) at the top and bottom; nothing
+    // designed inside 1280 x 720 is ever cut off. 1.0 at 1280 x 720, 2.0 at 2560 x 1440, 1.0 for a minimized window.
+    // Static so things drawn outside the UI tree (the spawn velocity arrow) can grow with the window the same way.
+    static float fitScale(Vector2F window_size);
+
+    // Final scale = fitScale(window size) * player scale
     float uiScale() const;
 
     // The size of the space the UI is laid out in: window size / uiScale()

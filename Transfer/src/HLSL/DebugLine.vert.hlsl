@@ -16,7 +16,7 @@ struct VertexOutput
     float4 color : COLOR0;
 };
 
-// One end of a debug line (RenderSystem's DebugLineVertex): world position now and one physics tick ago, and colour
+// One end of a debug line (RenderSystem's DebugLineVertex): world position now and one physics tick ago, and color
 VertexOutput main(
     float2 pos     : POSITION0,
     float2 prevPos : TEXCOORD0,

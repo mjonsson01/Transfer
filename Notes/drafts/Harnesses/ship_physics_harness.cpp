@@ -29,7 +29,7 @@ int main()
                "ramped down, then 0: no reverse thrust)\n",
                s.throttle(), s.velocity().magnitude() - speed_before_s);
     }
-    { // orbit: planet M at the origin, ship centre at r = 1000 to the right, circular speed straight down
+    { // orbit: planet M at the origin, ship center at r = 1000 to the right, circular speed straight down
         GameState gs; UIState ui; PhysicsSystem p;
         GravitationalBody planet; planet.mass = 1e9; planet.invMass = 1e-9; planet.radius = 100; planet.isMacro = true;
         planet.position = {0, 0}; planet.previousPosition = planet.position;

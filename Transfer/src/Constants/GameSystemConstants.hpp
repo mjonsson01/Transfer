@@ -38,19 +38,21 @@ constexpr int STAR_NUM = 100000;
 
 constexpr bool VIEW_DEBUG = false;
 // Whether the player's ship is in the universe when the game starts (off for now, while other systems are ironed out)
-constexpr bool RUN_GAME_WITH_PLAYER_SHP = false;
+constexpr bool RUN_GAME_WITH_PLAYER_SHIP = false;
 
-// --- Test world (testing tool: a small box raises collision density to a known upper bound) ---
-// false = the world is as big as the star field (the normal game); true = TEST_WORLD_WIDTH x TEST_WORLD_HEIGHT
-constexpr bool USE_SMALL_TEST_WORLD = false;
-constexpr double TEST_WORLD_WIDTH = 1920.0; // world pixels, centred on the star field's centre
-constexpr double TEST_WORLD_HEIGHT = 1080.0;
-// Planets, debris and the ship bounce off the world's edges (WORLD_WALL_RESTITUTION) instead of leaving the world
+// --- Test scene tools (TestVisual scene only: entering it applies these, leaving it removes them) ---
+// A collision box around the view when the test scene starts: bodies inside stay inside, bodies outside bounce off it
+constexpr double TEST_COLLISION_BOX_WIDTH = 2000.0; // world pixels
+constexpr double TEST_COLLISION_BOX_HEIGHT = 2000.0;
+// Planets, debris and the ship bounce off the WORLD's edges (the star field's extent, red outline) instead of leaving
+// the world (WALL_RESTITUTION)
 constexpr bool REFLECTIVE_WORLD_WALLS = false;
-// The F4 profiler reports averages and 1% lows over this many frames (5 s at 60 FPS)
-constexpr size_t PROFILER_WINDOW_FRAMES = 300;
-// Most lines the F4 profiler overlay shows (a header plus one line per section)
-constexpr size_t MAX_PROFILER_LINES = 12;
+
+// The F4 profiler reports averages and 1% lows over this many frames, and refreshes after each window (1 s at 60
+// FPS). Under 100 frames, the "1% low" is simply the slowest frame of the window.
+constexpr size_t PROFILER_WINDOW_FRAMES = 60;
+// Most lines the profiler overlay shows (the body counts, a header, then one line per section: F5 has 14 sections)
+constexpr size_t MAX_PROFILER_LINES = 17;
 
 const double MIN_ZOOM = 0.01;
 
@@ -59,5 +61,8 @@ const double MAX_ZOOM = 10.0;
 const double STARTUP_ZOOM_VALUE = 0.35;
 
 const double STAR_PARALLAX_FACTOR = 0.5;
+// How fast the arrow keys pan the camera, in UI points per second (screen points at 1280 x 720; it grows with the
+// window like the UI), so it feels the same at any zoom and any window size
+const double CAMERA_KEY_PAN_SPEED = 900.0;
 
 constexpr int MAX_VELOCITY_VECTOR_VERTICES = 9; // vertices on a previewbody vector

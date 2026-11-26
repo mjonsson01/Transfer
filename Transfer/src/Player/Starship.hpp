@@ -7,9 +7,9 @@
 #include <vector>
 
 // Custom includes
-#include "Systems/Input/PlayerInput.hpp"
 #include "DynamoEngine/Math/Vector2.hpp"
 #include "DynamoEngine/Rendering/UIVertex.hpp"
+#include "Systems/Input/PlayerInput.hpp"
 #include "Systems/Physics/PhysicsConstants.hpp"
 #include "Systems/Rendering/GPUTypes.hpp"
 
@@ -38,7 +38,7 @@ class Starship
     // Phase 2: the other half kick, with the new acceleration (gravity + thrust)
     void applyVelocityVerletSecondHalfStep();
 
-    // The ship's centre: its centre of mass, and the middle of its sprite and hitbox
+    // The ship's center: its center of mass, and the middle of its sprite and hitbox
     DynamoEngine::Vector2D center() const;
     // Half the side of the ship's square; gravity uses it as the ship's size when softening the pull up close
     double halfSize() const { return m_ship_size * 0.5; }
@@ -52,7 +52,10 @@ class Starship
     // Keeps the ship (its bounding circle) inside the box, turning its velocity back off any edge it was crossing
     void bounceInsideWalls(const DynamoEngine::Vector2D& box_min, const DynamoEngine::Vector2D& box_max,
                            double restitution);
-    // Distance from the centre to the hitbox's farthest corner: nothing farther than this (plus its own radius)
+    // The collision box: if the ship was inside it at the start of the tick it stays inside (bounceInsideWalls);
+    // if it was outside, it bounces off the outside instead of entering
+    void bounceOffBox(const DynamoEngine::Vector2D& box_min, const DynamoEngine::Vector2D& box_max, double restitution);
+    // Distance from the center to the hitbox's farthest corner: nothing farther than this (plus its own radius)
     // can be touching the ship
     double boundingRadius() const;
     // The kinetic energy the ship's collisions absorbed during the last tick (0 if it hit nothing). Damage will be
@@ -70,7 +73,7 @@ class Starship
     DynamoEngine::Vector2D movementThisTick() const { return m_position - m_prev_position; }
 
   private:
-    // Turns an offset from the ship's centre by the ship's rotation. The sprite and the hitbox both use this,
+    // Turns an offset from the ship's center by the ship's rotation. The sprite and the hitbox both use this,
     // so they can never disagree about which way the ship is facing.
     DynamoEngine::Vector2D rotatedOffset(DynamoEngine::Vector2D offset) const;
 
@@ -96,8 +99,9 @@ class Starship
     // How fast W/S move the throttle: 1 = from off to full in one second of game time
     static constexpr double THROTTLE_CHANGE_PER_SECOND = 1.0;
     double m_throttle = 0.0; // 0..1, the engine setting: stays put when no key is held
-    DynamoEngine::Vector2D m_thrust_acceleration = {}; // throttle x THRUST_ACCELERATION along the nose, set by applyThrust
-    DynamoEngine::Vector2D m_acceleration = {};        // gravity + thrust, as of the end of the last tick
+    DynamoEngine::Vector2D m_thrust_acceleration =
+        {};                                     // throttle x THRUST_ACCELERATION along the nose, set by applyThrust
+    DynamoEngine::Vector2D m_acceleration = {}; // gravity + thrust, as of the end of the last tick
     DynamoEngine::Vector2D m_velocity = {};
     DynamoEngine::Vector2D m_position = {};
     double m_rotation = {};

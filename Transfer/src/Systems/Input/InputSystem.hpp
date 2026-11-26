@@ -3,6 +3,7 @@
 #pragma once
 
 // Custom Imports
+#include "Camera/CameraLimits.hpp"
 #include "Camera/CameraState.hpp"
 #include "Core/GameState.hpp"
 #include "Systems/Input/PlayerInput.hpp"
@@ -53,11 +54,13 @@ class InputSystem
     // Lays out and updates the scene's UI for the current window, then gives it this frame's mouse input
     DynamoEngine::UIInputResult updateSceneUI(DynamoEngine::UIRoot& ui, const CameraState& camera_state,
                                               float frame_seconds);
-    void updateCamera(GameState& game_state); // zoom around cursor, middle-mouse pan, star-field clamp
+    // Zoom around the cursor, pan (middle-mouse drag or the arrow keys), then keep the camera inside the world
+    void updateCamera(GameState& game_state, float frame_seconds);
     // `pointer_captured`: the UI took the mouse this frame, so a button release there doesn't spawn anything
     void translateGameInputs(GameState& game_state, UIState& ui_state, DynamoEngine::SceneManager& scenes,
                              PlayerInput& player_input, bool pointer_captured);
-    void translateMenuInputs(DynamoEngine::SceneManager& scenes);
+    // Esc: the pause menu returns to the paused scene, the start menu starts the game
+    void translateMenuInputs(const UIState& ui_state, DynamoEngine::SceneManager& scenes);
     // Where the next body would spawn right now, in world space: at the cursor, or (with Shift) at the drag's start,
     // moving toward the cursor. The one place this is worked out: the spawn and both previews all use it.
     SpawnProperties aimSpawn(bool is_cluster, bool with_velocity, const CameraState& camera_state) const;

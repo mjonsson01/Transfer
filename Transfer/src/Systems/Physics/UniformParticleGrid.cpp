@@ -53,7 +53,7 @@ void UniformParticleGrid::queryCandidates(size_t index, const std::vector<Gravit
     int64_t cy = static_cast<int64_t>(std::floor(pos.y_val / cellSize));
 
     // Forward half-stencil: the own cell, the next row's cell (0,1), and the three cells of the next column
-    // (1,-1), (1,0), (1,1). For every pair of neighbouring cells exactly one sees the other in this shape, so
+    // (1,-1), (1,0), (1,1). For every pair of neighboring cells exactly one sees the other in this shape, so
     // each pair is reported once. Each column's cells have consecutive keys (see packCell), so a column costs
     // ONE binary search plus a forward scan, instead of one search per cell.
 

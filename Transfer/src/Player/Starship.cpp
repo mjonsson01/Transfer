@@ -15,8 +15,8 @@ DynamoEngine::Vector2D Starship::getPointingVector()
 
 void Starship::buildGeometry(std::vector<StarshipVertex>& starshipVertexBuffer)
 {
-    // The sprite is one square of side shipSize (two triangles), centred where the old placeholder box was and
-    // rotated around that centre. Every corner is sent at its current AND its previous-tick position, so the vertex
+    // The sprite is one square of side shipSize (two triangles), centered where the old placeholder box was and
+    // rotated around that center. Every corner is sent at its current AND its previous-tick position, so the vertex
     // shader can interpolate between them (render alpha) like everything else in the world.
     float half = m_ship_size * 0.5f;
     float center_x = float(m_position.x_val) + half;
@@ -24,7 +24,7 @@ void Starship::buildGeometry(std::vector<StarshipVertex>& starshipVertexBuffer)
     float prev_center_x = float(m_prev_position.x_val) + half;
     float prev_center_y = float(m_prev_position.y_val) + half;
 
-    // Each corner: its offset from the centre before rotating, and which point of the image it shows.
+    // Each corner: its offset from the center before rotating, and which point of the image it shows.
     // u runs left -> right and v top -> bottom (0..1), so v = 0 is the PNG's top row: the nose.
     struct Corner
     {
@@ -64,11 +64,11 @@ std::vector<DynamoEngine::Vector2D> Starship::collisionPolygon() const
     corners.reserve(6);
     for (const DynamoEngine::Vector2D& corner_px : HITBOX_CORNERS_PX)
     {
-        // Image pixels -> offset from the sprite's centre, in world units: the image's centre is (0, 0), and the
+        // Image pixels -> offset from the sprite's center, in world units: the image's center is (0, 0), and the
         // whole image spans shipSize, exactly like the sprite's square
         DynamoEngine::Vector2D offset =
             (corner_px / HITBOX_IMAGE_SIZE_PX - DynamoEngine::Vector2D(0.5, 0.5)) * double(m_ship_size);
-        corners.push_back(center() + rotatedOffset(offset)); // same centre as the sprite
+        corners.push_back(center() + rotatedOffset(offset)); // same center as the sprite
     }
     return corners;
 }
@@ -162,12 +162,61 @@ void Starship::bounceInsideWalls(const DynamoEngine::Vector2D& box_min, const Dy
     m_position += push;
 }
 
+void Starship::bounceOffBox(const DynamoEngine::Vector2D& box_min, const DynamoEngine::Vector2D& box_max,
+                            double restitution)
+{
+    const DynamoEngine::Vector2D previous_center = center() - movementThisTick();
+    const bool was_inside = previous_center.x_val >= box_min.x_val && previous_center.x_val <= box_max.x_val &&
+                            previous_center.y_val >= box_min.y_val && previous_center.y_val <= box_max.y_val;
+    if (was_inside)
+    {
+        bounceInsideWalls(box_min, box_max, restitution);
+        return;
+    }
+
+    // From outside: if the bounding circle now overlaps the box, push it back out through the side it came from
+    const double reach = boundingRadius();
+    const DynamoEngine::Vector2D center_now = center();
+    const bool overlaps = center_now.x_val + reach > box_min.x_val && center_now.x_val - reach < box_max.x_val &&
+                          center_now.y_val + reach > box_min.y_val && center_now.y_val - reach < box_max.y_val;
+    if (!overlaps)
+    {
+        return;
+    }
+    DynamoEngine::Vector2D push = {0.0, 0.0};
+    if (previous_center.x_val < box_min.x_val)
+    {
+        push.x_val = box_min.x_val - reach - center_now.x_val;
+        if (m_velocity.x_val > 0.0)
+            m_velocity.x_val = -m_velocity.x_val * restitution;
+    }
+    else if (previous_center.x_val > box_max.x_val)
+    {
+        push.x_val = box_max.x_val + reach - center_now.x_val;
+        if (m_velocity.x_val < 0.0)
+            m_velocity.x_val = -m_velocity.x_val * restitution;
+    }
+    else if (previous_center.y_val < box_min.y_val)
+    {
+        push.y_val = box_min.y_val - reach - center_now.y_val;
+        if (m_velocity.y_val > 0.0)
+            m_velocity.y_val = -m_velocity.y_val * restitution;
+    }
+    else
+    {
+        push.y_val = box_max.y_val + reach - center_now.y_val;
+        if (m_velocity.y_val < 0.0)
+            m_velocity.y_val = -m_velocity.y_val * restitution;
+    }
+    m_position += push;
+}
+
 double Starship::boundingRadius() const
 {
     double farthest = 0.0;
     for (const DynamoEngine::Vector2D& corner_px : HITBOX_CORNERS_PX)
     {
-        // Same pixels -> world conversion as collisionPolygon (rotation doesn't change a distance from the centre)
+        // Same pixels -> world conversion as collisionPolygon (rotation doesn't change a distance from the center)
         DynamoEngine::Vector2D offset =
             (corner_px / HITBOX_IMAGE_SIZE_PX - DynamoEngine::Vector2D(0.5, 0.5)) * double(m_ship_size);
         farthest = std::max(farthest, offset.magnitude());

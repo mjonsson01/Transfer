@@ -30,6 +30,9 @@ struct CameraState
     float max_display_height = static_cast<float>(SCREEN_HEIGHT);
 
     float render_alpha;
+    // TEMPORARY (camera limit check, 2026-11-25): how far keepViewInsideWorld pushed the camera back this frame (world
+    // units), shown by the F3 readout. Remove together with that readout.
+    DynamoEngine::Vector2D debug_view_push_back = {0.0, 0.0};
     VisorView visor_view = VisorView::Realistic;
 };
 
