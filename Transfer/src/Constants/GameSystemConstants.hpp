@@ -51,8 +51,10 @@ constexpr bool REFLECTIVE_WORLD_WALLS = false;
 // The F4 profiler reports averages and 1% lows over this many frames, and refreshes after each window (1 s at 60
 // FPS). Under 100 frames, the "1% low" is simply the slowest frame of the window.
 constexpr size_t PROFILER_WINDOW_FRAMES = 60;
-// Most lines the profiler overlay shows (the body counts, a header, then one line per section: F5 has 14 sections)
-constexpr size_t MAX_PROFILER_LINES = 17;
+// Most lines the profiler overlay shows (the body counts, the ticks/frame line, a header, then one line per section:
+// F5 has 15 sections). 18 is also the most that fits above the sliders at 1280 x 720 (see the static_assert in
+// TransferScenes.cpp): a 16th F5 section needs the overlay made shorter, e.g. merged rows or a smaller line height.
+constexpr size_t MAX_PROFILER_LINES = 18;
 
 const double MIN_ZOOM = 0.01;
 

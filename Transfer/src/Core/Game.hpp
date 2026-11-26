@@ -5,6 +5,7 @@
 // Standard Library Imports
 #include <iostream>
 #include <numeric>
+#include <string>
 #include <unordered_map>
 
 // Custom Imports
@@ -84,4 +85,8 @@ class Game
         int frame_total = 0;  // the whole frame, including the wait (about 16.7 ms at 60 FPS)
     };
     ProfilerSections m_profile;
+    // Physics ticks per frame, for the profiler overlays: counted over the F4 window, then turned into m_ticks_line
+    int m_ticks_in_window = 0;
+    int m_most_ticks_in_a_frame = 0;
+    std::string m_ticks_line = "Ticks/frame: -";
 };

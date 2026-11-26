@@ -235,7 +235,9 @@ Lambdas capture Game members by reference, which is safe because they outlive th
 **Physics** (unchanged by the rework): `GameState` holds `macroBodies` and `particles` (`std::vector<GravitationalBody>`).
 - Integration: velocity Verlet KDK (half kick + drift → forces → half kick), with collisions handled before integration.
 - Gravity: macro–macro and particle–macro only, with Plummer softening.
-- Particle broadphase: `UniformParticleGrid`.
+- Particle broadphase: `UniformParticleGrid`: a HASHED grid since 2026-11-26 (cells folded into 2 slots per particle,
+  built by counting sort, cell lookup = one read of m_slot_start; entries carry their cell so slot-sharing cells are
+  skipped). queryCandidates(index, out): the particle list parameter was dropped (cells are stored at build).
 - Shattering: Vogel-spiral fragments, 800 fragments.
 
 ---
@@ -675,6 +677,147 @@ step = walkthrough, starting with the tracer class header.**
   Physics}: F4/F5 switch between them (both wouldn't fit), same key hides. MAX_PROFILER_LINES 17. Shared formatting:
   profilerReportLines() in Game.cpp. First measurement (20 planets + 8000 particles, 2 ticks/frame, O2): whole tick
   3.36 ms/frame = debris pairs 1.45, debris gravity 0.78, planet-debris 0.56, grid build 0.49, the rest ~0.1.
+- **DEBRIS SEPARATES WITH VELOCITY (option 1, 2026-11-26, Marco chose it over PBD 'for now'):**
+  handleElasticCollisions: when both bodies are particles, the overlap is cleared by separateOverlappingDebris (static
+  in PhysicsSystem.cpp): equal and opposite velocity along the normal, shared by inverse mass, only TOPPING UP to the
+  separating speed that clears DEBRIS_SEPARATION_FRACTION (0.2) of the overlap next tick. Planets keep the position
+  push (OVERLAP_CORRECTION_FRACTION 0.8, OVERLAP_SLOP 0.01, now file constants). First try used 0.8 for debris too:
+  each cluster squeezed by its own gravity BURST apart at ~140 px/s around 0.6 s (top-ups add up along contact chains
+  and the speed stays); 0.2 and 0.1 both fine. gravity_spin_harness (particle gravity on): spin 0.0000 for 60 s,
+  energy falls then levels off (-2.9e10), no climb, no burst. Piles unchanged: 4800 0.90 ms, 14,400 4.28 ms (was
+  4.19), same packing, still settle at 1400; the 590 case still doesn't settle (as with one pass before).
+  spin_harness (pile on a STATIC planet, no particle gravity) still drifts 0.004-0.008 deg/s: the static-planet
+  contact (one-static branch) still moves the debris radially (position push), which doesn't conserve spin about
+  the planet; planets could get the same velocity treatment later. Harness changes (all checks pass): stacked_spawn
+  worst overlap 0.11 -> 0.00 px; spawn_flags '1 gentle hit, bounce 0' leaves 6 crumble fragments unabsorbed at the
+  end (was 0; planets 1 as expected); static_spawn '1' mass 1001000 -> 1000945 (a few fragments not absorbed yet);
+  ship_collision ship v changed again; universe_refactor baseline REGENERATED (third time today).
+- **RUNAWAY SPIN CAUSE FOUND (2026-11-26): the debris PUSH-APART.** gravity_spin_harness.cpp (PROBE harness: needs
+  a scratch copy of src with particle-particle gravity uncommented and g_probe_push_apart / g_probe_alternate_sweep
+  globals; header says how). Two 800-particle clusters at rest in empty space, own gravity only, total spin starts at
+  exactly 0. Push-apart OFF: spin stays 0.0000 deg/s for 60 s (both sweep modes). Push-apart ON: -0.37 deg/s
+  (alternating) / +0.07..0.19 (one-way) from nothing. Why: handleElasticCollisions' penetration correction moves
+  positions without touching velocities; it is mass-weighted along the line of centers, so the center of mass and
+  momentum are kept (momentum stays ~1e-8), but L = sum m r x v changes by c n x (v2 - v1) for sliding contacts.
+  It also ADDS ENERGY: with push-apart ON total energy falls until ~30 s, then CLIMBS (-3.03e10 -> -2.73e10 by 60 s,
+  kinetic x4.8): lifting overlapping particles apart against their own gravity for free. Self-gravity keeps clumps
+  overlapping, so the push runs every tick -> runaway. (Push-apart OFF: energy only falls; the cloud's rms radius
+  still grows to ~1000, which looks like a dense core flinging out a halo, not energy gain; not verified.)
+  Fix options offered (physics design, Marco's call): separate with a velocity impulse along the normal instead of
+  moving positions (Baumgarte-style: conserves momentum AND spin exactly), or position-based dynamics (velocity
+  derived from the corrected positions).
+- **ALTERNATING DEBRIS SWEEP (2026-11-26, Marco; hoped it fixes runaway spin he saw with particle-particle gravity
+  re-enabled):** handleParticleParticleCollisions flips m_sweep_debris_backward every call (once per real tick) and
+  walks the particles forward / backward; resolveContactsOfParticle(i, backward, ...) (split out) also reverses the
+  candidates, so the whole pair order reverses. Piles: packing back to pre-sort (14,400 pile 19.9 candidates / 7.06
+  touching), tick 4.69 (before sorting) -> 4.19; 4800 pile 1.00 -> 0.90. Open box 80k: ~7.2-7.4 spread / ~7.9
+  packed (one-way sort was 6.88 / 7.49: ~5% slower there, measured 3 runs). Spin: new spin_harness.cpp (static planet
+  at the origin, no box, 4800 bounce debris, 60 s; nothing in the scene can torque the pile): one-way 0.006-0.011
+  deg/s, alternating 0.003-0.006 deg/s. Halved, but neither is a runaway (about one turn per 10+ hours), so the
+  runaway spin with particle-particle gravity likely has another cause; not reproduced yet (that code is commented
+  out in addGravityBetweenGravBodies). Candidate cause to check: push-apart moves positions without changing
+  velocities, which does not conserve angular momentum (sum of m * dr x v != 0).
+- **DEBRIS SORTED BY CELL (2026-11-26, Marco: 'get it ready for the GPU'):** UniformParticleGrid::sortByCell =
+  chooseCellSize, each particle's cell, key = cell number counted column by column inside the occupied box
+  (column-major), LSD RADIX SORT (counting sort per byte, only as many passes as the largest key has bytes), gather
+  into m_reordered_particles + swap. Called at the very START of advanceUniverseState (before
+  rememberCollisionBoxSides, which keeps particle indices until after the collisions), every
+  DEBRIS_SORT_INTERVAL_TICKS = 8 (PhysicsConstants; 1 = every tick, what a GPU version would do). New F5 row 'Sort
+  debris by cell' (17 overlay lines now: MAX_PROFILER_LINES is exactly full). FIRST TRY sorted in the grid's SLOT
+  order: no good (hash scatters neighbor cells; 80k tick got slower, 7.59 -> 8.47); column-major fixed it.
+  Results, ms/tick (before sort -> sorted every tick -> every 8 ticks): 80k spread 7.59 -> 7.46 -> 6.88; 80k packed
+  8.78 -> 8.21 -> 7.49; 8k spread 0.77 -> 0.76 -> 0.735. Settled PILES: no net gain: per contact ~12% faster, but
+  the new (spatial sweep) resolution order packs piles ~12% tighter (14,400 pile: 20.3 -> 22.4 candidates, 7.06 ->
+  7.89 touching per particle; tick 4.69 -> 4.64; 4800 pile 1.00 -> 1.06). Idea offered: alternate the sweep
+  direction each tick (Gauss-Seidel sweep bias). Harnesses: all checks pass; ship_collision '3 debris' ship velocity
+  changed (debris met in a different order; momentum conserved); universe_refactor baseline REGENERATED again.
+  contact_identity_harness's reference must be re-recorded from the current code before the next speed-up.
+- **CONTACT MATH SPEED-UP 'A' (2026-11-26, bit-identical):** getCollisionInfo rejects with squared distances first
+  (margin 1e-9 so edge pairs still get the exact sqrt test: same answer always) and records bodyA (CollisionInfo
+  ::bodyA); handleDynamicCollision's 4 bounces go through bounceUsingCollisionInfo, which reuses getCollisionInfo's
+  distance + normal (negated when body A is the heavier; stacked pairs still get directionFromTo's random
+  direction); handleElasticCollisions(smaller, larger, distance, smaller_to_larger) no longer recomputes them
+  (was 3 sqrt per contact, now 1). NOT done (would change bits): 1/(m1+m2) precompute; the candidate list visitor
+  (needs a template callback, not worth the readability). Verified: new contact_identity_harness.cpp (3 scenes,
+  checksums of every body's exact bits every 200 ticks: identical before/after), 154/154, universe_refactor
+  baseline identical, all deterministic harnesses identical. Gain smaller than guessed: settled 4800 pile pairs
+  1.024 -> 0.913 ms (-11%); open box 80k spread tick 9.45 -> 7.59, 80k packed 11.66 -> 8.78, 8k spread 0.86 -> 0.77.
+  Finding: a settled 14,400 pile = 4.69 ms/tick with 20 candidates and 7 TOUCHING per particle: more than the 6
+  neighbors equal circles can touch without overlapping, so deep piles are compressed (one 80% push-apart pass per
+  tick can't hold the weight) and contact count, not per-contact math, is the cost. Box-corner quirk: particles
+  clamped into a corner end up exactly stacked (e.g. (997.45, 997.45)) and take random push directions.
+- **SINGLE DEBRIS PASS (2026-11-26, Marco's call + his edit):** handleCollisionEvents = planets, planet-debris,
+  SHIP, then ONE debris-debris pass (the second pass after the ship is gone). Comments fixed (ProfilerSections, the
+  benchmark text). 154/154 tests; harness checks all still pass with tiny number changes (ghost, ship_collision,
+  stacked_spawn: still 0 stacked pairs); universe_refactor baseline REGENERATED (header + README note).
+  Timing: 8k spread 1.31 -> 0.86 ms/tick, 80k spread 13.3 -> 9.5, 80k packed 15.4 -> 11.7; settled 4800 pile 2.2 ->
+  ~1.1-1.2 ms. SIDE EFFECT FOUND: the second pass was also a second round of separating every pile (it bled energy
+  out). With one pass, 4800 bounce debris + 1e10 planet 590 from the wall NO LONGER SETTLES (90 s: median 3.7
+  diameters/tick, 955 at the wall); 900 and 1400 still settle (median 0.66 / 0.34). The settling threshold moved
+  from 234..590 to 590..900. Reported to Marco; fix offered: debris bounces that lose a little energy.
+- **DENSE PILE + 'NEVER SETTLES' REPRODUCED (2026-11-26):** Marco's screenshots: 4800 bounce debris (radius-96
+  clusters) + 1e10 static planet left of the TestVisual box. Piled: 2.98 ms/tick (pairs 2.86), 41 FPS at 3x (8
+  ticks/frame AT CAP). Not piled: 0.9 ms/tick, stays a gas for minutes. testvisual_load_harness args 5/6 (planet
+  center's distance from the wall, bounce debris) + end-of-run 'movement per tick in diameters'. Planet 234 from the
+  wall (his 'not settling' shot): pull at the wall 1e10/234^2 = 1.8e5 px/s^2 (1500 px/s gained per tick), median
+  particle moves 10.6 DIAMETERS per tick (90%: 19.5) -> collisions checked once per tick can't catch them, they pass
+  through each other, elastic walls (WALL_RESTITUTION 1) + elastic bounces keep the energy: a gas that never cools.
+  Planet 590 from the wall: piles after ~25 s, then 11.3 candidates / 3.9 touching per particle, pairs 2.1 ms, tick
+  2.2 ms, median particle still moves 0.95 diameters per tick (a 'boiling' pile). Not a grid bug: time step vs
+  gravity strength. Options offered (Marco's call): substeps when particles move > ~0.5 diameter/tick, restitution
+  < 1 for debris, speed cap. Dense pile cost is contact count, not grid: second pass halves it; then threads.
+- **2 MS/TICK TARGET (2026-11-26, Marco):** goal = worst-case tick <= 2 ms (or less), 'spectacular' particle counts.
+  He sees 60 FPS up to 6 ticks/frame (~3 ms/tick at ~19k), drops past that; worst case he found: 10-12k free debris
+  in the TestVisual box + one static planet outside -> dense pile, big slowdown. testvisual_load_harness extended
+  (args: cluster radius, max particles, planet mass, seconds; prints cand/p, touch/p, worst tick, end-of-run wall
+  pile counts). NOT reproduced yet: 11.2k particles (radius-100 clusters) + 1e10 static planet outside the right
+  wall = 1.03 ms/tick, cand/p 0.4, debris NOT piled (mean x 106; 887 within 100 px of the right wall) -- WALL_RESTITUTION
+  1.0 and elastic particle bounces keep it a hot gas. Need Marco's exact setup (cluster radius, mass, planet mass/
+  position, spawn flags, how long he waits). Plan after that: worst-case benchmark scene with pass/fail vs 2 ms,
+  then second pair pass decision, sort particles by cell, pair-loop cleanups, threads.
+- **F5 PER TICK + TICKS/FRAME LINE (2026-11-26):** Marco saw frame time jump 16 -> 45 ms going from 11.2k to 12k
+  particles in TestVisual and suspected catch-up ticks hid the grid gains. Checked with
+  Notes/drafts/Harnesses/testvisual_load_harness.cpp (real spawn path, radius-100 clusters into the 2000 x 2000 box,
+  built against HEAD's old grid and the new one): per tick at 20k particles old 5.2-5.7 ms, new 2.5-3.1 ms, so the
+  grid is ~2x faster in his scenario too; the jump is frame-level. Changes: advanceUniverseState now calls
+  m_profiler.endFrame() itself (endProfilerFrame() removed), so F5 = ms PER TICK ('Physics/tick (ms)'); F5's
+  Prediction row removed (F4's Trajectories row times the same work once per frame). Game counts ticks per frame
+  over the F4 window: both overlays show 'Ticks/frame: X avg, Y max (cap 8)' (+ 'AT CAP'). Mechanism to explain to
+  Marco: 60 FPS = 2 ticks/frame at 1x; a frame over 16.7 ms owes more game time -> more ticks next frame -> longer
+  frame; settles if a tick costs < 8.33 ms / speed, else runs at MAX_PHYSICS_STEPS_PER_FRAME 8 every frame; vsync
+  (SDL_GPU default) snaps frame times to refresh steps, making it jumpier. Open: what pushed the frame past 16.7 ms
+  at 12k (needs his F4 readout); overload policy (slow motion = lower cap and drop the backlog) offered.
+- **HASHED PARTICLE GRID (2026-11-26, step 1 of the particle speed-up, Marco: 'go ahead and implement'):**
+  UniformParticleGrid rewritten: cell size = 2 x largest radius as before; each cell hashed (two odd 64-bit
+  multipliers, XOR, fold high half) into a power-of-two table of >= 2 slots per particle; counting sort (count ->
+  running total -> place, stable in particle index order) fills m_slot_start + m_sorted_entries {column, row,
+  particle_index}; the query walks the same forward half-stencil (own cell with j > i, (0,+1), (+1,-1..+1)) and skips
+  entries from other cells sharing the slot. No std::sort, no binary search. Counters (Marco's sudo run) had shown
+  the old grid build was mostly std::sort branch mispredicts (~6-7 per particle per sort) and the query ~340
+  instructions/particle of binary search. Verified: Notes/drafts/Harnesses/particle_grid_harness.cpp (vs a copy of
+  the old grid, OldUniformParticleGrid.hpp/.cpp, and brute force; 8 scenes incl. slot sharing and clusters 1e9 apart:
+  identical pair sets, no duplicates, nothing missed); 154/154 googletests; every deterministic harness identical,
+  universe_refactor baseline still EXACT (pair order changed but none of those scenes depends on it). Slot sharing
+  measured ~= random hashing: 15-20% of occupied cells share a slot. Benchmark, ms per tick before -> after:
+  8k spread 2.19 -> 1.31 (grid 0.54 -> 0.08, pairs 1.34 -> 0.94); 80k spread 34.0 -> 13.3 (grid 6.9 -> 0.96,
+  pairs 23.8 -> 9.6); 80k packed 36.1 -> 15.4. Sorting particles in memory by cell would still give 1.3-1.7x on pairs
+  (next step, not done). Still open: the second pair pass per tick (Marco's call), squared-distance early-out.
+  Side fix: the old grid's packed keys (CELL_COORD_BIAS 1e6 cells) broke past ~6 million px from the origin; the
+  hashed grid has no such limit.
+- **PARTICLE BENCHMARK HARNESS (2026-11-26, start of the 10x particle work):** Notes/drafts/Harnesses/
+  particle_benchmark_harness.cpp + KperfCounters.hpp (kperf private framework via dlopen; counters need sudo; the
+  counter path was NOT run by Claude, who can't sudo) + run_particle_benchmark.sh (builds -O2 into bin/, runs with
+  sudo unless --no-sudo). Scenes: 8k/80k bounce-only particles (radius 3) in the collision box, spacing 3.0 and 2.2
+  radii, 8 light static planets outside. First numbers (no counters, M3 Pro), ms per tick:
+  8k spread 2.15 (grid 0.54, pairs 1.31); 80k spread 33.1 (grid 6.9, pairs 22.9); 80k packed 37.6 (grid 7.1, pairs
+  27.3). Findings: (1) handleCollisionEvents runs handleParticleParticleCollisions TWICE per tick (before and after
+  the ship), so grid + pairs are paid twice. (2) Same density, 10x particles: pair cost per particle 75 -> 144 ns
+  (spread) = memory effect (1.1 MB of particles fits L2-ish comfortably, 11 MB barely). (3) Sorting particles by
+  cell: pairs 1.57-1.73x faster at 80k, 1.16-1.25x at 8k; grid build 5-7x faster (std::sort on nearly-sorted input).
+  (4) Only 6-7% of candidate pairs touch; ~65-90 ns per particle even sorted at 8k for ~1.6-3.3 candidates suggests
+  the per-particle query (two binary searches) costs more than the narrow phase -> counters will confirm.
+  Marco installed Xcode.app on 2026-11-26 (xcode-select now points at it); its license must be accepted
+  (sudo xcodebuild -license) before clang works again; Instruments/xctrace come with it.
 - **UI FITS ANY WINDOW SHAPE + PROFILER MOVED (2026-11-26, Marco: F5 overlapped the sliders; Mac fullscreen clipped
   the slider row's edge; 'anywhere absolute px values are used ... should be modified'):** cause: UIRoot scaled by
   window HEIGHT only, so Mac fullscreen 1512 x 982 gave a UI space of ~1108 x 720 and the 1150-wide slider row didn't

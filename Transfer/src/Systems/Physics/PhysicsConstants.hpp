@@ -9,6 +9,9 @@ constexpr float INV_PHYSICS_TIME_STEP = 120.0f;
 // Most physics steps one frame may run to catch up. Normal play needs 2 per frame (60 FPS), 4 at 2x speed.
 // Time beyond this is dropped (the simulation briefly runs slower) instead of piling up into a spiral of death.
 constexpr int MAX_PHYSICS_STEPS_PER_FRAME = 8;
+// How often the debris is re-sorted by grid cell (UniformParticleGrid::sortByCell). Particles move less than a cell per
+// tick, so the order stays nearly right in between; 1 = every tick (what a GPU version would do: sorting is cheap there)
+constexpr int DEBRIS_SORT_INTERVAL_TICKS = 8;
 
 // --- Trajectory prediction (planning mode) ---
 constexpr float TRAJECTORY_TRACE_SPEED = 15.0f;          // game seconds predicted per real second: how fast lines grow

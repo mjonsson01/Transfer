@@ -29,9 +29,6 @@ void PhysicsSystem::updateTrajectories(float frame_seconds, const UniverseState&
                                        const PlayerInput& player_input, Trajectories& trajectories,
                                        const UIState& ui_state)
 {
-    // Its own F5 row (always on): the functions it runs on the prediction copies don't feed the real tick's rows
-    DynamoEngine::ProfileScope timer(m_profiler, m_profile.prediction);
-
     // Leaving planning mode makes the lines vanish: once time runs, they no longer describe the future
     if (!ui_state.getIsPlanning())
     {

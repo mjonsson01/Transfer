@@ -8,21 +8,20 @@ PhysicsSystem::PhysicsSystem() : m_profiler(PROFILER_WINDOW_FRAMES)
     // The F5 overlay's rows, in this order
     m_profile.planet_collisions = m_profiler.addSection("Coll: planets");
     m_profile.planet_debris_collisions = m_profiler.addSection("Coll: planet-debris");
+    m_profile.debris_sort = m_profiler.addSection("Sort debris by cell");
     m_profile.debris_grid = m_profiler.addSection("Coll: debris grid");
     m_profile.debris_pairs = m_profiler.addSection("Coll: debris pairs");
     m_profile.ship_collisions = m_profiler.addSection("Coll: ship");
     m_profile.verlet_first_half = m_profiler.addSection("Verlet 1st half");
     m_profile.planet_gravity = m_profiler.addSection("Grav: planets");
-    m_profile.debris_gravity = m_profiler.addSection("Grav: debris");
+    m_profile.debris_planet_gravity = m_profiler.addSection("Grav: planet-debris");
+    m_profile.debris_debris_gravity = m_profiler.addSection("Grav: debris-debris");
     m_profile.ship_gravity = m_profiler.addSection("Grav: ship");
     m_profile.verlet_second_half = m_profiler.addSection("Verlet 2nd half");
     m_profile.walls_and_box = m_profiler.addSection("Walls & box");
     m_profile.cleanup = m_profiler.addSection("Cleanup");
     m_profile.whole_tick = m_profiler.addSection("Whole tick");
-    m_profile.prediction = m_profiler.addSection("Prediction");
 }
-
-void PhysicsSystem::endProfilerFrame() { m_profiler.endFrame(); }
 
 PhysicsSystem::~PhysicsSystem() {}
 
@@ -32,7 +31,19 @@ void PhysicsSystem::advanceUniverseState(UniverseState& universe_state, const Sh
     m_profiling_real_tick = true;
     {
         DynamoEngine::ProfileScope tick_timer(m_profiler, m_profile.whole_tick);
-        // Collisions, the ship's controls, then motion (Verlet + forces + walls), then cleanup.
+        // Debris sort, collisions, the ship's controls, then motion (Verlet + forces + walls), then cleanup.
+
+        // Neighbors next to each other in memory, so the debris pair pass reads nearby memory. FIRST, before anything
+        // keeps particle indices for later in the tick (rememberCollisionBoxSides does). Every
+        // DEBRIS_SORT_INTERVAL_TICKS ticks: the order stays nearly right in between.
+        m_ticks_since_debris_sort += 1;
+        if (m_ticks_since_debris_sort >= DEBRIS_SORT_INTERVAL_TICKS)
+        {
+            DynamoEngine::ProfileScope sort_timer(m_profiler, m_profile.debris_sort);
+            particleGrid.sortByCell(universe_state.particles);
+            m_ticks_since_debris_sort = 0;
+        }
+
         // Collisions push overlapping bodies apart and could shove one across the collision box's edge, so remember
         // which side everything was on before them, and put anything shoved across back on its side right after
         rememberCollisionBoxSides(universe_state);
@@ -46,6 +57,8 @@ void PhysicsSystem::advanceUniverseState(UniverseState& universe_state, const Sh
         cleanupGravBodies(universe_state);
     } // the whole tick is recorded here, before profiling is switched off again
     m_profiling_real_tick = false;
+    // One profiler "frame" per tick: the F5 numbers are per tick, however many ticks a frame runs to catch up
+    m_profiler.endFrame();
 }
 
 void PhysicsSystem::integrateUniversePhysics(UniverseState& universe_state)
@@ -281,6 +294,18 @@ void PhysicsSystem::removeNewestSpawn(UniverseState& universe_state)
 static inline CollisionInfo getCollisionInfo(const GravitationalBody& a, const GravitationalBody& b)
 {
     DynamoEngine::Vector2D r_vector = b.position - a.position;
+
+    // Quick rejection first, without the square root and division below: most pairs the grid hands out don't touch.
+    // Compares squared distances, with a margin of a billionth so that pairs right at the edge still go to the exact
+    // test below: the answer is always the same as the exact test's.
+    double reach = a.radius + b.radius;
+    if (r_vector.squareMagnitude() > reach * reach * (1.0 + 1e-9))
+    {
+        CollisionInfo no_contact = {};
+        no_contact.shouldCollide = false;
+        return no_contact;
+    }
+
     double distance = r_vector.magnitude();
     DynamoEngine::Vector2D unit_normal_vector =
         (distance > 1e-8) ? (r_vector / distance) : DynamoEngine::Vector2D(1.0, 0.0);
@@ -291,8 +316,8 @@ static inline CollisionInfo getCollisionInfo(const GravitationalBody& a, const G
     bool should_collide = (distance < b.radius + a.radius);
     double approaching_speed = -normal_speed; // positive if bodies are moving towards each other
     bool should_blow_up = (approaching_speed >= MIN_SHATTER_SPEED);
-    return {distance,       unit_normal_vector, relative_velocity_vector, normal_speed, abs_normal_speed,
-            should_collide, should_blow_up};
+    return {distance,         unit_normal_vector, relative_velocity_vector, normal_speed,
+            abs_normal_speed, should_collide,     should_blow_up,           &a};
 }
 
 static inline GravitationalBodyPair pickMassPair(GravitationalBody& a, GravitationalBody& b)
@@ -309,7 +334,8 @@ void PhysicsSystem::handleCollisionEvents(UniverseState& universe_state)
     // Shatters during these passes put their fragments in m_pending_fragments, not in particles
     handleMacroMacroCollisions(universe_state);
     handleMacroParticleCollisions(universe_state);
-    handleParticleParticleCollisions(universe_state);
+    // The ship before the debris pairs: debris the ship shoves into other debris is separated in this same tick, so
+    // the single debris pass covers it (until 2026-11-26 a second debris pass ran after the ship instead)
     handleShipCollisions(universe_state);
     handleParticleParticleCollisions(universe_state);
 
@@ -412,37 +438,53 @@ void PhysicsSystem::handleParticleParticleCollisions(UniverseState& universe_sta
     }
     DynamoEngine::ProfileScope timer(m_profiler, m_profile.debris_pairs, m_profiling_real_tick); // the rest
 
-    std::vector<size_t> candidates;
-    size_t num_particles = particles.size();
+    // Alternate the sweep direction every tick. The pairs are resolved one after another and each push changes what
+    // the next pair sees, so a sweep that always runs the same way (left to right: the debris is sorted by position)
+    // pushes everything a little in that direction every tick. Piles pack tighter, and a cloud can slowly pick up a
+    // spin. Sweeping back the other way every other tick cancels that bias out.
+    m_sweep_debris_backward = !m_sweep_debris_backward;
 
-    for (size_t i = 0; i < num_particles; ++i)
+    std::vector<size_t> candidates;
+    const size_t num_particles = particles.size();
+    for (size_t step = 0; step < num_particles; ++step)
     {
-        if (!particles[i].isCollidable || particles[i].isMarkedForDeletion)
+        size_t i = m_sweep_debris_backward ? (num_particles - 1 - step) : step;
+        resolveContactsOfParticle(i, m_sweep_debris_backward, universe_state, candidates);
+    }
+}
+
+void PhysicsSystem::resolveContactsOfParticle(size_t i, bool backward, UniverseState& universe_state,
+                                              std::vector<size_t>& candidates)
+{
+    std::vector<GravitationalBody>& particles = universe_state.particles;
+    if (!particles[i].isCollidable || particles[i].isMarkedForDeletion)
+    {
+        return;
+    }
+
+    particleGrid.queryCandidates(i, candidates);
+    const size_t candidate_count = candidates.size();
+    for (size_t step = 0; step < candidate_count; ++step)
+    {
+        // Backward sweeps take the candidates in reverse too, so the whole order of pairs is reversed
+        size_t j = backward ? candidates[candidate_count - 1 - step] : candidates[step];
+        if (!particles[j].isCollidable || particles[j].isMarkedForDeletion)
         {
             continue;
         }
 
-        particleGrid.queryCandidates(i, particles, candidates);
-        for (size_t j : candidates)
+        CollisionInfo collision_info = getCollisionInfo(particles[i], particles[j]);
+        if (!collision_info.shouldCollide)
         {
-            if (!particles[j].isCollidable || particles[j].isMarkedForDeletion)
-            {
-                continue;
-            }
+            continue;
+        }
 
-            CollisionInfo collision_info = getCollisionInfo(particles[i], particles[j]);
-            if (!collision_info.shouldCollide)
-            {
-                continue;
-            }
-
-            GravitationalBodyPair grav_body_pair = pickMassPair(particles[i], particles[j]);
-            handleDynamicCollision(grav_body_pair, collision_info, universe_state);
-            // particles[i] may have just been absorbed: it's gone, so it can't hit anything else this tick
-            if (particles[i].isMarkedForDeletion)
-            {
-                break;
-            }
+        GravitationalBodyPair grav_body_pair = pickMassPair(particles[i], particles[j]);
+        handleDynamicCollision(grav_body_pair, collision_info, universe_state);
+        // particles[i] may have just been absorbed: it's gone, so it can't hit anything else this tick
+        if (particles[i].isMarkedForDeletion)
+        {
+            return;
         }
     }
 }
@@ -541,7 +583,7 @@ void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& grav_body_pair
 
     if (heavier.isBounce || lighter.isBounce)
     {
-        handleElasticCollisions(lighter, heavier);
+        bounceUsingCollisionInfo(lighter, heavier, collisionInfo);
         return;
     }
 
@@ -569,7 +611,7 @@ void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& grav_body_pair
     if (collisionInfo.absNormalSpeed >= MAX_ACCRETION_COLLISION_SPEED)
     {
         // Too fast to cleanly merge, not fast enough to shatter: always bounce.
-        handleElasticCollisions(lighter, heavier);
+        bounceUsingCollisionInfo(lighter, heavier, collisionInfo);
         return;
     }
 
@@ -603,7 +645,7 @@ void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& grav_body_pair
         else if (heavier.isParticle)
         {
             // Particles can't accrete, so we just handle an elastic collision.
-            handleElasticCollisions(lighter, heavier);
+            bounceUsingCollisionInfo(lighter, heavier, collisionInfo);
         }
         else
         {
@@ -612,7 +654,7 @@ void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& grav_body_pair
     }
     else
     {
-        handleElasticCollisions(lighter, heavier);
+        bounceUsingCollisionInfo(lighter, heavier, collisionInfo);
     }
 }
 // The unit vector pointing from `from` to `to`. Two bodies exactly on top of each other have no such direction, so a
@@ -630,12 +672,32 @@ static DynamoEngine::Vector2D directionFromTo(const DynamoEngine::Vector2D& from
     return offset / distance;
 }
 
-void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, GravitationalBody& largerBody)
+void PhysicsSystem::bounceUsingCollisionInfo(GravitationalBody& lighter, GravitationalBody& heavier,
+                                             const CollisionInfo& collision_info)
+{
+    DynamoEngine::Vector2D lighter_to_heavier;
+    if (firstWithinEpsilonOfSecond(collision_info.distance, 0.0))
+    {
+        // Exactly on top of each other: there is no direction to reuse, so directionFromTo picks a random one
+        lighter_to_heavier = directionFromTo(lighter.position, heavier.position);
+    }
+    else if (collision_info.bodyA == &lighter)
+    {
+        lighter_to_heavier = collision_info.unitNormalVector; // it points from body A (the lighter) to the heavier
+    }
+    else
+    {
+        lighter_to_heavier = collision_info.unitNormalVector * -1.0; // body A is the heavier one: turn it around
+    }
+    handleElasticCollisions(lighter, heavier, collision_info.distance, lighter_to_heavier);
+}
+
+void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, GravitationalBody& largerBody,
+                                            double distance, const DynamoEngine::Vector2D& smaller_to_larger)
 {
     if (smallerBody.isForceStatic && largerBody.isForceStatic)
     {
-        double distance = (largerBody.position - smallerBody.position).magnitude();
-        DynamoEngine::Vector2D n = directionFromTo(smallerBody.position, largerBody.position); // smaller -> larger
+        const DynamoEngine::Vector2D& n = smaller_to_larger;
 
         double closing_speed = (smallerBody.velocity - largerBody.velocity).dot(n); // > 0: the gap is shrinking
         if (closing_speed > 0.0)
@@ -660,9 +722,8 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, Grav
         GravitationalBody& dyn = smallerBody.isForceStatic ? largerBody : smallerBody;
         GravitationalBody& stat = smallerBody.isForceStatic ? smallerBody : largerBody;
 
-        double distance = (dyn.position - stat.position).magnitude();
-        DynamoEngine::Vector2D n =
-            directionFromTo(stat.position, dyn.position); // from the static body to the other one
+        // From the static body to the other one
+        DynamoEngine::Vector2D n = smallerBody.isForceStatic ? smaller_to_larger : smaller_to_larger * -1.0;
 
         // The closing speed RELATIVE to the static body: a static body can be drifting, so the other body's own
         // velocity isn't enough (a resting body hit by a drifting static one would otherwise feel nothing and get
@@ -688,9 +749,7 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, Grav
         return;
     }
 
-    double distance = (largerBody.position - smallerBody.position).magnitude();
-    DynamoEngine::Vector2D normal_vector =
-        directionFromTo(smallerBody.position, largerBody.position); // smaller -> larger
+    const DynamoEngine::Vector2D& normal_vector = smaller_to_larger;
     double v_smaller_n = smallerBody.velocity.dot(normal_vector);
     double v_larger_n = largerBody.velocity.dot(normal_vector);
     double m_smaller = smallerBody.mass;
@@ -912,7 +971,7 @@ void PhysicsSystem::addGravityBetweenGravBodies(UniverseState& universe_state)
     // Particle-Macro gravity. Particles still don't gravitate with each other -- that stays
     // an explicit simplification (would be O(n^2) or need Barnes-Hut, both out of scope here).
     {
-        DynamoEngine::ProfileScope timer(m_profiler, m_profile.debris_gravity, m_profiling_real_tick);
+        DynamoEngine::ProfileScope timer(m_profiler, m_profile.debris_planet_gravity, m_profiling_real_tick);
         for (size_t i = 0; i < num_particles; ++i)
         {
             for (size_t j = 0; j < num_macro_bodies; ++j)
@@ -922,14 +981,18 @@ void PhysicsSystem::addGravityBetweenGravBodies(UniverseState& universe_state)
         }
     }
 
+    // Particle-Particle gravity.
     // TODO: Review? -- Works now with elastic collision fix, need to majorly optimize
-    // for (size_t i = 0; i < num_particles; ++i)
-    // {
-    //     for (size_t j = i + 1; j < num_particles; ++j)
-    //     {
-    //         addGravityBetweenGravBodyPair(particles[i], particles[j]);
-    //     }
-    // }
+    {
+        DynamoEngine::ProfileScope timer(m_profiler, m_profile.debris_debris_gravity, m_profiling_real_tick);
+        for (size_t i = 0; i < num_particles; ++i)
+        {
+            for (size_t j = i + 1; j < num_particles; ++j)
+            {
+                addGravityBetweenGravBodyPair(particles[i], particles[j]);
+            }
+        }
+    }
 }
 void PhysicsSystem::addGravityBetweenShipAndBodies(UniverseState& universe_state)
 {

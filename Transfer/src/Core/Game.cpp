@@ -4,6 +4,7 @@
 #include "Core/Game.hpp"
 
 // Standard Library Imports
+#include <algorithm>
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -145,12 +146,16 @@ void Game::Run()
 
         // 4. Physics: every tick this frame
         Uint64 physics_start = SDL_GetPerformanceCounter();
+        int ticks_this_frame = 0;
         while (physics_time_accumulator >= PHYSICS_TIME_STEP && runs_simulation)
         {
             Game::IntegratePhysicsFrame();
             physics_time_accumulator -= PHYSICS_TIME_STEP;
+            ++ticks_this_frame;
         }
         Uint64 physics_end = SDL_GetPerformanceCounter();
+        m_ticks_in_window += ticks_this_frame;
+        m_most_ticks_in_a_frame = std::max(m_most_ticks_in_a_frame, ticks_this_frame);
         m_profiler.record(m_profile.physics,
                           DynamoEngine::FrameProfiler::millisecondsBetween(physics_start, physics_end));
 
@@ -197,7 +202,7 @@ void Game::Run()
         {
             Game::publishProfilerReport();
         }
-        physicsSystem.endProfilerFrame();
+        // (the physics profiler closes its own entries, one per tick)
         if (physicsSystem.profiler().takeNewReport())
         {
             Game::publishPhysicsProfilerReport();
@@ -209,7 +214,7 @@ void Game::Run()
 // the monospaced UI font (SpaceMono). `title` names the report in its header.
 static std::vector<std::string>
 profilerReportLines(const char* title, const std::vector<DynamoEngine::FrameProfiler::SectionReport>& report,
-                    const UniverseState& universe_state)
+                    const UniverseState& universe_state, const std::string& ticks_line)
 {
     std::vector<std::string> lines;
     char line[128];
@@ -217,6 +222,7 @@ profilerReportLines(const char* title, const std::vector<DynamoEngine::FrameProf
     std::snprintf(line, sizeof(line), "Particles: %zu   Planets: %zu", universe_state.particles.size(),
                   universe_state.macro_bodies.size());
     lines.push_back(line);
+    lines.push_back(ticks_line);
     std::snprintf(line, sizeof(line), "%-19s %8s %8s %8s", title, "avg", "1% low", "worst");
     lines.push_back(line);
     for (const DynamoEngine::FrameProfiler::SectionReport& section : report)
@@ -229,9 +235,10 @@ profilerReportLines(const char* title, const std::vector<DynamoEngine::FrameProf
 }
 
 // Also to the console while that overlay is on, so the numbers can be copied out
-static void printProfilerLines(const std::vector<std::string>& lines, size_t window_frames)
+// `window_unit`: what the window counts ("frames" for F4, "ticks" for F5)
+static void printProfilerLines(const std::vector<std::string>& lines, size_t window_size, const char* window_unit)
 {
-    std::printf("--- %zu frames ---\n", window_frames);
+    std::printf("--- %zu %s ---\n", window_size, window_unit);
     for (const std::string& text : lines)
     {
         std::printf("%s\n", text.c_str());
@@ -240,12 +247,25 @@ static void printProfilerLines(const std::vector<std::string>& lines, size_t win
 
 void Game::publishProfilerReport()
 {
+    // Physics ticks per frame over the same window. The physics runs 120 ticks per game second, so a 60 FPS frame
+    // runs 2 at 1x speed; a slow frame owes more game time, so the next frame runs extra "catch-up" ticks (at most
+    // MAX_PHYSICS_STEPS_PER_FRAME). If one tick takes longer than the game time it covers, the catch-up never
+    // ends and every frame runs the maximum: "AT CAP".
+    const double average_ticks = static_cast<double>(m_ticks_in_window) / m_profiler.windowFrames();
+    char ticks_line[128];
+    std::snprintf(ticks_line, sizeof(ticks_line), "Ticks/frame: %.2f avg, %d max (cap %d)%s", average_ticks,
+                  m_most_ticks_in_a_frame, MAX_PHYSICS_STEPS_PER_FRAME,
+                  m_most_ticks_in_a_frame >= MAX_PHYSICS_STEPS_PER_FRAME ? "  AT CAP" : "");
+    m_ticks_line = ticks_line;
+    m_ticks_in_window = 0;
+    m_most_ticks_in_a_frame = 0;
+
     std::vector<std::string> lines =
-        profilerReportLines("Frame (ms)", m_profiler.report(), game_state.getUniverseState());
+        profilerReportLines("Frame (ms)", m_profiler.report(), game_state.getUniverseState(), m_ticks_line);
     ui_state.setFrameProfilerLines(lines);
     if (ui_state.getProfilerOverlay() == ProfilerOverlay::Frame)
     {
-        printProfilerLines(lines, m_profiler.windowFrames());
+        printProfilerLines(lines, m_profiler.windowFrames(), "frames");
     }
 }
 
@@ -253,11 +273,12 @@ void Game::publishPhysicsProfilerReport()
 {
     DynamoEngine::FrameProfiler& physics_profiler = physicsSystem.profiler();
     std::vector<std::string> lines =
-        profilerReportLines("Physics/frame (ms)", physics_profiler.report(), game_state.getUniverseState());
+        profilerReportLines("Physics/tick (ms)", physics_profiler.report(), game_state.getUniverseState(),
+                            m_ticks_line);
     ui_state.setPhysicsProfilerLines(lines);
     if (ui_state.getProfilerOverlay() == ProfilerOverlay::Physics)
     {
-        printProfilerLines(lines, physics_profiler.windowFrames());
+        printProfilerLines(lines, physics_profiler.windowFrames(), "ticks");
     }
 }
 

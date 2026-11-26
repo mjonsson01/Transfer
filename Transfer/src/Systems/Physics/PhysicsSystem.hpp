@@ -3,25 +3,25 @@
 #pragma once
 
 // Custom Imports
+#include "Camera/CameraTransform.hpp"
+#include "Constants/EngineConstants.hpp"
+#include "Constants/GameSystemConstants.hpp"
 #include "Core/GameState.hpp"
-#include "Systems/Input/PlayerInput.hpp"
-#include "Systems/Physics/SpawnSettings.hpp"
-#include "Systems/Physics/Trajectories.hpp"
 #include "Core/UIState.hpp"
-#include "Systems/Physics/UniverseState.hpp"
 #include "DynamoEngine/Debug/FrameProfiler.hpp"
 #include "DynamoEngine/Math/Vector2.hpp"
 #include "DynamoEngine/Physics/Collision2D.hpp"
+#include "Systems/Input/PlayerInput.hpp"
+#include "Systems/Physics/FragmentLayout.hpp"
 #include "Systems/Physics/GravitationalBody.hpp"
 #include "Systems/Physics/GravitationalBodyPair.hpp"
-#include "Systems/Physics/VelocityVerletIntegration.hpp"
-#include "Constants/EngineConstants.hpp"
-#include "Constants/GameSystemConstants.hpp"
 #include "Systems/Physics/PhysicsConstants.hpp"
-#include "Utilities/CustomMathUtilities.hpp"
-#include "Systems/Physics/FragmentLayout.hpp"
+#include "Systems/Physics/SpawnSettings.hpp"
+#include "Systems/Physics/Trajectories.hpp"
 #include "Systems/Physics/UniformParticleGrid.hpp"
-#include "Camera/CameraTransform.hpp"
+#include "Systems/Physics/UniverseState.hpp"
+#include "Systems/Physics/VelocityVerletIntegration.hpp"
+#include "Utilities/CustomMathUtilities.hpp"
 
 // Standard Library Imports
 #include <algorithm>
@@ -38,6 +38,9 @@ struct CollisionInfo
     double absNormalSpeed;                         // abs value of signed speed along normal vector
     bool shouldCollide;
     bool shouldBlowUp;
+    // The body the normal points away from (getCollisionInfo's first argument), so the bounce can reuse the normal
+    // instead of working it out again
+    const GravitationalBody* bodyA = nullptr;
 };
 
 class PhysicsSystem
@@ -53,9 +56,10 @@ class PhysicsSystem
     // Helper method called in the destructor to clear up physics-related
     // contents
     void cleanUp();
-    // F5: how long each part of the physics tick takes, per frame (summed over that frame's ticks). Game calls
-    // endProfilerFrame once per frame; after each window, profiler().takeNewReport() is true and report() has rows.
-    void endProfilerFrame();
+    // F5: how long each part of ONE physics tick takes. advanceUniverseState closes a profiler window entry after
+    // every tick, so the numbers don't depend on how many ticks a frame runs; after each window of
+    // PROFILER_WINDOW_FRAMES ticks, profiler().takeNewReport() is true and report() has the rows. (The trajectory
+    // prediction runs once per frame, not per tick: the F4 overlay's Trajectories row times it.)
     DynamoEngine::FrameProfiler& profiler() { return m_profiler; }
     // This frame's spawn, undo and clear requests (PlayerInput::commands), with the spawn panel's settings
     void updateGravBodyInstantiations(UniverseState& universe_state, const PlayerInput& player_input,
@@ -95,6 +99,10 @@ class PhysicsSystem
     void handleMacroMacroCollisions(UniverseState& universe_state);
     void handleMacroParticleCollisions(UniverseState& universe_state);
     void handleParticleParticleCollisions(UniverseState& universe_state);
+    // Particle i against the candidates the grid finds for it (in reverse order when `backward`); `candidates` is
+    // reused work space
+    void resolveContactsOfParticle(size_t i, bool backward, UniverseState& universe_state,
+                                   std::vector<size_t>& candidates);
     // The player's ship against planets and debris: never overlapping, bouncing with SHIP_RESTITUTION
     void handleShipCollisions(UniverseState& universe_state);
     // Pushes the ship and one body apart along the contact normal, then bounces them if they're still closing.
@@ -103,9 +111,14 @@ class PhysicsSystem
 
     void handleDynamicCollision(GravitationalBodyPair& grav_body_pair, const CollisionInfo& collisionInfo,
                                 UniverseState& universe_state);
-    // Handles a 'bouncy' (elastic) collision between two bodies, when the collision
-    // satisfies Engine-Constant-defined constraints
-    void handleElasticCollisions(GravitationalBody& smallerBody, GravitationalBody& largerBody);
+    // Handles a 'bouncy' (elastic) collision between two touching bodies, given their distance and the unit
+    // direction from smallerBody to largerBody (worked out once, by getCollisionInfo)
+    void handleElasticCollisions(GravitationalBody& smallerBody, GravitationalBody& largerBody, double distance,
+                                 const DynamoEngine::Vector2D& smaller_to_larger);
+    // handleDynamicCollision's bounce: hands handleElasticCollisions the distance and direction getCollisionInfo
+    // already found (turned around if needed), so they aren't computed again
+    void bounceUsingCollisionInfo(GravitationalBody& lighter, GravitationalBody& heavier,
+                                  const CollisionInfo& collision_info);
     void handleAccretion(GravitationalBodyPair& grav_body_pair);
     // TODO: Prune? currently uncalled, see updateSystemFrame
     void promoteOversizedParticles(UniverseState& universe_state);
@@ -183,22 +196,27 @@ class PhysicsSystem
     {
         int planet_collisions = 0;
         int planet_debris_collisions = 0;
-        int debris_grid = 0;  // building the particle grid (twice per tick)
-        int debris_pairs = 0; // checking and resolving the particle pairs it finds (twice per tick)
+        int debris_sort = 0;  // reordering the particles by grid cell (once per tick, at its start)
+        int debris_grid = 0;  // building the particle grid (once per tick)
+        int debris_pairs = 0; // checking and resolving the particle pairs it finds (once per tick)
         int ship_collisions = 0;
         int verlet_first_half = 0;
         int planet_gravity = 0;
-        int debris_gravity = 0;
+        int debris_planet_gravity = 0;
+        int debris_debris_gravity = 0;
         int ship_gravity = 0;
         int verlet_second_half = 0;
         int walls_and_box = 0;
         int cleanup = 0;
         int whole_tick = 0;
-        int prediction = 0; // the trajectory trace + placement preview (once per frame)
     };
     ProfilerSections m_profile;
     // True only during advanceUniverseState: the predictions run the same functions on copies, and must not be counted
     bool m_profiling_real_tick = false;
+    // Real ticks since the debris was last sorted by grid cell (see DEBRIS_SORT_INTERVAL_TICKS)
+    int m_ticks_since_debris_sort = 0;
+    // Flips every tick: the debris pair pass sweeps the list forward, then backward (handleParticleParticleCollisions)
+    bool m_sweep_debris_backward = false;
 
     // rememberCollisionBoxSides: every body's position before this tick's collision pass (empty without a box)
     std::vector<DynamoEngine::Vector2D> m_box_sides_macro_bodies;
