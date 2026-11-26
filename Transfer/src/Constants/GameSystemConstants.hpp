@@ -42,11 +42,11 @@ constexpr bool RUN_GAME_WITH_PLAYER_SHP = false;
 
 // --- Test world (testing tool: a small box raises collision density to a known upper bound) ---
 // false = the world is as big as the star field (the normal game); true = TEST_WORLD_WIDTH x TEST_WORLD_HEIGHT
-constexpr bool USE_SMALL_TEST_WORLD = true;
+constexpr bool USE_SMALL_TEST_WORLD = false;
 constexpr double TEST_WORLD_WIDTH = 1920.0; // world pixels, centred on the star field's centre
 constexpr double TEST_WORLD_HEIGHT = 1080.0;
 // Planets, debris and the ship bounce off the world's edges (WORLD_WALL_RESTITUTION) instead of leaving the world
-constexpr bool REFLECTIVE_WORLD_WALLS = true;
+constexpr bool REFLECTIVE_WORLD_WALLS = false;
 // The F4 profiler reports averages and 1% lows over this many frames (5 s at 60 FPS)
 constexpr size_t PROFILER_WINDOW_FRAMES = 300;
 // Most lines the F4 profiler overlay shows (a header plus one line per section)
