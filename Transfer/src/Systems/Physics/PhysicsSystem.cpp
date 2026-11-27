@@ -630,6 +630,9 @@ void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& grav_body_pair
         accretion_ratio_threshold = MIN_PARTICLE_PARTICLE_ACCRETION_THRESHOLD_RATIO;
     }
 
+    // The ratio compares the SIZES of the masses (pickMassPair uses abs), so opposite signs follow the same rule: small
+    // negative debris eats a planet down (handleAccretion subtracts) until the planet is under 10x its size, then
+    // bounces off it like any gentle contact.
     if (lighter.isAccretable && grav_body_pair.ratio >= accretion_ratio_threshold)
     {
         // Macro bodies crumble into fragments that then accrete individually; particles merge directly.
@@ -752,8 +755,12 @@ void PhysicsSystem::handleElasticCollisions(GravitationalBody& smallerBody, Grav
     const DynamoEngine::Vector2D& normal_vector = smaller_to_larger;
     double v_smaller_n = smallerBody.velocity.dot(normal_vector);
     double v_larger_n = largerBody.velocity.dot(normal_vector);
-    double m_smaller = smallerBody.mass;
-    double m_larger = largerBody.mass;
+    // A bounce uses the SIZE of each mass (std::abs), so a negative-mass body bounces like a normal one of the same
+    // size (its gravity still has the negative sign). With the signed masses this formula divides by
+    // m_smaller + m_larger, which is 0 for -m hitting +m, and for unequal opposite-sign masses it multiplies the
+    // speed on every contact (-2m hitting +m: about 3x per bounce), so a pile reached infinite speed within a second.
+    double m_smaller = std::abs(smallerBody.mass);
+    double m_larger = std::abs(largerBody.mass);
 
     // Only bounce bodies that are moving TOWARD each other. Overlapping bodies that are already separating (e.g.
     // fragments born overlapping) must keep separating -- bouncing them would flip them back together every tick, so
@@ -819,6 +826,8 @@ void PhysicsSystem::handleAccretion(GravitationalBodyPair& grav_body_pair)
         return;
     }
 
+    // Opposite signs subtract. The merge rule needs a 10x size ratio, so at least 90% of the heavier mass is always
+    // left: new_mass never gets near 0 (dividing the momentum by it below stays safe) and never flips sign.
     double new_mass = heavier.mass + lighter.mass;
     // Force-static bodies count as infinitely heavy wherever momentum is exchanged (GravitationalBody::isForceStatic)
     if (heavier.isForceStatic)
@@ -1253,9 +1262,43 @@ size_t PhysicsSystem::potentialParticleCount(const UniverseState& universe_state
     return liveParticleCount(universe_state) + universe_state.macro_bodies.size() * DEFAULT_FRAGMENT_COUNT;
 }
 
+// True if the body's position and velocity are real numbers (not infinity, not NaN = "not a number")
+static bool hasFiniteMotion(const GravitationalBody& body)
+{
+    return std::isfinite(body.position.x_val) && std::isfinite(body.position.y_val) &&
+           std::isfinite(body.velocity.x_val) && std::isfinite(body.velocity.y_val);
+}
+
+// Safety net: marks every body whose motion has stopped being a real number for deletion, and returns how many.
+// Such a body is a bug somewhere upstream (a division by ~0), and it spreads: anything that touches or pulls on it
+// turns NaN too. It also wrecks the frame rate: the grid files every NaN position under one cell, and NaN fails the
+// "too far apart to touch" test (any comparison with NaN is false), so every NaN pair counts as a contact.
+// Deleting them costs a few bodies instead.
+static size_t markNonFiniteBodiesForDeletion(std::vector<GravitationalBody>& bodies)
+{
+    size_t marked = 0;
+    for (GravitationalBody& body : bodies)
+    {
+        if (!body.isMarkedForDeletion && !hasFiniteMotion(body))
+        {
+            body.isMarkedForDeletion = true;
+            marked += 1;
+        }
+    }
+    return marked;
+}
+
 void PhysicsSystem::cleanupGravBodies(UniverseState& universe_state)
 {
     DynamoEngine::ProfileScope timer(m_profiler, m_profile.cleanup, m_profiling_real_tick);
+    size_t non_finite_count = markNonFiniteBodiesForDeletion(universe_state.macro_bodies) +
+                              markNonFiniteBodiesForDeletion(universe_state.particles);
+    // Said out loud so the bug behind it gets found (real ticks only: predictions run on copies of the same bodies)
+    if (non_finite_count > 0 && m_profiling_real_tick)
+    {
+        std::cerr << "PhysicsSystem: deleted " << non_finite_count
+                  << " bodies whose position or velocity was infinite or NaN (a physics bug upstream)\n";
+    }
     cleanupMacroBodies(universe_state);
     cleanupParticles(universe_state);
 }

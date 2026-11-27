@@ -677,6 +677,32 @@ step = walkthrough, starting with the tracer class header.**
   Physics}: F4/F5 switch between them (both wouldn't fit), same key hides. MAX_PROFILER_LINES 17. Shared formatting:
   profilerReportLines() in Game.cpp. First measurement (20 planets + 8000 particles, 2 ticks/frame, O2): whole tick
   3.36 ms/frame = debris pairs 1.45, debris gravity 0.78, planet-debris 0.56, grid build 0.49, the rest ~0.1.
+- **OPPOSITE-SIGN MERGES: 10x RULE EVERYWHERE (2026-11-26, Marco's design call):** asked 'what is broken with
+  negative accretion, shouldn't it just subtract?'. Findings: subtraction itself was fine (pickMassPair compares abs, so
+  the radius pow never sees a negative ratio: the old REWORK note was wrong); only a near-cancelling merge was a problem
+  (velocity = momentum / ~0). Claude first made opposite signs merge at ANY ratio + annihilate under 1% left; Marco:
+  'gentle contact should bounce' -> '10x rule everywhere; small debris should be able to eat them down; I care about the
+  magnitude of mass'. FINAL: no special case. The ratio already uses |mass|, so a merge needs a 10x size ratio
+  whatever the signs, and always leaves >= 90% of the heavier mass: new_mass can't get near 0 or flip sign (comment in
+  handleAccretion). Small debris eats a planet down to ~10x the eater's size, then bounces; a planet never reaches
+  zero. Marco LIKES the momentum fling of negative merges ('rail gun effect is a cool mechanic'): keep the momentum
+  rule. REWORK handleAccretion negative-mass item removed. negative_accretion_harness: -1e5 hits take 1e7 down to 9e5
+  (planet speed builds 10 -> 858 px/s from the kicks), hit 92 bounces; -1e6: one merge then bounce; -1e7: bounce.
+- **NEGATIVE-MASS BOUNCE FIX + NaN SAFETY NET (2026-11-26, Marco: 'add both'):** Marco: a settled pile at 60 FPS drops
+  to 2-3 FPS when a NEGATIVE cluster is added (not a particle-count issue). Cause: handleElasticCollisions' dynamic
+  branch divided by m_smaller + m_larger (0 for -m hitting +m: instant inf) and, for unequal opposite-sign masses,
+  multiplied the speed every contact (-2m on +m: ~3x per bounce; ~1e59 within 0.5 s). inf -> NaN, NaN spreads by
+  contact; every NaN position lands in grid cell (0,0) and NaN fails getCollisionInfo's '>' early reject, so all NaN
+  pairs count as contacts: one ~1600-particle cell, n^2 (5 ms/tick at 5600 particles, worse in his bigger pile).
+  FIX: m_smaller/m_larger = std::abs(mass) in the bounce (negative mass bounces like normal matter of that size;
+  gravity keeps the sign). SAFETY NET: cleanupGravBodies first calls markNonFiniteBodiesForDeletion (static) on both
+  lists, deleting bodies with non-finite position/velocity, and prints a std::cerr line on real ticks. The net alone
+  does NOT save the runaway case (speeds reach ~1e300 while still finite, the box clamps them into corners and they
+  pile up there), so the abs fix is the real fix. Checked: negative_cluster_harness (new, in Harnesses) -1e6 / -2e6 /
+  -5e5: 0 NaN, fullest cell 4-7, ~0.55 ms/tick; placement_separation identical except the +1e6/-1e6 line (50.0 ->
+  50.2 px, it now bounces); positive masses untouched (abs(x) = x). NOTE: at this point the working tree no longer
+  has separateOverlappingDebris / DEBRIS_SEPARATION_FRACTION (the entry below) and particle gravity is commented out
+  again: Marco rolled those back himself. Negative-mass ACCRETION: settled right after (entry above).
 - **DEBRIS SEPARATES WITH VELOCITY (option 1, 2026-11-26, Marco chose it over PBD 'for now'):**
   handleElasticCollisions: when both bodies are particles, the overlap is cleared by separateOverlappingDebris (static
   in PhysicsSystem.cpp): equal and opposite velocity along the normal, shared by inverse mass, only TOPPING UP to the
