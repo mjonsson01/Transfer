@@ -12,3 +12,5 @@ venv/
 ThirdParty/
 Transfer/Assets/Shaders/
 Notes/drafts/
+# TransferGame --determinism-check output (compare it with Notes/determinism_check_mac.txt)
+determinism_check.txt

@@ -20,6 +20,13 @@ struct UniverseState
     bool has_ship = true;
     int newest_spawn_id = 0; // most recent GravBody spawn ID
 
+    // Repeatability: the same universe and the same inputs play out bit for bit the same, every run, on every machine.
+    // Every random choice the physics makes (shatter fragment speeds and sizes) is HASHED from this seed, the tick and
+    // the body involved (DynamoEngine/Math/DeterministicRandom.hpp), never drawn from a time-seeded generator.
+    // A level will set its own seed.
+    uint64_t random_seed = 0x5452414E53464552ULL; // "TRANSFER" in ASCII
+    uint64_t tick_count = 0;                      // physics ticks run so far (PhysicsSystem::advanceUniverseState)
+
     // The world's edges, in world pixels. The camera stays inside them; with reflective_walls on, every body (and the
     // ship) bounces off them. The game sets them at start-up (the star field's extent).
     DynamoEngine::Vector2D world_min_corner = {-1.0e9, -1.0e9};

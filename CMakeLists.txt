@@ -7,6 +7,20 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ----------------------------------
+# Identical floating-point results on every machine (Notes/PHYSICS_REQUIREMENTS.md, "Determinism rules")
+# ----------------------------------
+# A puzzle must play out the same on Mac and Windows, so the compilers must not reorder or merge float operations.
+# The one that differs by default: clang (Apple Silicon) fuses a * b + c into one "fused multiply-add" instruction with
+# a single rounding, MSVC (x64) doesn't, so the last bits differ and the difference grows tick by tick.
+# -ffp-contract=off / /fp:precise: every + and * rounds on its own, everywhere. (Never -ffast-math or /fp:fast.)
+# For every target below: engine, game and tests.
+if(MSVC)
+    add_compile_options(/fp:precise)
+else()
+    add_compile_options(-ffp-contract=off)
+endif()
+
+# ----------------------------------
 # Collect source files
 # ----------------------------------
 file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS

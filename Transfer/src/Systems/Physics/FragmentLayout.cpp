@@ -4,6 +4,7 @@
 
 // Custom Imports
 #include "DynamoEngine/Constants/GlobalConstants.hpp"
+#include "DynamoEngine/Math/DeterministicMath.hpp"
 #include "Constants/EngineConstants.hpp"
 #include "Systems/Physics/PhysicsConstants.hpp"
 
@@ -33,7 +34,8 @@ void layOutAndPopulateFragments(const GravitationalBody& body, uint32_t max_coun
     {
         double r_k = R * sqrt((k + 0.5) / num_particles);
         double theta_k = k * GOLDEN_ANGLE;
-        DynamoEngine::Vector2D pos_k = center + DynamoEngine::Vector2D{r_k * cos(theta_k), r_k * sin(theta_k)};
+        DynamoEngine::Vector2D pos_k = center + DynamoEngine::Vector2D{r_k * DynamoEngine::deterministicCos(theta_k),
+                                                                    r_k * DynamoEngine::deterministicSin(theta_k)};
 
         GravitationalBody p;
         p.mass = particle_mass;

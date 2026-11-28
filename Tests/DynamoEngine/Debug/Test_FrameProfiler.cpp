@@ -186,3 +186,44 @@ TEST(ProfileScope, NestedScopesEachRecordTheirOwnSection)
     EXPECT_GE(profiler.report()[1].average_ms, 2.5);                              // inner: its own 3 ms
     EXPECT_GE(profiler.report()[0].average_ms, profiler.report()[1].average_ms); // outer includes inner
 }
+
+TEST(FrameProfiler, CountsTheFramesThatRecordedASection)
+{
+    // A section that only runs every other frame, one that never runs, and one recorded twice in one frame
+    FrameProfiler profiler(4);
+    int sometimes = profiler.addSection("Every other frame");
+    int never = profiler.addSection("Switched off");
+    int twice = profiler.addSection("Two pieces");
+    for (int frame = 0; frame < 4; ++frame)
+    {
+        if (frame % 2 == 0)
+        {
+            profiler.record(sometimes, 1.0);
+        }
+        profiler.record(twice, 1.0);
+        profiler.record(twice, 1.0);
+        profiler.endFrame();
+    }
+    ASSERT_TRUE(profiler.takeNewReport());
+    EXPECT_EQ(profiler.report()[sometimes].frames_recorded, 2u);
+    EXPECT_EQ(profiler.report()[never].frames_recorded, 0u);
+    EXPECT_EQ(profiler.report()[twice].frames_recorded, 4u); // two pieces in one frame still count as one frame
+}
+
+TEST(FrameProfiler, RecordedFrameCountStartsOverEachWindow)
+{
+    FrameProfiler profiler(2);
+    int section = profiler.addSection("Physics");
+    profiler.record(section, 1.0);
+    profiler.endFrame();
+    profiler.record(section, 1.0);
+    profiler.endFrame();
+    ASSERT_TRUE(profiler.takeNewReport());
+    EXPECT_EQ(profiler.report()[0].frames_recorded, 2u);
+
+    // Second window: never recorded
+    profiler.endFrame();
+    profiler.endFrame();
+    ASSERT_TRUE(profiler.takeNewReport());
+    EXPECT_EQ(profiler.report()[0].frames_recorded, 0u);
+}

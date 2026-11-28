@@ -2,6 +2,7 @@
 #include "Starship.hpp"
 
 #include "DynamoEngine/Constants/GlobalConstants.hpp"
+#include "DynamoEngine/Math/DeterministicMath.hpp"
 
 Starship::Starship() { m_ship_size = 150.0; }
 
@@ -10,7 +11,7 @@ Starship::~Starship() {}
 DynamoEngine::Vector2D Starship::getPointingVector()
 {
     // rotation = 0 → pointing up (-y), matches your current nose placement
-    return DynamoEngine::Vector2D{std::sin(m_rotation), -std::cos(m_rotation)};
+    return DynamoEngine::Vector2D{DynamoEngine::deterministicSin(m_rotation), -DynamoEngine::deterministicCos(m_rotation)};
 }
 
 void Starship::buildGeometry(std::vector<StarshipVertex>& starshipVertexBuffer)
@@ -53,8 +54,8 @@ void Starship::buildGeometry(std::vector<StarshipVertex>& starshipVertexBuffer)
 
 DynamoEngine::Vector2D Starship::rotatedOffset(DynamoEngine::Vector2D offset) const
 {
-    double cos_r = std::cos(m_rotation);
-    double sin_r = std::sin(m_rotation);
+    double cos_r = DynamoEngine::deterministicCos(m_rotation); // same on every machine
+    double sin_r = DynamoEngine::deterministicSin(m_rotation);
     return {offset.x_val * cos_r - offset.y_val * sin_r, offset.x_val * sin_r + offset.y_val * cos_r};
 }
 

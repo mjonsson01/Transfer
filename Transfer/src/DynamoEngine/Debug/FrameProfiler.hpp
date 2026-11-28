@@ -27,6 +27,9 @@ class FrameProfiler
         double average_ms = 0.0;
         double one_percent_low_ms = 0.0; // the average of the slowest 1% of frames (at least the single slowest)
         double worst_ms = 0.0;
+        // How many frames of the window recorded this section at all. 0 = its code never ran (switched off, or not
+        // reached), so its 0 ms is not a measurement; an overlay can leave such a section out.
+        size_t frames_recorded = 0;
     };
 
     explicit FrameProfiler(size_t window_frames);
@@ -35,7 +38,7 @@ class FrameProfiler
     int addSection(const std::string& name);
     // Adds to the section's time for the current frame: a section timed in several pieces records each piece
     void record(int section, double milliseconds);
-    // Closes the frame: a section that recorded nothing this frame counts as 0 ms
+    // Closes the frame: a section that recorded nothing this frame counts as 0 ms (and not as a recorded frame)
     void endFrame();
 
     // True once after each completed window (reading it clears it)
@@ -52,7 +55,9 @@ class FrameProfiler
     {
         std::string name;
         double this_frame_ms = 0.0;
+        bool recorded_this_frame = false;
         std::vector<double> frame_ms; // one entry per frame of the current window
+        size_t frames_recorded = 0;   // frames of the current window that called record() for this section
     };
 
     void buildReport();

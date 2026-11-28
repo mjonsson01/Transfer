@@ -28,7 +28,9 @@ int FrameProfiler::addSection(const std::string& name)
 void FrameProfiler::record(int section, double milliseconds)
 {
     assert(section >= 0 && section < static_cast<int>(m_sections.size()) && "record() with an unknown section");
-    m_sections[static_cast<size_t>(section)].this_frame_ms += milliseconds;
+    Section& recorded_section = m_sections[static_cast<size_t>(section)];
+    recorded_section.this_frame_ms += milliseconds;
+    recorded_section.recorded_this_frame = true;
 }
 
 void FrameProfiler::endFrame()
@@ -36,7 +38,12 @@ void FrameProfiler::endFrame()
     for (Section& section : m_sections)
     {
         section.frame_ms.push_back(section.this_frame_ms);
+        if (section.recorded_this_frame)
+        {
+            section.frames_recorded += 1;
+        }
         section.this_frame_ms = 0.0;
+        section.recorded_this_frame = false;
     }
     m_frames_in_window += 1;
 
@@ -46,6 +53,7 @@ void FrameProfiler::endFrame()
         for (Section& section : m_sections)
         {
             section.frame_ms.clear(); // clear() keeps the memory: no allocation in the next window
+            section.frames_recorded = 0;
         }
         m_frames_in_window = 0;
         m_has_new_report = true;
@@ -71,6 +79,7 @@ void FrameProfiler::buildReport()
     {
         SectionReport section_report;
         section_report.name = section.name;
+        section_report.frames_recorded = section.frames_recorded;
         if (!section.frame_ms.empty())
         {
             // Slowest first, so the slowest 1% are simply the first entries

@@ -1,7 +1,25 @@
 // File: Transfer/src/Systems/Physics/PhysicsSystem.cpp
 
 #include "PhysicsSystem.hpp"
+#include "DynamoEngine/Math/DeterministicMath.hpp"
+#include "DynamoEngine/Math/DeterministicRandom.hpp"
 #include "Systems/Physics/PhysicsConstants.hpp"
+
+// What each random number is for, so two decisions about the same body never get the same number (see
+// DynamoEngine/Math/DeterministicRandom.hpp). Changing these changes how every shatter plays out.
+constexpr uint64_t RANDOM_PURPOSE_FRAGMENT_SPEED = 1;
+constexpr uint64_t RANDOM_PURPOSE_FRAGMENT_SIZE = 2;
+
+// The key all of one body's random choices this tick are hashed from: the universe's seed, the tick, and the body
+// (its spawn ID and exact position, so two bodies breaking on the same tick never share their random numbers).
+static uint64_t bodyRandomKey(const UniverseState& universe_state, const GravitationalBody& body)
+{
+    uint64_t key = DynamoEngine::combineHash(universe_state.random_seed, universe_state.tick_count);
+    key = DynamoEngine::combineHash(key, static_cast<uint64_t>(static_cast<int64_t>(body.macroIdentifier)));
+    key = DynamoEngine::combineHash(key, DynamoEngine::doubleBits(body.position.x_val));
+    key = DynamoEngine::combineHash(key, DynamoEngine::doubleBits(body.position.y_val));
+    return key;
+}
 
 PhysicsSystem::PhysicsSystem() : m_profiler(PROFILER_WINDOW_FRAMES)
 {
@@ -9,15 +27,16 @@ PhysicsSystem::PhysicsSystem() : m_profiler(PROFILER_WINDOW_FRAMES)
     m_profile.planet_collisions = m_profiler.addSection("Coll: planets");
     m_profile.planet_debris_collisions = m_profiler.addSection("Coll: planet-debris");
     m_profile.debris_sort = m_profiler.addSection("Sort debris by cell");
+    // (Rows whose code doesn't run are left out of the overlay: "Grav: debris-debris" only shows while that gravity is
+    // switched on.)
     m_profile.debris_grid = m_profiler.addSection("Coll: debris grid");
     m_profile.debris_pairs = m_profiler.addSection("Coll: debris pairs");
     m_profile.ship_collisions = m_profiler.addSection("Coll: ship");
-    m_profile.verlet_first_half = m_profiler.addSection("Verlet 1st half");
+    m_profile.verlet = m_profiler.addSection("Verlet (2 halves)");
     m_profile.planet_gravity = m_profiler.addSection("Grav: planets");
     m_profile.debris_planet_gravity = m_profiler.addSection("Grav: planet-debris");
     m_profile.debris_debris_gravity = m_profiler.addSection("Grav: debris-debris");
     m_profile.ship_gravity = m_profiler.addSection("Grav: ship");
-    m_profile.verlet_second_half = m_profiler.addSection("Verlet 2nd half");
     m_profile.walls_and_box = m_profiler.addSection("Walls & box");
     m_profile.cleanup = m_profiler.addSection("Cleanup");
     m_profile.whole_tick = m_profiler.addSection("Whole tick");
@@ -32,6 +51,7 @@ void PhysicsSystem::advanceUniverseState(UniverseState& universe_state, const Sh
     {
         DynamoEngine::ProfileScope tick_timer(m_profiler, m_profile.whole_tick);
         // Debris sort, collisions, the ship's controls, then motion (Verlet + forces + walls), then cleanup.
+        universe_state.tick_count += 1; // part of every random number hashed this tick (bodyRandomKey)
 
         // Neighbors next to each other in memory, so the debris pair pass reads nearby memory. FIRST, before anything
         // keeps particle indices for later in the tick (rememberCollisionBoxSides does). Every
@@ -65,12 +85,12 @@ void PhysicsSystem::integrateUniversePhysics(UniverseState& universe_state)
 {
     // Update forces (grav, later will add electromagnetic)
     {
-        DynamoEngine::ProfileScope timer(m_profiler, m_profile.verlet_first_half, m_profiling_real_tick);
+        DynamoEngine::ProfileScope timer(m_profiler, m_profile.verlet, m_profiling_real_tick);
         integrateVelocityVerletFirstHalfStep(universe_state);
     }
     recomputeAllForces(universe_state);
     {
-        DynamoEngine::ProfileScope timer(m_profiler, m_profile.verlet_second_half, m_profiling_real_tick);
+        DynamoEngine::ProfileScope timer(m_profiler, m_profile.verlet, m_profiling_real_tick); // adds to the same row
         integrateVelocityVerletSecondHalfStep(universe_state);
     }
     bounceOffWorldWalls(universe_state); // walls are part of motion, so the trajectory predictions bounce too
@@ -488,6 +508,7 @@ void PhysicsSystem::resolveContactsOfParticle(size_t i, bool backward, UniverseS
         }
     }
 }
+
 void PhysicsSystem::handleShipCollisions(UniverseState& universe_state)
 {
     DynamoEngine::ProfileScope timer(m_profiler, m_profile.ship_collisions, m_profiling_real_tick);
@@ -599,11 +620,13 @@ void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& grav_body_pair
 
         if (heavier_shatters)
         {
-            substituteWithParticlesFromImpact(heavier, m_pending_fragments, DEFAULT_FRAGMENT_COUNT, impact_point);
+            substituteWithParticlesFromImpact(heavier, m_pending_fragments, DEFAULT_FRAGMENT_COUNT, impact_point,
+                                              bodyRandomKey(universe_state, heavier));
         }
         if (lighter_shatters)
         {
-            substituteWithParticlesFromImpact(lighter, m_pending_fragments, DEFAULT_FRAGMENT_COUNT, impact_point);
+            substituteWithParticlesFromImpact(lighter, m_pending_fragments, DEFAULT_FRAGMENT_COUNT, impact_point,
+                                              bodyRandomKey(universe_state, lighter));
         }
         return;
     }
@@ -643,7 +666,8 @@ void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& grav_body_pair
         {
             DynamoEngine::Vector2D toward_lighter = (lighter.position - heavier.position).normalize();
             DynamoEngine::Vector2D contact_point = heavier.position + toward_lighter * heavier.radius;
-            substituteWithParticlesFromImpact(lighter, m_pending_fragments, DEFAULT_FRAGMENT_COUNT / 3, contact_point);
+            substituteWithParticlesFromImpact(lighter, m_pending_fragments, DEFAULT_FRAGMENT_COUNT / 3, contact_point,
+                                              bodyRandomKey(universe_state, lighter));
         }
         else if (heavier.isParticle)
         {
@@ -661,16 +685,20 @@ void PhysicsSystem::handleDynamicCollision(GravitationalBodyPair& grav_body_pair
     }
 }
 // The unit vector pointing from `from` to `to`. Two bodies exactly on top of each other have no such direction, so a
-// random one is used instead: any direction pushes them apart, and a random one keeps a stack of exactly-overlapping
-// pairs (e.g. two identical clusters spawned on the same spot) from all sliding the same way.
+// "random" one is used instead: any direction pushes them apart, and a different one per pair keeps a stack of
+// exactly-overlapping pairs (e.g. two identical clusters spawned on the same spot) from all sliding the same way.
+// Hashed from the two positions' exact bits, so the same pair always gets the same direction.
 static DynamoEngine::Vector2D directionFromTo(const DynamoEngine::Vector2D& from, const DynamoEngine::Vector2D& to)
 {
     DynamoEngine::Vector2D offset = to - from;
     double distance = offset.magnitude();
     if (firstWithinEpsilonOfSecond(distance, 0.0))
     {
-        double angle = randomDouble(0.0, DynamoEngine::TWO_PI);
-        return {std::cos(angle), std::sin(angle)};
+        uint64_t hash = DynamoEngine::combineHash(DynamoEngine::doubleBits(from.x_val), DynamoEngine::doubleBits(from.y_val));
+        hash = DynamoEngine::combineHash(hash, DynamoEngine::doubleBits(to.x_val));
+        hash = DynamoEngine::combineHash(hash, DynamoEngine::doubleBits(to.y_val));
+        double angle = DynamoEngine::hashToRange(hash, 0.0, DynamoEngine::TWO_PI);
+        return {DynamoEngine::deterministicCos(angle), DynamoEngine::deterministicSin(angle)};
     }
     return offset / distance;
 }
@@ -844,7 +872,7 @@ void PhysicsSystem::handleAccretion(GravitationalBodyPair& grav_body_pair)
     {
         heavier.velocity = (heavier.velocity * heavier.mass + lighter.velocity * lighter.mass) / new_mass;
     }
-    heavier.radius *= pow(new_mass / heavier.mass, 1.0 / 3.0);
+    heavier.radius *= DynamoEngine::deterministicCbrt(new_mass / heavier.mass); // radius grows as the cube root of mass
     heavier.mass = new_mass;
     heavier.invMass = 1.0 / heavier.mass;
 
@@ -899,15 +927,19 @@ void PhysicsSystem::promoteOversizedParticles(UniverseState& universe_state)
 
 void PhysicsSystem::substituteWithParticles(GravitationalBody& original_body,
                                             std::vector<GravitationalBody>& fragments_out,
-                                            uint32_t target_fragment_count)
+                                            uint32_t target_fragment_count, uint64_t random_key)
 {
     size_t first_new_fragment = fragments_out.size();
     layOutAndPopulateFragments(original_body, target_fragment_count, fragments_out);
 
-    // Each fragment keeps roughly the original's velocity, randomly scaled so the pieces spread out
+    // Each fragment keeps roughly the original's velocity, randomly scaled so the pieces spread out. "Random" means
+    // hashed from the body's key and the fragment's number: the same every run.
+    uint64_t speed_key = DynamoEngine::combineHash(random_key, RANDOM_PURPOSE_FRAGMENT_SPEED);
     for (size_t i = first_new_fragment; i < fragments_out.size(); ++i)
     {
-        fragments_out[i].velocity = original_body.velocity * randomDouble(0.8, 1.1);
+        uint64_t fragment_number = i - first_new_fragment;
+        double speed_scale = DynamoEngine::hashToRange(DynamoEngine::combineHash(speed_key, fragment_number), 0.8, 1.1);
+        fragments_out[i].velocity = original_body.velocity * speed_scale;
     }
 
     original_body.isMarkedForDeletion = true;
@@ -916,25 +948,28 @@ void PhysicsSystem::substituteWithParticles(GravitationalBody& original_body,
 void PhysicsSystem::substituteWithParticlesFromImpact(GravitationalBody& original_body,
                                                       std::vector<GravitationalBody>& fragments_out,
                                                       uint32_t target_fragment_count,
-                                                      const DynamoEngine::Vector2D& impactPoint)
+                                                      const DynamoEngine::Vector2D& impactPoint, uint64_t random_key)
 {
     const double R = original_body.radius;
     const double original_mass = original_body.mass;
 
     size_t start_index = fragments_out.size(); // this body's fragments are the ones added after this point
 
-    substituteWithParticles(original_body, fragments_out, target_fragment_count);
+    substituteWithParticles(original_body, fragments_out, target_fragment_count, random_key);
 
     // Grow radius with distance from the impact point: near-impact fragments stay small and
     // pulverized, far-side fragments stay large and coherent -- keyed off the actual contact
     // point (not the body's own center), so a graze reads differently from a direct hit.
     double total_weighted_volume = 0.0;
+    uint64_t size_key = DynamoEngine::combineHash(random_key, RANDOM_PURPOSE_FRAGMENT_SIZE);
     for (size_t i = start_index; i < fragments_out.size(); ++i)
     {
         GravitationalBody& p = fragments_out[i];
         double distance = (p.position - impactPoint).magnitude();
         double t = std::clamp(distance / (2.0 * R), 0.0, 1.0);
-        double size_multiplier = 1.0 + t * (IMPACT_SKEW_GROWTH_FACTOR - 1.0) * randomDouble(0.5, 0.9);
+        uint64_t fragment_number = i - start_index;
+        double random_growth = DynamoEngine::hashToRange(DynamoEngine::combineHash(size_key, fragment_number), 0.5, 0.9);
+        double size_multiplier = 1.0 + t * (IMPACT_SKEW_GROWTH_FACTOR - 1.0) * random_growth;
         p.radius *= size_multiplier;
         total_weighted_volume += p.radius * p.radius * p.radius;
     }
@@ -1187,7 +1222,8 @@ void PhysicsSystem::createParticleCluster(UniverseState& universe_state, const S
     universe_state.newest_spawn_id++;
     macro_body.macroIdentifier = universe_state.newest_spawn_id;
     size_t first_new_particle = particles.size();
-    substituteWithParticles(macro_body, particles, DEFAULT_FRAGMENT_COUNT); // no loop is running: add them directly
+    // No loop is running: add them directly
+    substituteWithParticles(macro_body, particles, DEFAULT_FRAGMENT_COUNT, bodyRandomKey(universe_state, macro_body));
     for (size_t i = first_new_particle; i < particles.size(); ++i)
     {
         particles[i].isAccretable = spawn_settings.is_accretable;

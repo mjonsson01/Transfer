@@ -98,6 +98,8 @@ class PhysicsSystem
     void handleCollisionEvents(UniverseState& universe_state);
     void handleMacroMacroCollisions(UniverseState& universe_state);
     void handleMacroParticleCollisions(UniverseState& universe_state);
+    // Debris-debris contacts: builds the grid, then resolves the pairs it finds one after another (each pair sees
+    // the pushes of the pairs before it), alternating the sweep direction every tick
     void handleParticleParticleCollisions(UniverseState& universe_state);
     // Particle i against the candidates the grid finds for it (in reverse order when `backward`); `candidates` is
     // reused work space
@@ -124,11 +126,14 @@ class PhysicsSystem
     void promoteOversizedParticles(UniverseState& universe_state);
     // Both append the new fragments to `fragments_out`. During collisions that is m_pending_fragments, never the
     // particles vector itself: the collision loops are still walking over (and holding references into) particles.
+    // `random_key`: what the fragments' random speeds and sizes are hashed from (bodyRandomKey in PhysicsSystem.cpp),
+    // so the same body breaking on the same tick always breaks the same way.
     void substituteWithParticles(GravitationalBody& original_body, std::vector<GravitationalBody>& fragments_out,
-                                 uint32_t target_fragment_count);
+                                 uint32_t target_fragment_count, uint64_t random_key);
     void substituteWithParticlesFromImpact(GravitationalBody& original_body,
                                            std::vector<GravitationalBody>& fragments_out,
-                                           uint32_t target_fragment_count, const DynamoEngine::Vector2D& impactPoint);
+                                           uint32_t target_fragment_count, const DynamoEngine::Vector2D& impactPoint,
+                                           uint64_t random_key);
     // Particles alive now plus fragments waiting to join them (what MAX_LIVE_PARTICLES limits)
     size_t liveParticleCount(const UniverseState& universe_state) const;
     // Live particles plus the worst case still to come: every macro body shattering into DEFAULT_FRAGMENT_COUNT
@@ -200,12 +205,11 @@ class PhysicsSystem
         int debris_grid = 0;  // building the particle grid (once per tick)
         int debris_pairs = 0; // checking and resolving the particle pairs it finds (once per tick)
         int ship_collisions = 0;
-        int verlet_first_half = 0;
+        int verlet = 0; // both halves of the Velocity Verlet step (they run on either side of the gravity)
         int planet_gravity = 0;
         int debris_planet_gravity = 0;
         int debris_debris_gravity = 0;
         int ship_gravity = 0;
-        int verlet_second_half = 0;
         int walls_and_box = 0;
         int cleanup = 0;
         int whole_tick = 0;
