@@ -23,6 +23,9 @@ const double MIN_TIME_SCALE_FACTOR = 0.1;     // negative is allowed and runs on
                                               // speed on slider since we now have Planning mode
 const double REGULAR_TIME_SCALE_FACTOR = 1.0; // 1x speed
 const double MAX_TIME_SCALE_FACTOR = 3.0;     // 3x speed
+// The effective simulation speed (what the machine actually delivers, shown as "Current Sim Speed" next to the FPS;
+// see Core/PhysicsThread.hpp) is measured over this much real time
+constexpr double EFFECTIVE_SPEED_WINDOW_SECONDS = 0.5;
 
 // Vertical and horizontal resolutions (starting resolution)
 
@@ -51,9 +54,10 @@ constexpr bool REFLECTIVE_WORLD_WALLS = false;
 // The F4 profiler reports averages and 1% lows over this many frames, and refreshes after each window (1 s at 60
 // FPS). Under 100 frames, the "1% low" is simply the slowest frame of the window.
 constexpr size_t PROFILER_WINDOW_FRAMES = 60;
-// Most lines the profiler overlay shows (the body counts, the ticks/frame line, a header, then one line per section:
-// F5 has 15 sections). 18 is also the most that fits above the sliders at 1280 x 720 (see the static_assert in
-// TransferScenes.cpp): a 16th F5 section needs the overlay made shorter, e.g. merged rows or a smaller line height.
+// Most lines the profiler overlay shows: the body counts, the ticks/frame line, a header, then one line per section
+// that ran during the window. F5 registers 14 sections, so 17 lines at most (16 while debris-debris gravity is off).
+// 18 is also the most that fits above the sliders at 1280 x 720 (see the static_assert in TransferScenes.cpp). A
+// report with more lines than this shows "(+N rows: see console)" on its last line (Game.cpp, fitToOverlay).
 constexpr size_t MAX_PROFILER_LINES = 18;
 
 const double MIN_ZOOM = 0.01;

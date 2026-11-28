@@ -5,6 +5,7 @@
 // Standard Library Imports
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <utility>
 
 namespace
@@ -37,9 +38,46 @@ UISlider::UISlider(std::string label, SliderMapping mapping, double starting_val
 
 void UISlider::setValue(double value)
 {
-    m_value = value;
-    m_position = std::clamp(m_mapping.to_position(value), 0.0, 1.0);
+    m_value = snapToStep(value);
+    m_position = std::clamp(m_mapping.to_position(m_value), 0.0, 1.0);
     m_last_tick = static_cast<int>(std::round(m_position * TICK_COUNT));
+}
+
+void UISlider::setStep(double step, int decimal_places)
+{
+    m_step = step;
+    m_decimal_places = decimal_places;
+    setValue(m_value); // snap the current value (and the knob) right away
+}
+
+double UISlider::snapToStep(double value) const
+{
+    if (m_step <= 0.0)
+    {
+        return value;
+    }
+    double whole_steps = std::round(value / m_step);
+    // A step that fits a whole number of times into 1 (0.1 = ten per unit): divide by that number instead of
+    // multiplying by the step, so 3 steps of 0.1 come out as the double closest to 0.3 (3 * 0.1 would be
+    // 0.30000000000000004)
+    double steps_per_unit = std::round(1.0 / m_step);
+    if (steps_per_unit >= 1.0 && std::abs(steps_per_unit * m_step - 1.0) < 1e-9)
+    {
+        return whole_steps / steps_per_unit;
+    }
+    return whole_steps * m_step;
+}
+
+std::string UISlider::text() const
+{
+    if (m_decimal_places < 0)
+    {
+        return m_label + ": " + std::to_string(m_value);
+    }
+    char value_text[64];
+    // "%.*f": a float with as many decimals as the next argument says
+    std::snprintf(value_text, sizeof(value_text), "%.*f", m_decimal_places, m_value);
+    return m_label + ": " + value_text;
 }
 
 // --- Geometry: the knob sits at the top of the rect, the track is centered on it, the text goes underneath --- //
@@ -62,7 +100,7 @@ void UISlider::draw(UIGeometryBuilder& builder) const
     builder.addRect(trackRect(), TRACK_COLOR);
     const bool is_knob_highlighted = m_is_knob_hovered || m_is_dragging;
     builder.addRect(knobRect(), is_knob_highlighted ? KNOB_HOVERED_COLOR : KNOB_COLOR);
-    builder.addText(m_label + ": " + std::to_string(m_value), {m_rect.x, m_rect.y + KNOB_HEIGHT});
+    builder.addText(text(), {m_rect.x, m_rect.y + KNOB_HEIGHT});
 }
 
 // --- Input --- //
@@ -100,7 +138,11 @@ void UISlider::moveKnobTo(float mouse_x)
     const float knob_left = mouse_x - KNOB_WIDTH / 2.0f;
     m_position = (travel > 0.0f) ? std::clamp((knob_left - m_rect.x) / travel, 0.0f, 1.0f) : 0.0;
 
-    const double new_value = m_mapping.to_value(m_position);
+    const double new_value = snapToStep(m_mapping.to_value(m_position));
+    if (m_step > 0.0)
+    {
+        m_position = std::clamp(m_mapping.to_position(new_value), 0.0, 1.0); // the knob jumps to the step
+    }
     const bool value_changed = (new_value != m_value);
     m_value = new_value;
 

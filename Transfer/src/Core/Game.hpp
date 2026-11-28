@@ -10,6 +10,7 @@
 
 // Custom Imports
 #include "Core/GameState.hpp"
+#include "Core/PhysicsThread.hpp"
 #include "Systems/Input/PlayerInput.hpp"
 #include "Core/UIState.hpp"
 #include "DynamoEngine/Debug/FrameProfiler.hpp"
@@ -44,8 +45,12 @@ class Game
     // Core Game Loop Methods
     // Handles User Input from keyboard and mouse events (the current scene's UI gets it first)
     void ProcessInput(float frame_seconds);
-    void IntegratePhysicsFrame(); // Integrate Game State Bodies forward by 1 time step
-    void UpdateInstantiations();  // Updates Game State Bodies from User Input
+    // Tells the physics thread this frame's controls, speed and planning state, and hands it the queued changes:
+    // spawns / undo / clear from the player, and edits to the universe from the scenes
+    void sendRequestsToPhysics();
+    // Swaps the physics thread's newest universe into game_state (if there is one) and picks up its numbers: ticks
+    // run, whether it fell behind, the effective speed, the F5 report
+    void takeUniverseFromPhysics();
     void RenderFrame();           // Renders the current frame to the screen including UI
     void PlayAudio();             // Plays audio based on the current game state and UI state
     // Helpers for Run() method
@@ -64,7 +69,11 @@ class Game
     UIState ui_state;            // Contains all UI related states
     PlayerInput m_player_input;  // what the player is doing this frame: InputSystem writes it, the others read it
     InputSystem inputSystem;     // Manages all user input
-    PhysicsSystem physicsSystem; // Manages physics calculations and Frame Updates
+    // The simulation, on its own thread (it owns the live universe and its own PhysicsSystem)
+    PhysicsThread m_physics_thread;
+    // A second PhysicsSystem, used only on the main thread for planning mode's trajectory lines and the placement
+    // preview (they step copies of the universe), so the two threads never share one
+    PhysicsSystem predictionPhysics;
     RenderSystem renderSystem;   // Manages all rendering operations
     AudioSystem audioSystem;     // Manages all audio operations
 
@@ -76,17 +85,25 @@ class Game
     struct ProfilerSections
     {
         int input = 0;
-        int spawns = 0;
+        int to_physics = 0; // handing this frame's requests and changes to the physics thread
         int audio = 0;
-        int physics = 0;      // every physics tick this frame, summed
+        int from_physics = 0; // taking the physics thread's newest universe (a swap: the ticks run on their own thread)
+        // The physics thread's own work per frame (ticks, commands, the copy it publishes), as reported with each
+        // universe. It runs AT THE SAME TIME as the main thread, so it isn't part of frame_work below.
+        int physics_thread = 0;
         int trajectories = 0; // planning mode's prediction
         int render = 0;       // CPU side only: building and submitting the frame (the GPU works on it afterwards)
-        int frame_work = 0;   // everything above, before the frame limiter waits
+        int frame_work = 0;   // everything the MAIN thread did this frame, before the frame limiter waits
         int frame_total = 0;  // the whole frame, including the wait (about 16.7 ms at 60 FPS)
     };
     ProfilerSections m_profile;
     // Physics ticks per frame, for the profiler overlays: counted over the F4 window, then turned into m_ticks_line
     int m_ticks_in_window = 0;
     int m_most_ticks_in_a_frame = 0;
+    int m_frames_behind_in_window = 0; // frames for which the physics thread dropped owed game time
     std::string m_ticks_line = "Ticks/frame: -";
+    // When the universe in game_state was published (for interpolating between its last two positions)
+    Uint64 m_universe_publish_time = 0;
+    // The physics thread's latest F5 report (it arrives with a universe)
+    std::vector<DynamoEngine::FrameProfiler::SectionReport> m_physics_report;
 };

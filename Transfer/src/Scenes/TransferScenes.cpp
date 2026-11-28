@@ -228,9 +228,26 @@ std::unique_ptr<Scene> buildStartMenuScene(SceneManager& scenes, UIState& ui_sta
 void addSandboxUI(DynamoEngine::UIRoot& ui, UIState& ui_state, GameState& game_state)
 {
     // Top-left, one line each: the FPS counter, the throttle, then the planning mode readouts
+    // The FPS counter, and next to it how fast the simulation is really running: the speed slider's value when the
+    // machine keeps up, less when it can't (the physics thread drops owed game time, see MAX_PHYSICS_BACKLOG_TICKS)
     std::unique_ptr<UILabel> fps_label = std::make_unique<UILabel>("FPS: ");
     fps_label->setPlacement({.size = {0.0f, READOUT_LINE_HEIGHT}});
-    fps_label->setTextSource([&ui_state]() { return "FPS: " + std::to_string(static_cast<int>(ui_state.getFPS())); });
+    fps_label->setTextSource(
+        [&ui_state]()
+        {
+            char text[96];
+            if (ui_state.getIsPlanning())
+            {
+                std::snprintf(text, sizeof(text), "FPS: %d    Current Sim Speed: stopped (planning)",
+                              static_cast<int>(ui_state.getFPS()));
+            }
+            else
+            {
+                std::snprintf(text, sizeof(text), "FPS: %d    Current Sim Speed: %.1fx",
+                              static_cast<int>(ui_state.getFPS()), ui_state.getEffectiveSimulationSpeed());
+            }
+            return std::string(text);
+        });
 
     // The ship's throttle: it holds when W/S are released, so it needs to be visible
     std::unique_ptr<UILabel> throttle_label = std::make_unique<UILabel>("");
@@ -353,9 +370,10 @@ void addSandboxUI(DynamoEngine::UIRoot& ui, UIState& ui_state, GameState& game_s
 
     // The three sliders, left to right: simulation speed, radius, mass
     std::unique_ptr<UISlider> speed_slider = std::make_unique<UISlider>(
-        "Simulation Speed", SliderMapping::linear(MIN_TIME_SCALE_FACTOR, MAX_TIME_SCALE_FACTOR),
+        "Requested Sim Speed", SliderMapping::linear(MIN_TIME_SCALE_FACTOR, MAX_TIME_SCALE_FACTOR),
         REGULAR_TIME_SCALE_FACTOR);
     speed_slider->setPlacement({.size = SLIDER_SIZE});
+    speed_slider->setStep(0.1, 1); // 0.1x, 0.2x, ... 3.0x
     speed_slider->setOnValueChanged([&ui_state](double value) { ui_state.setSimulationSpeed(value); });
 
     std::unique_ptr<UISlider> radius_slider =
@@ -430,27 +448,37 @@ class TestVisualScene : public Scene
 
     void onEnter() override
     {
-        UniverseState& universe_state = m_game_state.getUniverseStateMutable();
         const CameraState& camera_state = m_game_state.getCameraState();
         // The middle of what's on screen right now, in world coordinates
         const Vector2D view_center = {camera_state.window_width / 2.0 / camera_state.zoom - camera_state.offset.x_val,
                                       camera_state.window_height / 2.0 / camera_state.zoom - camera_state.offset.y_val};
-
         const Vector2D box_half_size = {TEST_COLLISION_BOX_WIDTH / 2.0, TEST_COLLISION_BOX_HEIGHT / 2.0};
-        universe_state.has_collision_box = true;
-        universe_state.collision_box_min_corner = view_center - box_half_size;
-        universe_state.collision_box_max_corner = view_center + box_half_size;
+        const Vector2D box_min = view_center - box_half_size;
+        const Vector2D box_max = view_center + box_half_size;
 
         // Remember whether the world's edges were walls, to put it back on exit
-        m_saved_reflective_walls = universe_state.reflective_walls;
-        universe_state.reflective_walls = REFLECTIVE_WORLD_WALLS;
+        m_saved_reflective_walls = m_game_state.getUniverseState().reflective_walls;
+
+        // The simulation runs on its own thread: queue the change ([box_min, box_max] copies the corners into it)
+        m_game_state.editUniverse(
+            [box_min, box_max](UniverseState& universe_state)
+            {
+                universe_state.has_collision_box = true;
+                universe_state.collision_box_min_corner = box_min;
+                universe_state.collision_box_max_corner = box_max;
+                universe_state.reflective_walls = REFLECTIVE_WORLD_WALLS;
+            });
     }
 
     void onExit() override
     {
-        UniverseState& universe_state = m_game_state.getUniverseStateMutable();
-        universe_state.has_collision_box = false;
-        universe_state.reflective_walls = m_saved_reflective_walls;
+        const bool saved_reflective_walls = m_saved_reflective_walls;
+        m_game_state.editUniverse(
+            [saved_reflective_walls](UniverseState& universe_state)
+            {
+                universe_state.has_collision_box = false;
+                universe_state.reflective_walls = saved_reflective_walls;
+            });
     }
 
   private:

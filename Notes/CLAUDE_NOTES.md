@@ -677,6 +677,84 @@ step = walkthrough, starting with the tracer class header.**
   Physics}: F4/F5 switch between them (both wouldn't fit), same key hides. MAX_PROFILER_LINES 17. Shared formatting:
   profilerReportLines() in Game.cpp. First measurement (20 planets + 8000 particles, 2 ticks/frame, O2): whole tick
   3.36 ms/frame = debris pairs 1.45, debris gravity 0.78, planet-debris 0.56, grid build 0.49, the rest ~0.1.
+- **STEP 2: PHYSICS ON ITS OWN THREAD (2026-11-27; NOT tested in-game yet).** Claude first built a per-frame
+  physics time budget instead (and said why: a thread means the main thread stops sharing the universe and
+  PhysicsSystem); Marco: 'why not do the refactor? If it goes wrong we just revert' -> built the thread, the budget
+  code removed again. Core/PhysicsThread.hpp/.cpp: owns the live UniverseState + its own PhysicsSystem; run() loop:
+  copy the FrameRequest (ship controls, speed, planning, runs_simulation) + pending Commands under m_mutex, apply
+  commands (spawn/undo/clear via updateGravBodyInstantiations, or std::function universe edits), accumulate owed game
+  time (real x speed, capped at MAX_PHYSICS_BACKLOG_TICKS = 8 (renamed from MAX_PHYSICS_STEPS_PER_FRAME) -> dropped =
+  behind), planning: adjustThrottleWhilePlanning in real time, AT MOST ONE TICK PER PASS (new controls/commands read
+  between every two ticks), publish, then wait_for on a condition variable until the next tick is due or m_has_news.
+  Publish = copy live -> m_staging OUTSIDE the lock, then swap(m_staging, m_published) under it, only if the main thread
+  took the previous one (<= 1 copy per frame; ~1 ms at 50k, optimize later with a render-only snapshot). Main thread:
+  takeNewestUniverse swaps m_published <-> game_state's universe (3 buffers rotate, no copy under the lock).
+  Handoff: ticks, dropped_time, effective speed (measured over 0.5 s windows; = the CURRENT slider unless that window
+  dropped time, so no readout flash on slider moves), publish_time, F5 report. Game: sendRequestsToPhysics (scene edits
+  from GameState::editUniverse queue, spawn commands, frame request) and takeUniverseFromPhysics; F4 rows 'To physics'
+  / 'From physics' replace 'Spawns' / 'Physics' (main-thread hand-off only, ~0.1 ms: Marco asked why they didn't
+  match F5's ~3 ms), plus 'Physics thread' = Handoff::busy_ms, the physics thread's work (ticks, commands, publish
+  copy) per frame, NOT part of 'Frame work' (runs in parallel); F5 report comes from the handoff; ticks line 'behind N%'; alpha =
+  time since publish x effective speed / dt (1 while planning). predictionPhysics = a second PhysicsSystem for the
+  trajectory lines and placement preview on the main thread. TestVisual onEnter/onExit queue their box edits
+  (GameState::editUniverse); getUniverseStateMutable on GameState is now the presented COPY (comment says so).
+  Readout (Marco's wording, always shown): 'FPS: 60    Current Sim Speed: 1.6x' on the FPS line ('stopped (planning)'
+  while planning); the slider is now 'Requested Sim Speed' and SNAPS to 0.1 steps shown with 1 decimal (new
+  UISlider::setStep(step, decimal_places) + text(); snapToStep divides by steps-per-unit so 0.7 is the double nearest
+  0.7; 4 tests, 173/173, TidyEngine clean; radius/mass sliders unchanged, still continuous). Verified with
+  Notes/drafts/Harnesses/physics_thread_harness.cpp under ThreadSanitizer: 0 reports; spawn + undo + edit arrive;
+  thread result after 302 ticks bit-identical to direct stepping. 169/169, determinism MATCH.
+- **DETERMINISM STEP 1 DONE (2026-11-27, Marco: 'go with the original plan'; Notes/PHYSICS_REQUIREMENTS.md is now
+  the reference for physics work).** Decisions that day: debris is gameplay, CPU physics identical on Mac+Windows (no
+  GPU physics), fixed rubble per level, slow machine = slow motion (sim on its own thread next, so the speed slider
+  survives), 50k on a 4-core laptop, extensible materials, Soft Step + coloring as the solver plan, rotating shaped
+  bodies later as a separate type. Implemented: DynamoEngine/Math/DeterministicMath (deterministicSin/Cos: Cody-Waite
+  3-part pi/2 reduction + Taylor to r^17/r^18; deterministicCbrt: frexp/ldexp + 6 Newton steps) and
+  DeterministicRandom.hpp (mixBits = SplitMix64 finalizer, combineHash, doubleBits, hashToUnitInterval/Range);
+  13 tests (169/169). UniverseState::random_seed ("TRANSFER") + tick_count (++ in advanceUniverseState).
+  bodyRandomKey(universe, body) = seed, tick, macroIdentifier, position bits; substituteWithParticles(+FromImpact)
+  take a random_key (fragment speed 0.8-1.1 and impact size 0.5-0.9 hashed per fragment number); directionFromTo hashes
+  the two positions; FragmentLayout, Starship, stackedPairDirection, handleAccretion use the deterministic functions;
+  randomDouble removed from CustomMathUtilities.hpp. CMakeLists: -ffp-contract=off / /fp:precise for all targets;
+  harness README + run_particle_benchmark.sh got the flag. NEW: Core/DeterminismCheck + main.cpp
+  `--determinism-check` (6 scenes x 1200 ticks, checksum every 300, OVERALL line, determinism_check.txt; ~1 s).
+  Verified: run-to-run identical; Release build == -O2 harness build; without the flag every line differs; seed probe:
+  same seed identical, other seed different (1600 fragments). Mac reference: Notes/determinism_check_mac.txt
+  (OVERALL 02F18F7B1A87A525). NOT yet run on Windows. Scripts/Apple/CheckDeterminism.sh [nobuild|update] and
+  Scripts/Windows/CheckDeterminism.bat [nobuild] build Release, run the check, diff/fc against the reference (update =
+  Mac saves a new reference after an intended physics change); documented in Scripts/README.md. The .bat is untested
+  (written on the Mac). Side effect: all physics bits changed (flag + hashed randomness),
+  so universe_refactor_baseline.txt and contact_identity outputs need regenerating before they're used as guards again.
+  GATHER SOLVER REMOVED the same day (Marco: dead code): constants, DebrisSolverSettings, neighbor lists, F5 rows
+  'Coll: debris nbrs/solve', UniformParticleGrid::queryNeighborhood all gone (grid files back to f174b8c);
+  determinism check still MATCH, 169/169. debris_solver_harness (args now: scene, particles, settle seconds) and
+  conservation_probe_harness kept for grading the sequential solver. The findings stay in the entry below.
+- **GATHER (JACOBI) DEBRIS SOLVER TRIED: COLLAPSES DEEP PILES (2026-11-27, Marco: 'go ahead and attempt', threads
+  later). [REMOVED later that day; this entry keeps the findings.] Built, behind a flag, DEFAULT OFF (USE_GATHER_DEBRIS_SOLVER = false; sequential path bit-identical to
+  f174b8c, contact_identity checksums equal). Code: PhysicsSystem::resolveDebrisContactsGather ->
+  buildDebrisNeighborLists (flat start/neighbors arrays, skin DEBRIS_NEIGHBOR_SKIN 0.1, contact counts) ->
+  DEBRIS_SOLVER_ITERATIONS x runDebrisGatherPass (snapshot pos/vel, each particle sums debrisContactPush from its
+  neighbors, computed from the LOWER index's side so both sides match bit for bit, writes only itself);
+  UniformParticleGrid::queryNeighborhood (full 3x3); stackedPairDirection = hash of the two indices (no RNG).
+  Runtime knobs: physics.debrisSolverSettings() {use_gather, iterations, overlap_relaxation, average_bounces}.
+  FINDINGS: momentum exact in every mode. Summing full bounces from all neighbors INJECTS energy (two clusters fired
+  together: kinetic x30 in 1 s) -> bounces averaged by max(contact count) (DEBRIS_GATHER_AVERAGE_BOUNCES), overlap
+  corrections summed: then energy/spin match sequential in free space (conservation_probe_harness: -15% KE, same
+  +0.2% L drift from the position push). But piles under gravity COLLAPSE: wall 4800 (1e10 planet 1400 outside the
+  box): sequential 6.97 touching/particle, 0.91 ms; gather x1 47.7 touching, 6.9 ms; x16 33.9, 15 ms; x8 with
+  relaxation 1.8: 28.3. Wall 14,400: seq 14.4 touching 4.06 ms; gather 72-81 touching, 34-47 ms. Planet scene
+  (spin_harness, a hot gas in both): gather keeps it hotter (845 vs 437 px/s) and spins (+15..+50 deg/s, from the
+  larger position pushes: with overlap correction off spin -0.13 but it collapses). Causes: (1) a push travels one
+  layer per pass, deep piles need ~layer-count passes; (2) the position push doesn't change velocity, so gravity's
+  velocity keeps driving particles in, and averaged bounces remove only part of it; (3) the box/wall clamp isn't
+  inside the pass loop. Pivot offered: keep Gauss-Seidel quality and parallelize by COLORING (stripes / 3x3 cells),
+  plus Verlet-style position-based debris (velocity implied by the position change) + substeps, the usual recipe of
+  100k-particle sims (Marco's video: 'AIs try to create a large C++ physics Simulation', content not readable).
+  F5 now: rows that didn't run in the window are hidden (FrameProfiler SectionReport::frames_recorded, Game.cpp
+  profilerReportLines; tests added, 156/156), Verlet halves merged into one row, new rows Coll: debris nbrs / solve,
+  fitToOverlay shows '(+N rows: see console)' if a report ever overflows MAX_PROFILER_LINES (18).
+  Harnesses: debris_solver_harness (planet|wall scenes, seq|gather, prints ms/overlap/touching/speed/spin),
+  conservation_probe_harness (momentum/spin/KE in free space).
 - **OPPOSITE-SIGN MERGES: 10x RULE EVERYWHERE (2026-11-26, Marco's design call):** asked 'what is broken with
   negative accretion, shouldn't it just subtract?'. Findings: subtraction itself was fine (pickMassPair compares abs, so
   the radius pow never sees a negative ratio: the old REWORK note was wrong); only a near-cancelling merge was a problem

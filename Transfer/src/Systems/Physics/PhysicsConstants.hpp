@@ -6,9 +6,11 @@
 // Global Physics DT
 constexpr float PHYSICS_TIME_STEP = 1.0f / 120.0f; // 120Hz physics update rate
 constexpr float INV_PHYSICS_TIME_STEP = 120.0f;
-// Most physics steps one frame may run to catch up. Normal play needs 2 per frame (60 FPS), 4 at 2x speed.
-// Time beyond this is dropped (the simulation briefly runs slower) instead of piling up into a spiral of death.
-constexpr int MAX_PHYSICS_STEPS_PER_FRAME = 8;
+// The most game time the physics thread may owe, in ticks (PhysicsThread). When ticks take longer than the game time
+// they cover, the owed time grows; beyond this it is DROPPED instead of piling up: the simulation runs slower than
+// the speed slider asks ("Current Sim Speed" next to the FPS), while the main thread keeps rendering at full frame rate.
+// The ticks themselves never change, so results don't either.
+constexpr int MAX_PHYSICS_BACKLOG_TICKS = 8;
 // How often the debris is re-sorted by grid cell (UniformParticleGrid::sortByCell). Particles move less than a cell per
 // tick, so the order stays nearly right in between; 1 = every tick (what a GPU version would do: sorting is cheap there)
 constexpr int DEBRIS_SORT_INTERVAL_TICKS = 8;

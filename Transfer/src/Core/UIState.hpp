@@ -36,6 +36,10 @@ class UIState
     // The simulation speed slider (1 = normal speed). Planning mode stops time without changing it.
     float getTimeScaleFactor() const { return static_cast<float>(m_simulation_speed); }
     void setSimulationSpeed(double speed) { m_simulation_speed = speed; }
+    // How fast the simulation really runs (game seconds per real second, from the physics thread). Lower than the
+    // slider only while the machine can't keep up (see MAX_PHYSICS_BACKLOG_TICKS); otherwise equal to it.
+    double getEffectiveSimulationSpeed() const { return m_effective_simulation_speed; }
+    void setEffectiveSimulationSpeed(double speed) { m_effective_simulation_speed = speed; }
     // What the next spawned planet or cluster will be like (edited by the spawn panel's checkboxes)
     SpawnSettings& spawnSettings() { return m_spawn_settings; }
     const SpawnSettings& spawnSettings() const { return m_spawn_settings; }
@@ -79,6 +83,7 @@ class UIState
 
   private:
     double m_simulation_speed = 1.0;
+    double m_effective_simulation_speed = 1.0;
     SpawnSettings m_spawn_settings;
     float framesPerSecond = TARGET_FPS;
 

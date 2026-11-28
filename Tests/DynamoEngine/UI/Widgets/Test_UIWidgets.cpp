@@ -227,6 +227,40 @@ TEST_F(UISliderTest, KnobStaysDarkWhileDraggedEvenOffTheSlider)
     EXPECT_FLOAT_EQ(knobRed(*slider), normal);
 }
 
+TEST_F(UISliderTest, StepSnapsDraggedValues)
+{
+    slider->setStep(0.1, 1);
+    slider->onMouseDragged({mouseXForPosition(0.37f), 10.0f}); // 0.74 before snapping
+    EXPECT_EQ(slider->value(), 0.7); // exactly the double closest to 0.7, not 7 * 0.1
+    ASSERT_FALSE(values_reported.empty());
+    EXPECT_EQ(values_reported.back(), 0.7);
+}
+
+TEST_F(UISliderTest, StepSnapsSetValueAndTheStartingValue)
+{
+    slider->setValue(1.234);
+    slider->setStep(0.1, 1);
+    EXPECT_EQ(slider->value(), 1.2);
+    slider->setValue(1.66);
+    EXPECT_EQ(slider->value(), 1.7);
+}
+
+TEST_F(UISliderTest, DraggingWithinOneStepReportsNothingNew)
+{
+    slider->setStep(0.1, 1);
+    slider->onMouseDragged({mouseXForPosition(0.36f), 10.0f}); // 0.72 -> 0.7
+    slider->onMouseDragged({mouseXForPosition(0.37f), 10.0f}); // 0.74 -> 0.7 again
+    EXPECT_EQ(values_reported, (std::vector<double>{0.7}));
+}
+
+TEST_F(UISliderTest, TextShowsTheChosenDecimals)
+{
+    EXPECT_EQ(slider->text(), "Speed: 1.000000"); // no step: std::to_string
+    slider->setStep(0.1, 1);
+    slider->setValue(1.5);
+    EXPECT_EQ(slider->text(), "Speed: 1.5");
+}
+
 TEST(SliderMapping, LinearGoesBothWays)
 {
     SliderMapping mapping = SliderMapping::linear(-10.0, 30.0);
