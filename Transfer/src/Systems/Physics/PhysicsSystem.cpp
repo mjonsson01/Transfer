@@ -1156,7 +1156,8 @@ static inline void populateSpawnedBodyProperties(GravitationalBody& grav_body, c
 bool PhysicsSystem::makeSpawnPreviewBody(const SpawnProperties& spawn_aim, const SpawnSettings& spawn_settings,
                                          GravitationalBody& body_out) const
 {
-    // Same refusals as createMacroBody (the particle budget aside: a refused spawn simply won't happen)
+    // Same refusals as createMacroBody (the particle budget and the planet cap aside: a refused spawn simply won't
+    // happen)
     if (spawn_settings.radius <= 1.0 || firstWithinEpsilonOfSecond(spawn_settings.mass, 0.0))
     {
         return false;
@@ -1175,6 +1176,11 @@ void PhysicsSystem::createMacroBody(UniverseState& universe_state, const SpawnPr
         return;
     }
     if (firstWithinEpsilonOfSecond(spawn_settings.mass, 0.0))
+    {
+        return;
+    }
+    // The planet cap (planets stay few; their traced lines are sized for at most this many)
+    if (macro_bodies.size() >= MAX_MACRO_BODIES)
     {
         return;
     }

@@ -4,8 +4,16 @@
 
 // Particle budget. Spawns are budgeted for the worst case (every macro body shattering into DEFAULT_FRAGMENT_COUNT
 // particles), so physics can run in full and still never have more than this many particles.
-// See PhysicsSystem::potentialParticleCount.
-constexpr uint32_t MAX_LIVE_PARTICLES = 20000;
+// See PhysicsSystem::potentialParticleCount. 100k = the sandbox maximum of the v0 parameters
+// (Notes/PHYSICS_REQUIREMENTS.md; was 20k until 2026-11-27). Past what the machine can tick in time, the simulation
+// runs slower than requested (physics thread) while the frame rate holds.
+constexpr uint32_t MAX_LIVE_PARTICLES = 100000;
+
+// The most planets (macro bodies) at once. Planets drive the gameplay and stay few, debris is what scales (Marco,
+// 2026-11-27: cap the planets, not the particles). Until the particle budget went to 100k, the budget itself limited
+// planets to 25 (each reserves DEFAULT_FRAGMENT_COUNT for its fragments); this keeps that number on its own. It sizes
+// the trajectory line buffers (PhysicsConstants.hpp checks they fit) and the debug overlay below.
+constexpr uint32_t MAX_MACRO_BODIES = 25;
 
 // The most see-through preview bodies drawn at once: a previewed cluster shows all of its particles, at most
 // DEFAULT_FRAGMENT_COUNT (PhysicsConstants.hpp checks that it fits); a previewed planet is just 1.
@@ -20,7 +28,7 @@ constexpr uint32_t INITIAL_UNIFIED_BODY_CAPACITY = MAX_LIVE_PARTICLES + MAX_PREV
 constexpr uint32_t MAX_UI_VERTICES = 65536;
 
 constexpr uint32_t MAX_STARSHIP_VERTICES = 32; // Unknown if needed
-// Debug overlay (F3): 2 vertices per line. Each planet outline is 32 lines (the budget allows at most 25 planets),
+// Debug overlay (F3): 2 vertices per line. Each planet outline is 32 lines (at most MAX_MACRO_BODIES = 25 planets),
 // the ship's hitbox 6 lines, so this leaves plenty of room for future debug drawings
 constexpr uint32_t MAX_DEBUG_LINE_VERTICES = 8192;
 

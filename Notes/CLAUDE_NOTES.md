@@ -677,6 +677,19 @@ step = walkthrough, starting with the tracer class header.**
   Physics}: F4/F5 switch between them (both wouldn't fit), same key hides. MAX_PROFILER_LINES 17. Shared formatting:
   profilerReportLines() in Game.cpp. First measurement (20 planets + 8000 particles, 2 ticks/frame, O2): whole tick
   3.36 ms/frame = debris pairs 1.45, debris gravity 0.78, planet-debris 0.56, grid build 0.49, the rest ~0.1.
+- **COMMITTED + PUSHED (2026-11-27, Marco: 'push those commits'):** ec2ab84 (determinism, check scripts, profiler
+  rows; verified alone in a worktree: builds, 169/169, determinism MATCH even as a Debug build) and 1057c4f (physics
+  thread, sim speed readout, slider step, notes) on PhysicsDensityUpgrades.
+- **STEP 3: SCORECARD (2026-11-27).** Notes/drafts/Harnesses/scorecard_harness.cpp + run_scorecard.sh [letters]:
+  scenes A wall pile 14.4k, B wall pile 50k, C '590' case, D two clusters fired together, E static-planet pile; v0
+  thresholds in one block at the top; prints value / target / pass-FAIL. BASELINE (sequential solver): 3 pass, 14 FAIL;
+  table in Notes/PHYSICS_REQUIREMENTS.md. Piles crushed (34% mean overlap, 14.2 / 32.8 touching at 14.4k / 50k),
+  never settle (0.4 diameters/tick), 50k = 24 ms/tick (Claude's earlier '~7-8 ms at 50k' guess was wrong: cost grows
+  faster than the count because deeper piles are crushed harder). To run 50k: MAX_LIVE_PARTICLES 20k -> 100k (v0
+  sandbox max). That broke a static_assert (traced paths were sized from the particle budget: 100k / 800 = 126
+  planets, ~50 MB of trajectory buffers), so planets got their own cap MAX_MACRO_BODIES = 25 (EngineConstants.hpp; the
+  old effective limit; createMacroBody refuses past it), MAX_TRACED_TRAJECTORY_PATHS = MAX_MACRO_BODIES + 1.
+  173/173, determinism MATCH. (Uncommitted.)
 - **STEP 2: PHYSICS ON ITS OWN THREAD (2026-11-27; NOT tested in-game yet).** Claude first built a per-frame
   physics time budget instead (and said why: a thread means the main thread stops sharing the universe and
   PhysicsSystem); Marco: 'why not do the refactor? If it goes wrong we just revert' -> built the thread, the budget

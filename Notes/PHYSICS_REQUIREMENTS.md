@@ -119,16 +119,33 @@ What "identical on Mac and Windows" requires of the code. All four were put in p
 - Still to watch: thread count (add 1/2/4/8 to the check when threads arrive) and any new physics code using std::
   math or randomness.
 
-## Scorecard scenes (to build as one harness)
+## Scorecard
 
-| Scene | Checks | Starting threshold |
-|---|---|---|
-| Deep wall pile, 14.4k and 50k (1e10 planet outside the box) | B1, B2, C1 | settles within 5 s (mean movement < 0.01 diameters/tick); mean overlap < 2%, worst < 10%; touching per particle <= 6 (the most equal discs can touch without overlapping) |
-| The "590" case (4800 debris, planet 590 from the wall) | B2 | settles |
-| Two clusters fired together, empty space | A3 | momentum constant (relative 1e-9); kinetic energy never rises |
-| Pile on a static planet (spin_harness) | A2 | spin below 1e-4 deg/s |
-| Any scene, threads 1/2/4/8, Mac vs Windows | A1 | identical checksums |
-| Timing | C1 | <= 2 ms/tick worst case at 50k on 4 threads (reference laptop to be chosen) |
+`sh Notes/drafts/Harnesses/run_scorecard.sh [scene letters]` (scorecard_harness.cpp; the thresholds sit in one block at
+its top, mirroring the v0 numbers above). Determinism (A1) is checked separately by Scripts/*/CheckDeterminism.
+
+| Scene | Checks |
+|---|---|
+| A: wall pile, 14,400 (1e10 planet 1400 px outside the box wall) | settle time (B2), overlap mean / worst, touching per particle (B1) |
+| B: wall pile, 50,000 | the same, plus debris ms/tick and whole tick (C1, target is 4 threads) |
+| C: the "590" case (4,800 debris, planet 590 px from the wall) | the same as A |
+| D: two clusters fired together, empty space | momentum drift, kinetic energy never rises (A3) |
+| E: debris around a static planet, no box | spin (A2) |
+
+### Baseline (2026-11-27, today's sequential solver, Marco's Mac, one thread): 3 pass, 14 FAIL
+
+| Scene | Settle | Overlap mean / worst | Touching per particle | Movement at the end | Debris / tick |
+|---|---|---|---|---|---|
+| A 14,400 | never (60 s) | 34.4% / 99.8% | 14.2 | 0.42 diameters/tick | 4.1 ms |
+| B 50,400 | never | 34.7% / 100% | 32.8 | 0.47 | 24.2 ms (whole tick 25.0) |
+| C 4,800 | never | 36.3% / 99.5% (few pairs) | 0.17 | 4.26 (a hot gas) | 0.16 ms |
+| D | | momentum drift 1.4e-15 (pass), energy never rises (pass) | | | |
+| E | | spin -5.6e-3 deg/s (FAIL: the position push) | | | |
+
+What it says: piles are CRUSHED (a third of every touching pair's distance overlaps; 14 to 33 touching neighbors
+where 6 is the geometric maximum) and never stop moving (they boil at ~0.4 diameters per tick). Cost grows faster
+than the particle count because the deeper pile is crushed harder: 3.5x the particles cost 5.9x the time. Holding
+piles properly is the performance fix as much as the quality fix.
 
 ## Chosen direction
 

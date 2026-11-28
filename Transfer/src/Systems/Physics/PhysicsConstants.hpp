@@ -56,10 +56,10 @@ constexpr uint32_t DEFAULT_FRAGMENT_COUNT = 800;   // fragments per shattered bo
 static_assert(DEFAULT_FRAGMENT_COUNT <= MAX_PREVIEW_BODIES, "the cluster preview wouldn't fit MAX_PREVIEW_BODIES");
 
 // The trajectory line buffers must hold the worst case (2 vertices per segment or mark). Traced lines: every planet
-// the particle budget allows, plus the ship, each to the full horizon. The per-frame buffer: the placement preview
+// allowed (MAX_MACRO_BODIES), plus the ship, each to the full horizon. The per-frame buffer: the placement preview
 // (one full line with its marks), the traced lines' time marks, and the bright tips (allowing up to 8 segments each).
 // Raising the horizon or the point rate without raising the limits in EngineConstants.hpp stops the build here.
-constexpr uint32_t MAX_TRACED_TRAJECTORY_PATHS = MAX_LIVE_PARTICLES / DEFAULT_FRAGMENT_COUNT + 1;
+constexpr uint32_t MAX_TRACED_TRAJECTORY_PATHS = MAX_MACRO_BODIES + 1; // + 1: the ship
 constexpr uint32_t TRAJECTORY_SEGMENTS_PER_PATH =
     static_cast<uint32_t>(TRAJECTORY_HORIZON_SECONDS * INV_PHYSICS_TIME_STEP) / TRAJECTORY_TICKS_PER_POINT;
 constexpr uint32_t TRAJECTORY_MARKS_PER_PATH =
